@@ -1,0 +1,1236 @@
+<?xml version="1.0" encoding="iso-8859-1"?>
+<aiscript name="order.fight.protect.sector" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="aiscripts.xsd" version="1">
+  <order id="ProtectSector" name="{1972092401, 1}" description="{1972092401, 2}" category="combat" infinite="true">
+    <params>
+      <param name="homeSector" default="if this.ship.jobmainsector? then this.ship.jobmainsector else this.ship.sector" type="sector" required="true" text="{1972092401, 101}" />
+      <param name="attackStations" type="bool" default="false" text="{1972092401, 111}" />
+      <param name="attackShipsXL" type="bool" default="false" text="{1972092401, 121}" />
+      <param name="attackShipsL" type="bool" default="false" text="{1972092401, 122}" />
+      <param name="attackShipsM" type="bool" default="true" text="{1972092401, 123}" />
+      <param name="attackShipsS" type="bool" default="true" text="{1972092401, 124}" />
+      <param name="attackShipsOutOfStationsDistance" type="length" default="0km" text="{1972092401, 129}" comment="Maximal negative relation to be attacked (from -30 to 0)">
+        <input_param name="min" value="0km" />
+        <input_param name="max" value="30km" />
+        <input_param name="step" value="1km" />
+      </param>
+      <param name="attackVisibleOnly" type="bool" default="true" text="{1972092401, 131}" />
+      <param name="attackHostileOnly" type="bool" default="true" text="{1972092401, 132}" />
+      <param name="protectPlayerShipsInSector" type="bool" default="true" text="{1972092401, 134}" />
+      <param name="protectOnlyNonMilitaryShips" type="bool" default="true" text="{1972092401, 135}" />
+      <param name="pursueFleeingTarget" type="bool" default="false" text="{1972092401, 133}" />
+      <param name="shareTargetsBetweenFleets" type="bool" default="true" text="{1972092401, 141}" />
+      <!-- <param name="relationThresholdConfigurationEnabled" type="bool" default="false" text="{1972092401, 151}" />
+      <param name="relationThresholdConfigured" default="1" type="number" text="{1972092401, 152}" comment="Do not attack ships closest to hostile station, then value">
+        <input_param name="startvalue" value="1" />
+        <input_param name="min" value="0" />
+        <input_param name="max" value="30" />
+        <input_param name="step" value="1" />
+      </param> -->
+      <param name="shieldsPreserveOnFlight" type="bool" default="false" text="{1972092401, 161}" />
+      <param name="breakOnDestructionPercentage" type="number" default="40" text="{1972092401, 171}">
+        <input_param name="min" value="0" />
+        <input_param name="max" value="100" />
+        <input_param name="step" value="10" />
+      </param>
+      <param name="parkInCenterOfSector" type="bool" default="false" text="{1972092401, 181}" />
+      <param name="recordActionsToLogBook" type="bool" default="true" text="{1972092401, 901}" />
+      <param name="debugchance" type="bool" default="0" advanced="true" text="{1041, 10086}" comment="Print debug output">
+        <input_param name="truevalue" value="100"/>
+        <editable/>
+      </param>
+    </params>
+    <skill min="40" />
+    <requires>
+      <match shiptype="shiptype.lasertower" negate="true" />
+      <match primarypurpose="purpose.fight" />
+    </requires>
+    <location object="$homeSector" condition="$homeSector.zone.exists" />
+  </order>
+
+  <interrupts>
+    <handler ref="AttackHandler" />
+    <handler ref="MissileLockHandler" />
+    <handler ref="ScannedHandler" />
+    <!-- <handler ref="InspectedHandler" /> -->
+    <handler ref="FoundAbandonedHandler" />
+    <handler ref="FoundLockboxHandler" />
+    <handler>
+      <conditions>
+        <check_all>
+          <event_game_loaded />
+          <debug_text text="'%s [%s (%s - %s) at %s, %s] - Game loaded with version %s'.
+          [
+            player.age,
+            this.ship.knownname, 
+            this.ship.idcode, 
+            this.ship, 
+            this.ship.sector.knownname, 
+            this.ship.fleet.name, 
+            @$scriptVersion
+          ]" debugchance="100"/>
+          <check_value value="@$scriptVersion lt 101" />
+        </check_all>
+      </conditions>
+      <actions>
+        <debug_to_file directory="'protectsector'" name="'debug_' + this.ship.fleet.name + '_' + this.ship.knownname + '_' + this.ship.idcode + '_' + this.ship" 
+          text="'[%s (%s - %s) at %s, %s] - Re-init for versions prior to 1.01'
+          .[
+            this.ship.knownname, 
+            this.ship.idcode, 
+            this.ship, 
+            this.ship.sector.knownname, 
+            this.ship.fleet.name, 
+          ]" output="true" append="true" />
+        <do_if value="@$scriptVersion lt 101">
+          <cancel_all_orders object="this.ship" />
+          <create_order object="this.ship" id="'ProtectSector'" default="true">
+            <param name="homeSector" value="$ps_space" />
+            <param name="attackStations" value="$ps_attack_stations" />
+            <param name="attackShipsXL" value="$ps_attack_xl" />
+            <param name="attackShipsL" value="$ps_attack_l" />
+            <param name="attackShipsM" value="$ps_attack_m" />
+            <param name="attackShipsS" value="$ps_attack_s" />
+            <param name="attackShipsOutOfStationsDistance" value="$ps_attack_farther_from_station" />
+            <param name="attackVisibleOnly" value="$ps_visible_only" />
+            <param name="attackHostileOnly" value="$ps_hostile_only" />
+            <param name="pursueFleeingTarget" value="$ps_pursue" />
+            <param name="protectPlayerShipsInSector" value="true" />
+            <param name="protectOnlyNonMilitaryShips" value="true" />
+            <param name="shareTargetsBetweenFleets" value="if $ps_target_share? then $ps_target_share else $target_share" />
+            <param name="shieldsPreserveOnFlight" value="$ps_noboost" />
+            <param name="breakOnDestructionPercentage" value="if $ps_disable then 40 else 0" />
+            <param name="parkInCenterOfSector" value="$ps_park" />
+            <param name="recordActionsToLogBook" value="true" />
+          </create_order>
+        </do_if>
+      </actions>
+    </handler>
+    <handler>
+      <conditions>
+        <check_all>
+          <event_player_owned_attacked />
+          <check_value value="@$protectPlayerShipsInSector" />
+          <check_any>
+            <check_value value="@$protectOnlyNonMilitaryShips" negate="true" />
+            <check_all>
+              <check_value value="@$protectOnlyNonMilitaryShips"/>
+              <check_any>
+                <check_value value="event.object.primarypurpose != purpose.fight" />
+                <check_value value="event.object.isclass.station" />
+              </check_any>
+            </check_all>
+          </check_any>
+          <check_value value="event.object.sector == this.ship.sector and $homeLocation.sector == this.ship.sector" />
+          <check_value value="event.object.isclass.ship or event.object.isclass.station" />
+          <check_value value="event.object != this.ship" />
+          <check_value value="@event.object.order.id != 'ProtectSector'" />
+          <check_value value="@event.object.toplevelcommander != 'ProtectSector'" />
+          <check_value value="@event.object.assignedcontrolled.defaultorder.id != 'ProtectSector'" />
+          <check_value value="@event.object.assignedcontrolled.toplevelcommander.defaultorder.id != 'ProtectSector'" />
+          <check_value value="@event.param.isclass.{$classesForAttack}" /> 
+          <check_value value="@$target == null" />
+          <check_value value="@$targetOnResponse == null" />
+        </check_all>
+      </conditions>
+      <actions>
+        <debug_to_file directory="'protectsector'" name="'debug_' + this.ship.fleet.name + '_' + this.ship.knownname + '_' + this.ship.idcode + '_' + this.ship"
+          text="'[%s (%s - %s) at %s, %s] -  %s, our : %s (%s - %s) {%s} in sector: %s with order: %s, top commander:  %s (%s - %s) {%s} in sector: %s with order: %s,  assigned:  %s (%s - %s) {%s} in sector: %s with order: %s, assigned top commander:  %s (%s - %s) {%s} in sector: %s with order: %s, attacker: %s (%s - %s) {%s}'
+            .[
+              this.ship.knownname, 
+              this.ship.idcode, 
+              this.ship, 
+              this.ship.sector.knownname, 
+              this.ship.fleet.name, 
+              event.name, 
+              event.object.name, 
+              event.object.idcode, 
+              event.object, 
+              event.object.class, 
+              event.object.sector.knownname, 
+              event.object.defaultorder.id, 
+              if event.object.toplevelcommander? then event.object.toplevelcommander.name else '', 
+              if event.object.toplevelcommander? then event.object.toplevelcommander.idcode else '', 
+              if event.object.toplevelcommander? then event.object.toplevelcommander else '', 
+              if event.object.toplevelcommander? then event.object.toplevelcommander.class else '', 
+              if event.object.toplevelcommander? then event.object.toplevelcommander.sector.knownname else '', 
+              if event.object.toplevelcommander? then event.object.toplevelcommander.defaultorder.id else '', 
+              if event.object.assignedcontrolled? then event.object.assignedcontrolled.name else '', 
+              if event.object.assignedcontrolled? then event.object.assignedcontrolled.idcode else '', 
+              if event.object.assignedcontrolled? then event.object.assignedcontrolled else '', 
+              if event.object.assignedcontrolled? then event.object.assignedcontrolled.class else '', 
+              if event.object.assignedcontrolled? then event.object.assignedcontrolled.sector.knownname else '', 
+              if event.object.assignedcontrolled? then event.object.assignedcontrolled.defaultorder.id else '', 
+              if event.object.assignedcontrolled.toplevelcommander? then event.object.assignedcontrolled.toplevelcommander.name else '', 
+              if event.object.assignedcontrolled.toplevelcommander? then event.object.assignedcontrolled.toplevelcommander.idcode else '', 
+              if event.object.assignedcontrolled.toplevelcommander? then event.object.assignedcontrolled.toplevelcommander else '', 
+              if event.object.assignedcontrolled.toplevelcommander? then event.object.assignedcontrolled.toplevelcommander.class else '', 
+              if event.object.assignedcontrolled.toplevelcommander? then event.object.assignedcontrolled.toplevelcommander.sector.knownname else '', 
+              if event.object.assignedcontrolled.toplevelcommander? then event.object.assignedcontrolled.toplevelcommander.defaultorder.id else '', 
+              event.param.name, 
+              event.param, 
+              event.param.idcode, 
+              event.param.class
+            ]"
+          output="true" append="true" />
+        <set_value name="$targetOnResponse" exact="event.param" />
+        <do_if value="$targetOnResponse.coverowner">
+          <signal_objects object="$targetOnResponse" param="'LoseCover'" param2="true" />
+        </do_if>
+        <do_if value="$recordActionsToLogBook">
+          <set_value name="$textUnit" exact="{1972092401, 1011}.[this.ship.name, this.ship.idcode]" />
+          <do_if value="@this.ship.subordinates.count gt 0 and @this.ship.toplevelcommander == this.ship">
+            <set_value name="$textUnit" exact="{1972092401, 1012}.[this.ship.fleet.name, $textUnit]" />
+          </do_if>
+          <set_value name="$textEnemyClass" exact="if event.param.isclass.ship then $textShip else $textStation" />
+          <set_value name="$textEnemy" exact="{1972092401, 1013}.[$textEnemyClass, event.param.name, event.param.idcode]" />
+          <set_value name="$textOur" exact="{1972092401, 1014}.[event.object.name, event.object.idcode]" />
+          <write_to_logbook category="general" title="$textTitle" text="{1972092401, 1033}.[$textUnit, $textOur, $textHomeSector, $textEnemy]" interaction="showonmap" object="this.ship" />
+        </do_if>
+        <apply_experience entity="this" experience="'ship_disable_easy'" chance="60"/>
+        <abort_called_scripts resume="protectPlayerShipsCheck" />
+      </actions>
+    </handler>
+    <handler consume="false">
+      <conditions>
+        <check_any>
+          <event_object_destroyed group="$targets" />
+          <event_object_abandoned group="$targets" />
+          <event_object_changed_sector group="$targets" />
+          <event_object_target_invalid object="this.ship" />
+        </check_any>
+      </conditions>
+      <actions>
+        <debug_to_file directory="'protectsector'" name="'debug_' + this.ship.fleet.name + '_' + this.ship.knownname + '_' + this.ship.idcode + '_' + this.ship"
+          text="'[%s (%s - %s) at %s, %s] - Event %s : %s (%s - %s) {%s} status: iswreck: %s, isoperational: %s,  pilot: %s (%s), param: %s - %s (%s), target info - %s'
+            .[
+              this.ship.knownname,
+              this.ship.idcode,
+              this.ship,
+              this.ship.sector.knownname,
+              this.ship.fleet.name,
+              event.name,
+              event.object.name,
+              event.object.idcode,
+              event.object,
+              event.object.class,
+              event.object.iswreck,
+              event.object.isoperational,
+              event.object.pilot,
+              event.object.pilot?,
+              event.param,
+              event.param.name,
+              event.param.class,
+              $targetInfo
+            ]" output="true" append="true" />
+        <do_if value="$targetInfo? and $targetInfo != null and $targetInfo.$name? and @$targetInfo.$isShip">
+          <set_value name="$textUnit" exact="{1972092401, 1011}.[this.ship.name, this.ship.idcode]" />
+          <do_if value="@this.ship.subordinates.count gt 0 and @this.ship.toplevelcommander == this.ship">
+            <set_value name="$textUnit" exact="{1972092401, 1012}.[this.ship.fleet.name, $textUnit]" />
+          </do_if>
+          <set_value name="$textEnemyClass" exact="if @$targetInfo.$isShip then $textShip else $textStation" />
+          <set_value name="$textEnemy" exact="{1972092401, 1013}.[$textEnemyClass, $targetInfo.$name, $targetInfo.$idcode]" />
+          <do_if value="event.name == 'event_object_changed_sector'">
+            <do_if value="$homeLocation.sector !=  event.object.sector">
+              <do_if value="$recordActionsToLogBook">
+                <write_to_logbook category="general" title="$textTitle" text="{1972092401, 1043}.[$textUnit, $textEnemy, $textHomeSector]" interaction="showonmap" object="this.ship" />
+              </do_if>
+              <abort_called_scripts resume="targetSearching" />
+            </do_if>
+          </do_if>
+          <do_else>
+            <do_if value="$recordActionsToLogBook">
+              <do_if value="event.name == 'event_object_destroyed'">
+                <set_value name="$textDestroyedBy" exact="{1972092401, 1015}.[@event.param.name, @event.param.idcode]" />
+                <write_to_logbook category="general" title="$textTitle" text="{1972092401, 1041}.[$textUnit, $textEnemy, $textHomeSector, $textDestroyedBy]" interaction="showonmap" object="this.ship" />
+              </do_if>
+              <do_elseif value="event.name == 'event_object_abandoned'">
+                <write_to_logbook category="general" title="$textTitle" text="{1972092401, 1042}.[$textUnit, $textEnemy, $textHomeSector]" interaction="showonmap" object="this.ship" />
+              </do_elseif>
+            </do_if>
+            <abort_called_scripts resume="targetSearching" />
+          </do_else>
+        </do_if>
+      </actions>
+    </handler>
+  </interrupts>
+  <init>
+
+    <set_value name="$scriptVersion" exact="101" />
+
+    <set_value name="$target" exact="null" />
+    <set_value name="$targetOnResponse" exact="null" />
+
+    <create_group groupname="$targets" />
+
+    <set_value name="$debugChance" exact="100" />
+
+    <do_if value="$homeSector == null">
+      <set_value name="$homeSector" exact="this.ship.zone" />
+      <edit_order_param order="this.assignedcontrolled.defaultorder" param="'homeSector'" value="$homeSector.sector" />
+    </do_if>
+
+    <do_if value="$homeSector.isclass.sector">
+      <find_zone name="$homeSector" space="$homeSector" normalzone="true" sortbydistanceto="this.ship" />
+    </do_if>
+
+    <set_value name="$homeLocation" exact="$homeSector" />
+
+    <set_command_action commandaction="commandaction.scanningto" param="$homeLocation.sector" />
+
+    <!--     <do_if value="$relationThresholdConfigurationEnabled? and $relationThresholdConfigurationEnabled and $relationThresholdConfigured?">
+      <set_value name="$relationsThreshold" exact="-$relationThresholdConfigured" />
+    </do_if>
+    <do_else> -->
+    <set_value name="$relationsThreshold" exact="-0.5" />
+    <!--     </do_else> -->
+
+    <debug_to_file directory="'protectsector'" name="'debug_' + this.ship.fleet.name + '_' + this.ship.knownname + '_' + this.ship.idcode + '_' + this.ship"
+      text="'[%s (%s - %s) at %s, %s]  - Init (%s) with %s subordinates and %s as top commander. Debug chance: %s'
+        .[
+          this.ship.knownname, 
+          this.ship.idcode, 
+          this.ship, 
+          this.ship.sector.knownname, 
+          this.ship.fleet.name,
+          @$isInit,
+          @this.ship.subordinates.count,
+          @this.ship.toplevelcommander,
+          $debugchance
+        ]" output="true" append="true" />
+
+    <set_value name="$textTitle" exact="{1972092401, 1000}" />
+    <set_value name="$textShip" exact="{1972092401, 1001}" />
+    <set_value name="$textStation" exact="{1972092401, 1002}" />
+    <set_value name="$textHomeSector" exact="{1972092401, 1003}.[$homeLocation.sector.knownname]" />
+
+    <do_if value="$recordActionsToLogBook">
+      <set_value name="$textUnit" exact="{1972092401, 1011}.[this.ship.name, this.ship.idcode]" />
+      <do_if value="@this.ship.subordinates.count gt 0 and @this.ship.toplevelcommander == this.ship">
+        <set_value name="$textUnit" exact="{1972092401, 1012}.[this.ship.fleet.name, $textUnit]" />
+      </do_if>
+      <write_to_logbook category="general" title="$textTitle" text="{1972092401, 1021}.[$textUnit, $textHomeSector]" interaction="showonmap" object="this.ship" />
+    </do_if>
+
+    <set_value name="$isInit" exact="true" />
+    <set_value name="$classesForAttack" exact="[]" />
+    <set_value name="$classesAcceptableForAttack" exact="[class.ship_xs, class.ship_s, class.ship_m, class.ship_l, class.ship_xl]" />
+
+    <do_if value="$attackShipsXL">
+      <append_to_list name="$classesForAttack" exact="class.ship_xl" />
+    </do_if>
+    <do_else>
+      <remove_from_list name="$classesAcceptableForAttack" exact="class.ship_xl" />
+    </do_else>
+    <do_if value="$attackShipsL">
+      <append_to_list name="$classesForAttack" exact="class.ship_l" />
+    </do_if>
+    <do_elseif value="$attackShipsXL" negate="true">
+      <remove_from_list name="$classesAcceptableForAttack" exact="class.ship_l" />
+    </do_elseif>
+    <do_if value="$attackShipsM">
+      <append_to_list name="$classesForAttack" exact="class.ship_m" />
+    </do_if>
+    <do_elseif value="$attackShipsXL or $attackShipsL" negate="true">
+      <remove_from_list name="$classesAcceptableForAttack" exact="class.ship_m" />
+    </do_elseif>
+    <do_if value="$attackShipsS">
+      <append_to_list name="$classesForAttack" exact="class.ship_s" />
+      <append_to_list name="$classesForAttack" exact="class.ship_xs" />
+    </do_if>
+
+  </init>
+
+  <attention min="unknown">
+    <actions>
+      <!-- START ******************************************************************************* -->
+
+      <label name="start" />
+
+      <do_if value="not $homeLocation? or not $homeLocation.isclass.zone">
+        <set_value name="$homeLocation" exact="this.ship.zone" />
+        <wait min="500ms" max="1s" />
+        <resume label="flightToHomeSector" />
+      </do_if>
+
+      <!-- SEARCH ******************************************************************************* -->
+      <label name="targetSearching" />
+
+      <do_if value="$homeLocation? or not $homeLocation.isclass.zone" negate="true">
+        <resume label="start" />
+      </do_if>
+
+      <set_value name="$target" exact="null" />
+
+      <do_if value="not $homeLocation? or not $homeLocation.isclass.zone">
+        <resume label="start" />
+      </do_if>
+
+      <do_if value="$homeLocation? and $homeLocation.sector != this.ship.sector">
+        <resume label="flightToHomeSector" />
+      </do_if>
+
+      <do_if value="not $debugChance? or $debugChance == null">
+        <set_value name="$debugChance" exact="100" />
+      </do_if>
+
+      <do_if value="this.ship.order" comment="Safety check in case the script is called from non-order script">
+        <!-- Required for all infinite orders, no effect in case of finite timeout -->
+        <set_order_syncpoint_reached order="this.ship.order" />
+      </do_if>
+
+      <set_command command="command.patrol" />
+
+      <set_command_action commandaction="commandaction.scanningto" param="$homeLocation.sector" />
+
+      <wait min="1s" max="2s" />
+
+      <do_if value="not $targets? or $targets == null">
+        <create_group groupname="$targets" />
+      </do_if>
+      <clear_group group="$targets" />
+
+      <do_if value="not $targetInfo? or $targetInfo == null">
+        <set_value name="$targetInfo" exact="table[]" />
+      </do_if>
+      <clear_table table="$targetInfo" />
+
+      <set_value name="$target" exact="null" />
+
+
+      <!-- <debug_to_file directory="'protectsector'" name="'debug_' + this.ship.fleet.name + '_' + this.ship.knownname + '_' + this.ship.idcode + '_' + this.ship" 
+        text="'[%s (%s - %s) at %s, %s] : Classes: %s'.
+          [
+            this.ship.knownname, 
+            this.ship.idcode, 
+            this.ship, 
+            this.ship.sector.knownname, 
+            this.ship.fleet.name, 
+            $classesForAttack
+          ]" output="true" append="true" /> -->
+
+      <!-- <debug_to_file directory="'protectsector'" name="'debug_' + this.ship.fleet.name + '_' + this.ship.knownname + '_' + this.ship.idcode + '_' + this.ship" 
+        text="'[%s (%s - %s) at %s, %s] : Classes possible: %s'.
+          [
+            this.ship.knownname, 
+            this.ship.idcode, 
+            this.ship, 
+            this.ship.sector.knownname, 
+            this.ship.fleet.name, 
+            $classesAcceptableForAttack
+          ]" output="true" append="true" /> -->
+
+      <!-- SEARCHING  SHIP ************************************************************************ -->
+
+      <label name="protectPlayerShipsCheck" />
+
+
+      <do_if value="$classesForAttack.count">
+        <do_if value="@$targetOnResponse == null">
+        <!-- <debug_to_file directory="'protectsector'" name="'debug_' + this.ship.fleet.name + '_' + this.ship.knownname + '_' + this.ship.idcode + '_' + this.ship" 
+          text="'[%s (%s - %s) at %s, %s] : Search initiated'.
+            [
+              this.ship.knownname,
+              this.ship.idcode,
+              this.ship,
+              this.ship.sector.knownname,
+              this.ship.fleet.name
+            ]" output="true" append="true" /> -->
+          <do_if value="$attackVisibleOnly">
+            <do_if value="$attackHostileOnly">
+              <!-- <debug_to_file directory="'protectsector'" name="'debug_' + this.ship.fleet.name + '_' + this.ship.knownname + '_' + this.ship.idcode + '_' + this.ship" 
+                text="'[%s (%s - %s) at %s, %s] : Find Visible and Hostile'.
+                  [
+                    this.ship.knownname,
+                    this.ship.idcode,
+                    this.ship,
+                    this.ship.sector.knownname,
+                    this.ship.fleet.name
+                  ]" output="true" append="true" /> -->
+              <find_ship name="$ships" space="this.ship.sector" class="$classesForAttack" recursive="true" multiple="true" isinliveview="true" ishostileto="this.owner" sortbydistanceto="this.ship">
+                <match trueowner="faction.player" negate="true" />
+              </find_ship>
+            </do_if>
+            <do_else>
+              <!-- <debug_to_file directory="'protectsector'" name="'debug_' + this.ship.fleet.name + '_' + this.ship.knownname + '_' + this.ship.idcode + '_' + this.ship" 
+                text="'[%s (%s - %s) at %s, %s] : Find Visible'.
+                  [
+                    this.ship.knownname,
+                    this.ship.idcode,
+                    this.ship,
+                    this.ship.sector.knownname,
+                    this.ship.fleet.name
+                  ]" output="true" append="true" /> -->
+              <find_ship name="$ships" space="this.ship.sector" class="$classesForAttack" recursive="true" multiple="true" isinliveview="true" sortbydistanceto="this.ship">
+                <match trueowner="faction.player" negate="true" />
+              </find_ship>
+            </do_else>
+          </do_if>
+          <do_else>
+            <do_if value="$attackHostileOnly">
+              <!-- <debug_to_file directory="'protectsector'" name="'debug_' + this.ship.fleet.name + '_' + this.ship.knownname + '_' + this.ship.idcode + '_' + this.ship" 
+                text="'[%s (%s - %s) at %s, %s] : Find Hostile'.
+                  [
+                    this.ship.knownname,
+                    this.ship.idcode,
+                    this.ship,
+                    this.ship.sector.knownname,
+                    this.ship.fleet.name
+                  ]" output="true" append="true" /> -->
+              <find_ship name="$ships" space="this.ship.sector" class="$classesForAttack" recursive="true" multiple="true" ishostileto="this.owner" sortbydistanceto="this.ship">
+                <match trueowner="faction.player" negate="true" />
+              </find_ship>
+            </do_if>
+            <do_else>
+              <!-- <debug_to_file directory="'protectsector'" name="'debug_' + this.ship.fleet.name + '_' + this.ship.knownname + '_' + this.ship.idcode + '_' + this.ship" 
+                text="'[%s (%s - %s) at %s, %s] : Find Any'.
+                  [
+                    this.ship.knownname,
+                    this.ship.idcode,
+                    this.ship,
+                    this.ship.sector.knownname,
+                    this.ship.fleet.name
+                  ]" output="true" append="true" /> -->
+              <find_ship name="$ships" space="this.ship.sector" class="$classesForAttack" recursive="true" multiple="true" sortbydistanceto="this.ship">
+                <match trueowner="faction.player" negate="true" />
+              </find_ship>
+            </do_else>
+          </do_else>
+        </do_if>
+        <do_else>
+          <create_list name="$ships" />
+          <append_to_list name="$ships" exact="$targetOnResponse" />
+          <debug_to_file directory="'protectsector'" name="'debug_' + this.ship.fleet.name + '_' + this.ship.knownname + '_' + this.ship.idcode + '_' + this.ship"
+            text="'[%s (%s - %s) at %s, %s] : Response on attack by: %s (%s - %s)'.
+              [
+                this.ship.knownname,
+                this.ship.idcode,
+                this.ship,
+                this.ship.sector.knownname,
+                this.ship.fleet.name,
+                $ships.{1}.name,
+                $ships.{1}.idcode,
+                $ships.{1}
+              ]" output="true" append="true" />
+        </do_else>
+
+        <set_value name="$indexShips" exact="1" />
+        <do_while value="$indexShips le $ships.count and $target == null">
+
+          <set_value name="$ship" exact="$ships.{$indexShips}" />
+
+          <do_if value="(not $ship.iswreck) and ($ship.isoperational) and ($ship.pilot.exists)">
+            <do_if value="$ship.pilot.$ignoreTime?">
+              <do_if value="player.age gt $ship.pilot.$ignoreTime">
+                <remove_value name="$ship.pilot.$ignoreTime" />
+              </do_if>
+            </do_if>
+            <set_value name="$relation" exact="$ship.relationto.{faction.player}" />
+            <debug_to_file directory="'protectsector'" name="'debug_' + this.ship.fleet.name + '_' + this.ship.knownname + '_' + this.ship.idcode + '_' + this.ship"
+              text="'[%s (%s - %s) at %s, %s] - %s - Target to check: %s (%s - %s) {%s}, distance - %s, relation - %s, share targets: %s, to skip - %s'
+                .[
+                  this.ship.knownname,
+                  this.ship.idcode,
+                  this.ship,
+                  this.ship.sector.knownname,
+                  this.ship.fleet.name,
+                  $indexShips,
+                  $ship.knownname,
+                  $ship.idcode,
+                  $ship,
+                  $ship.class,
+                  this.ship.distanceto.{$ship},
+                  $relation,
+                  $shareTargetsBetweenFleets,
+                  $ship.pilot.$ignoreTime?
+                ]" output="true" append="true" />
+            <do_if value="$relation le $relationsThreshold">
+              <do_if value="$ship.pilot.$ignoreTime? and not $shareTargetsBetweenFleets" negate="true">
+                <set_value name="$target" exact="$ship" />
+                <set_value name="$targetClassIsAllowed" exact="true" />
+                <do_while value="$targetClassIsAllowed and $target.commander? and $target.commander.canbeattacked and ($target.commander.sector == $target.sector)">
+                  <do_if value="$target.isclass.{$classesAcceptableForAttack}">
+                    <debug_to_file directory="'protectsector'" name="'debug_' + this.ship.fleet.name + '_' + this.ship.knownname + '_' + this.ship.idcode + '_' + this.ship"
+                      text="'[%s (%s - %s) at %s, %s] - %s - New target is: %s (%s - %s) {%s}. Selected target was: %s (%s - %s) {%s}'
+                        .[
+                          this.ship.knownname,
+                          this.ship.idcode,
+                          this.ship,
+                          this.ship.sector.knownname,
+                          this.ship.fleet.name,
+                          $indexShips,
+                          $target.commander.name,
+                          $target.commander.idcode,
+                          $target.commander,
+                          $target.commander.class,
+                          $target.name,
+                          $target,
+                          $target.class
+                        ]" output="true" append="true" />
+                    <set_value name="$target" exact="$target.commander" />
+                    <append_to_list name="$commanders" exact="$target" />
+                  </do_if>
+                  <do_else>
+                    <debug_to_file directory="'protectsector'" name="'debug_' + this.ship.fleet.name + '_' + this.ship.knownname + '_' + this.ship.idcode + '_' + this.ship"
+                      text="'[%s (%s - %s) at %s, %s] - %s - Out of allowed : %s (%s - %s) {%s}. Selected target was: %s (%s - %s) {%s}'
+                        .[
+                          this.ship.knownname,
+                          this.ship.idcode,
+                          this.ship,
+                          this.ship.sector.knownname,
+                          this.ship.fleet.name,
+                          $indexShips,
+                          $target.commander.name,
+                          $target.commander.idcode,
+                          $target.commander,
+                          $target.commander.class,
+                          $target.name,
+                          $target,
+                          $target.class
+                        ]" output="true" append="true" />
+                    <set_value name="$targetClassIsAllowed" exact="false" />
+                    <set_value name="$target" exact="null" />
+                  </do_else>
+                </do_while>
+              </do_if>
+              <do_if value="$target != null and $attackShipsOutOfStationsDistance gt 0km">
+                <do_if value="$attackVisibleOnly">
+                  <find_object name="$stations" space="this.ship.sector" class="[class.station]" recursive="true" multiple="true" sortbydistanceto="this.ship" ishostileto="this.owner" known="true">
+                    <match_relation_to object="this.ship" relation="enemy" comparison="le" />
+                  </find_object>
+                </do_if>
+                <do_else>
+                  <find_object name="$stations" space="this.ship.sector" class="[class.station]" recursive="true" multiple="true" sortbydistanceto="this.ship" ishostileto="this.owner">
+                    <match_relation_to object="this.ship" relation="enemy" comparison="le" />
+                  </find_object>
+                </do_else>
+                <do_if value="$stations.count gt 0">
+                  <set_value name="$indexStations" exact="1" />
+                  <do_while value="$indexStations le $stations.count and $target != null">
+                    <set_value name="$station" exact="$stations.{$indexStations}" />
+                    <set_value name="$target_to_station_distance" exact="$target.distanceto.{$station}" />
+                    <!-- <debug_to_file directory="'protectsector'" name="'debug_' + this.ship.fleet.name + '_' + this.ship.knownname + '_' + this.ship.idcode + '_' + this.ship" 
+                      text="'[%s (%s - %s) at %s, %s] - %s - Station to check is near: %s (%s - %s) {%s}, distance to target - %s, minimal distance - %s'
+                        .[
+                          this.ship.knownname,
+                          this.ship.idcode,
+                          this.ship,
+                          this.ship.sector.knownname,
+                          this.ship.fleet.name,
+                          $indexShips,
+                          $station.knownname,
+                          $station.idcode,
+                          $station,
+                          $station.class,
+                          $target_to_station_distance,
+                          $attackShipsOutOfStationsDistance
+                        ]" output="true" append="true" /> -->
+                    <do_if value="$target_to_station_distance le $attackShipsOutOfStationsDistance">
+                      <debug_to_file directory="'protectsector'" name="'debug_' + this.ship.fleet.name + '_' + this.ship.knownname + '_' + this.ship.idcode + '_' + this.ship"
+                        text="'[%s (%s - %s) at %s, %s] - Target: %s (%s - %s) {%s} is too close to station: %s (%s - %s) {%s}, distance - %s, minimal distance - %s'
+                          .[
+                            this.ship.knownname,
+                            this.ship.idcode,
+                            this.ship,
+                            this.ship.sector.knownname,
+                            this.ship.fleet.name,
+                            $target.knownname,
+                            $target.idcode,
+                            $target,
+                            $target.class,
+                            $station.knownname,
+                            $station.idcode,
+                            $station,
+                            $station.class,
+                            $target_to_station_distance,
+                            $attackShipsOutOfStationsDistance
+                          ]" output="true" append="true" />
+                      <set_value name="$target" exact="null" />
+                    </do_if>
+                    <set_value name="$indexStations" exact="$indexStations + 1" />
+                  </do_while>
+                </do_if>
+              </do_if>
+            </do_if>
+          </do_if>
+          <set_value name="$indexShips" exact="$indexShips + 1" />
+          <wait min="5ms" max="15ms" profile="flat" />
+        </do_while>
+
+        <do_if value="$target != null">
+          
+          <set_value name="$targetOnResponse" exact="null" />
+
+          <do_if value="$target.coverowner">
+            <signal_objects object="$target" param="'LoseCover'" param2="true" />
+          </do_if>
+
+          <set_value name="$targetDistanceTo" exact="this.ship.distanceto.{$target}" />
+ 
+          <add_to_group groupname="$targets" object="$target" />
+          <set_value name="$targetInfo" exact="table[
+            $name = $target.name,
+            $idcode = $target.idcode,
+            $class = $target.class,
+            $isShip = true,
+            $stationIsUnderConstruction = false
+          ]" />
+
+          <debug_to_file directory="'protectsector'" name="'debug_' + this.ship.fleet.name + '_' + this.ship.knownname + '_' + this.ship.idcode + '_' + this.ship"
+            text="'[%s (%s - %s) at %s, %s] - Final target is: %s (%s - %s) {%s}, distance: %s, targetInfo: %s'
+              .[
+                this.ship.knownname,
+                this.ship.idcode,
+                this.ship,
+                this.ship.sector.knownname,
+                this.ship.fleet.name,
+                $target.name,
+                $target.idcode,
+                $target,
+                $target.class,
+                $targetDistanceTo,
+                $targetInfo
+              ]" output="true" append="true" />
+          <do_if value="$recordActionsToLogBook">
+            <set_value name="$textUnit" exact="{1972092401, 1011}.[this.ship.name, this.ship.idcode]" />
+            <do_if value="@this.ship.subordinates.count gt 0 and @this.ship.toplevelcommander == this.ship">
+              <set_value name="$textUnit" exact="{1972092401, 1012}.[this.ship.fleet.name, $textUnit]" />
+            </do_if>
+            <set_value name="$textEnemy" exact="{1972092401, 1013}.[$textShip, $targetInfo.$name, $targetInfo.$idcode]" />
+            <write_to_logbook category="general" title="$textTitle" text="{1972092401, 1031}.[$textUnit, $textEnemy, $textHomeSector]" interaction="showonmap" object="this.ship" />
+          </do_if> 
+
+          <set_value name="$targetPreviousDistanceTo" exact="null" />
+          <set_value name="$targetDistanceToIsIncreasing" exact="0" />
+
+          <do_if value="$target.exists and $target.pilot.exists and not $shareTargetsBetweenFleets">
+            <set_value name="$target.pilot.$ignoreTime" exact="player.age + 60" />
+          </do_if>
+
+          <resume label="targetApproaching" />
+        </do_if>
+        <wait min="1s" max="2s" />
+      </do_if>
+      <do_elseif value="$attackStations" negate="true">
+
+        <do_if value="this.ship.speed">
+          <stop_moving object="this.ship" />
+        </do_if>
+
+        <!-- Player notification -->
+        <set_value name="$speakline" exact="10304" comment="Awaiting orders." />
+        <run_script name="'player.interaction'">
+          <param name="Line" value="$speakline" />
+          <param name="MaxQueueDelay" value="10s" />
+          <param name="caption" value="{1016, 6}.[this.assignedcontrolled.knownname, this.assignedcontrolled.idcode]" />
+          <param name="interactive" value="false" />
+        </run_script>
+
+        <run_script name="'move.idle'">
+          <param name="Min" value="3min" />
+          <param name="Max" value="5min" />
+        </run_script>
+
+
+        <resume label="targetSearching" />
+      </do_elseif>
+      <do_if value="$attackStations">
+
+        <!-- SEARCHING  STATION ************************************************************************ -->
+
+        <!-- <debug_to_file directory="'protectsector'" name="'debug_' + this.ship.fleet.name + '_' + this.ship.knownname + '_' + this.ship.idcode + '_' + this.ship" 
+          text="'[%s (%s - %s) at %s, %s] - Start stations search'
+            .[
+              this.ship.knownname,
+              this.ship.idcode,
+              this.ship,
+              this.ship.sector.knownname,
+              this.ship.fleet.name
+            ]" output="true" append="true" /> -->
+
+        <do_if value="$attackVisibleOnly">
+          <find_object name="$stations" space="this.ship.sector" class="[class.station, class.buildstorage]" recursive="true" multiple="true" sortbydistanceto="this.ship" ishostileto="this.owner" known="true">
+            <match_relation_to object="this.ship" relation="enemy" comparison="le" />
+          </find_object>
+        </do_if>
+        <do_else>
+          <find_object name="$stations" space="this.ship.sector" class="[class.station, class.buildstorage]" recursive="true" multiple="true" sortbydistanceto="this.ship" ishostileto="this.owner">
+            <match_relation_to object="this.ship" relation="enemy" comparison="le" />
+          </find_object>
+        </do_else>
+
+        <set_value name="$indexStations" exact="1" />
+        <set_value name="$target" exact="null" />
+
+        <do_while value="$indexStations le $stations.count and $target == null">
+          <set_value name="$station" exact="$stations.{$indexStations}" />
+          <set_value name="$stationRelation" exact="$station.relationto.{faction.player}" />
+          <set_value name="$stationDistanceTo" exact="this.ship.distanceto.{$station}" />
+          <do_if value="$station.isclass.[class.station]">
+            <debug_to_file directory="'protectsector'" name="'debug_' + this.ship.fleet.name + '_' + this.ship.knownname + '_' + this.ship.idcode + '_' + this.ship"
+              text="'[%s (%s - %s) at %s, %s] - %s - Station to check: %s (%s - %s) {%s}, distance - %s, relation - %s'
+                .[
+                  this.ship.knownname,
+                  this.ship.idcode,
+                  this.ship,
+                  this.ship.sector.knownname,
+                  this.ship.fleet.name,
+                  $indexStations,
+                  $station.knownname,
+                  $station.idcode,
+                  $station,
+                  $station.class,
+                  $stationDistanceTo,
+                  $stationRelation
+                ]" output="true" append="true" />
+            <set_value name="$target" exact="$station" />
+          </do_if>
+          <do_elseif value="$station.isclass.[class.buildstorage] and $station.base.isclass.[class.object] and not $station.base.isclass.[class.station]">
+            <set_value name="$station" exact="$station.base" />
+            <set_value name="$stationDistanceTo" exact="this.ship.distanceto.{$station}" />
+            <set_value name="$stationRelation" exact="$station.relationto.{faction.player}" />
+            <debug_to_file directory="'protectsector'" name="'debug_' + this.ship.fleet.name + '_' + this.ship.knownname + '_' + this.ship.idcode + '_' + this.ship"
+              text="'[%s (%s - %s) at %s, %s] - %s - Station under construction to check: %s (%s - %s) {%s}, distance - %s, relation - %s'
+                .[
+                  this.ship.knownname,
+                  this.ship.idcode,
+                  this.ship,
+                  this.ship.sector.knownname,
+                  this.ship.fleet.name,
+                  $indexStations,
+                  $station.knownname,
+                  $station.idcode,
+                  $station,
+                  $station.class,
+                  $stationDistanceTo,
+                  $stationRelation
+                ]" output="true" append="true" />
+            <set_value name="$target" exact="$station" />
+          </do_elseif>
+          <!-- <do_else>
+            <debug_to_file directory="'protectsector'" name="'debug_' + this.ship.fleet.name + '_' + this.ship.knownname + '_' + this.ship.idcode + '_' + this.ship" 
+              text="'[%s (%s - %s) at %s, %s] - %s - Build Storage is alone: %s (%s - %s) {%s}, distance - %s, relation - %s'
+                .[
+                  this.ship.knownname,
+                  this.ship.idcode,
+                  this.ship,
+                  this.ship.sector.knownname,
+                  this.ship.fleet.name,
+                  $indexStations,
+                  $station.knownname,
+                  $station.idcode,
+                  $station,
+                  $station.class,
+                  $stationDistanceTo,
+                  $stationRelation
+                ]" output="true" append="true" />
+          </do_else> -->
+          <set_value name="$indexStations" exact="$indexStations + 1" />
+          <wait min="5ms" max="15ms" profile="flat" comment="we fire while targetApproaching the target. wait is just to ensure we don't have infinite loops if moving returns immediately" />
+        </do_while>
+
+
+        <do_if value="$target != null">
+
+          <do_if value="$target.isclass.[class.buildstorage]">
+            <set_value name="$target" exact="$target.base" />
+          </do_if>
+
+          <!-- ATTACKING  STATION ************************************************************************ -->
+
+          <set_value name="$parkedInCenterOfSector" exact="false" />
+
+          <add_to_group groupname="$targets" object="$target" />
+          <set_value name="$targetInfo" exact="table[
+            $name = $target.name,
+            $idcode = $target.idcode,
+            $class = $target.class,
+            $isShip = false,
+            $stationIsUnderConstruction = not $target.isclass.station
+          ]" />
+
+          <debug_to_file directory="'protectsector'" name="'debug_' + this.ship.fleet.name + '_' + this.ship.knownname + '_' + this.ship.idcode + '_' + this.ship"
+            text="'[%s (%s - %s) at %s, %s] - Station target: %s (%s - %s) {%s}, distance - %s, relation - %s, targets: %s, targetInfo: %s'
+              .[
+                this.ship.knownname,
+                this.ship.idcode,
+                this.ship,
+                this.ship.sector.knownname,
+                this.ship.fleet.name,
+                $target.knownname,
+                $target.idcode,
+                $target,
+                $target.class,
+                $stationDistanceTo,
+                $stationRelation,
+                $targets,
+                $targetInfo
+              ]" output="true" append="true" />
+
+          <do_if value="this.ship.order" comment="Safety check in case the script is called from non-order script">
+            <!-- Required for all infinite orders, no effect in case of finite timeout -->
+            <set_order_syncpoint_reached order="this.ship.order" />
+          </do_if>
+
+          <do_if value="$recordActionsToLogBook">
+            <set_value name="$textUnit" exact="{1972092401, 1011}.[this.ship.name, this.ship.idcode]" />
+            <do_if value="@this.ship.subordinates.count gt 0 and @this.ship.toplevelcommander == this.ship">
+              <set_value name="$textUnit" exact="{1972092401, 1012}.[this.ship.fleet.name, $textUnit]" />
+            </do_if>
+            <set_value name="$textEnemy" exact="{1972092401, 1013}.[$textStation, $targetInfo.$name, $targetInfo.$idcode]" />
+            <write_to_logbook category="general" title="$textTitle" text="{1972092401, 1032}.[$textUnit, $textEnemy, $textHomeSector]" interaction="showonmap" object="this.ship" />
+          </do_if>  
+
+          <wait min="300ms" max="500ms" />
+          <run_script name="'order.fight.tactical'">
+            <param name="selectedtarget" value="$target" />
+            <param name="debugchance" value="100" />
+          </run_script>
+
+          <debug_to_file directory="'protectsector'" name="'debug_' + this.ship.fleet.name + '_' + this.ship.knownname + '_' + this.ship.idcode + '_' + this.ship"
+            text="'[%s (%s - %s) at %s, %s] - Station after attack : %s (%s - %s) {%s}, iswreck: %s, targets: %s, targetInfo: %s'
+              .[
+                this.ship.knownname,
+                this.ship.idcode,
+                this.ship,
+                this.ship.sector.knownname,
+                this.ship.fleet.name,
+                $target.knownname,
+                $target.idcode,
+                $target,
+                $target.class,
+                $target.iswreck,
+                $targets,
+                $targetInfo
+              ]" output="true" append="true" />
+
+
+          <do_if value="$targetInfo.$stationIsUnderConstruction and $target.iswreck">
+            <do_if value="$recordActionsToLogBook">
+              <set_value name="$textUnit" exact="{1972092401, 1011}.[this.ship.name, this.ship.idcode]" />
+              <do_if value="@this.ship.subordinates.count gt 0 and @this.ship.toplevelcommander == this.ship">
+                <set_value name="$textUnit" exact="{1972092401, 1012}.[this.ship.fleet.name, $textUnit]" />
+              </do_if>
+              <set_value name="$textEnemy" exact="{1972092401, 1013}.[$textStation, $targetInfo.$name, $targetInfo.$idcode]" />
+              <set_value name="$textDestroyedBy" exact="{1972092401, 1015}.[@$target.lastattacker.name, @$target.lastattacker.idcode]" />
+              <write_to_logbook category="general" title="$textTitle" text="{1972092401, 1041}.[$textUnit, $textEnemy, $textHomeSector, $textDestroyedBy]" interaction="showonmap" object="this.ship" />
+            </do_if>
+          </do_if>
+
+          <resume label="targetSearching" />
+        </do_if>
+      </do_if>
+
+
+      <!-- IDLE ************************************************************************ -->
+
+      <do_if value="$parkInCenterOfSector and (not @$parkedInCenterOfSector)">
+        <set_value name="$dx" min="-5" max="5" />
+        <set_value name="$dy" min="-5" max="5" />
+        <set_value name="$dz" min="-5" max="5" />
+
+        <do_if value="not $parkingPosition? or parkingPosition.sector != $homeSector">
+          <create_position name="$parkingPosition" x="this.ship.sector.coreposition.x + $dx * 1km" y="this.ship.sector.coreposition.y + 30km + $dy * 1km" z="this.ship.sector.coreposition.z + $dz * 1km" space="this.ship.sector" />
+        </do_if>
+
+        <create_orientation name="$orientation" orientation="look_at" refposition="$parkingPosition">
+          <position object="this.ship" />
+        </create_orientation>
+
+        <move_to object="this.ship" destination="this.ship.sector" abortpath="true" forcerotation="true" forceposition="true" uselocalhighways="false" boost="true" travel="true">
+          <position value="$parkingPosition" />
+          <rotation value="$orientation" />
+          <interrupt_after_time time="50s" />
+        </move_to>
+
+        <do_if value="this.ship.distanceto.{$parkingPosition} le 5km">
+          <set_value name="$parkedInCenterOfSector" exact="true" />
+        </do_if>
+      </do_if>
+      <do_else>
+        <do_if value="this.ship.speed">
+          <stop_moving object="this.ship" />
+        </do_if>
+      </do_else>
+
+      <do_if value="$protectPlayerShipsInSector">
+
+        <run_script name="'move.idle'">
+          <param name="Min" value="30s" />
+          <param name="Max" value="70s" />
+          <param name="anchorpos_sector" value="@$parkingPosition" />
+          <param name="MaxDistance" value="20km"/>
+          <param name="debugchance" value="100"/>
+        </run_script>
+
+      </do_if>
+      <do_else>
+        <do_if value="(not $ships? or $ships.count le 1) and (not $stations? or $stations.count le 1)">
+          <wait min="20s" max="40s" />
+        </do_if>
+        <do_else>
+          <wait min="3s" max="6s" />
+        </do_else>      
+      </do_else>
+
+      <resume label="targetSearching" />
+
+
+      <!-- APPROACHING ************************************************************************ -->
+      <label name="targetApproaching" />
+
+      <do_if value="$target? and $target != null and $target.exists and not $target.iswreck and $target.sector == $homeLocation.sector">
+
+        <set_value name="$targetDistanceTo" exact="this.ship.distanceto.{$target}" />
+
+        <set_value name="$targetOptimalDistanceForAttack" exact="this.ship.size + this.ship.maxradarrange * 0.7 + $target.size" />
+
+        <debug_to_file directory="'protectsector'" name="'debug_' + this.ship.fleet.name + '_' + this.ship.knownname + '_' + this.ship.idcode + '_' + this.ship"
+          text="'[%s (%s - %s) at %s, %s] - move iteration : %s (%s - %s) {%s} status: iswreck: %s, isoperational: %s,  pilot: %s (%s), distance - %s, acceptable distance - %s'
+            .[
+              this.ship.knownname,
+              this.ship.idcode,
+              this.ship,
+              this.ship.sector.knownname,
+              this.ship.fleet.name,
+              $target.name,
+              $target.idcode,
+              $target,
+              $target.class,
+              $target.iswreck,
+              $target.isoperational,
+              $target.pilot,
+              $target.pilot?,
+              $targetDistanceTo,
+              $targetOptimalDistanceForAttack
+            ]" output="true" append="true" />
+
+        <do_if value="$targetDistanceTo gt $targetOptimalDistanceForAttack">
+
+          <do_if value="$targetPreviousDistanceTo? and $targetPreviousDistanceTo != null">
+            <do_if value="$targetPreviousDistanceTo lt $targetDistanceTo">
+              <do_if value="not $targetDistanceToIsIncreasing? or $targetDistanceToIsIncreasing == null">
+                <set_value name="$targetDistanceToIsIncreasing" exact="1" />
+              </do_if>
+              <do_elseif value="$targetDistanceToIsIncreasing? ge 1">
+                <set_value name="$targetDistanceToIsIncreasing" exact="$targetDistanceToIsIncreasing + 1" />
+              </do_elseif>
+            </do_if>
+            <do_else>
+              <set_value name="$targetDistanceToIsIncreasing" exact="null" />
+            </do_else>
+            <do_if value="$targetDistanceToIsIncreasing ge 3">
+              <debug_to_file directory="'protectsector'" name="'debug_' + this.ship.fleet.name + '_' + this.ship.knownname + '_' + this.ship.idcode + '_' + this.ship"
+                text="'[%s (%s - %s) at %s, %s] - Too fast for us : %s (%s - %s) {%s} status: iswreck: %s, isoperational: %s,  pilot: %s (%s)'
+                  .[
+                    this.ship.knownname,
+                    this.ship.idcode,
+                    this.ship,
+                    this.ship.sector.knownname,
+                    this.ship.fleet.name,
+                    $target.name,
+                    $target.idcode,
+                    $target,
+                    $target.class,
+                    $target.iswreck,
+                    $target.isoperational,
+                    $target.pilot,
+                    $target.pilot?
+                  ]" output="true" append="true" />
+              <do_if value="$recordActionsToLogBook">
+                <set_value name="$textUnit" exact="{1972092401, 1011}.[this.ship.name, this.ship.idcode]" />
+                <do_if value="@this.ship.subordinates.count gt 0 and @this.ship.toplevelcommander == this.ship">
+                  <set_value name="$textUnit" exact="{1972092401, 1012}.[this.ship.fleet.name, $textUnit]" />
+                </do_if>
+                <set_value name="$textEnemy" exact="{1972092401, 1013}.[$textShip, $targetInfo.$name, $targetInfo.$idcode]" />
+                <write_to_logbook category="general" title="$textTitle" text="{1972092401, 1044}.[$textUnit, $textEnemy, $textHomeSector]" interaction="showonmap" object="this.ship" />
+              </do_if>
+              <set_value name="$targetPreviousDistanceTo" exact="null" />
+              <set_value name="$targetDistanceToIsIncreasing" exact="null" />
+              <resume label="targetSearching" />
+            </do_if>
+          </do_if>
+
+          <set_value name="$parkedInCenterOfSector" exact="false" />
+
+          <set_command_action commandaction="commandaction.flyingto" param="$target" />
+
+          <get_safe_pos object="$target" zone="$target.zone" radius="this.ship.size / 2" allowyaxis="true" result="$destination" ignored="this.ship" sector="$homeLocation.sector" />
+
+          <set_value name="$targetPreviousDistanceTo" exact="$targetDistanceTo" />
+
+          <move_to object="this.ship" destination="$target.zone" boost="not $shieldsPreserveOnFlight" travel="true" forceposition="false" finishonapproach="true" commandaction="false">
+            <position value="$destination" max="this.ship.size + $target.size" />
+            <interrupt>
+              <conditions>
+                <check_any>
+                  <event_object_changed_zone object="$target" />
+                  <event_object_destroyed object="$target" />
+                  <event_object_abandoned object="$target" />
+                  <event_object_changed_sector object="$target" />
+                  <event_object_target_invalid object="this.ship" />
+                </check_any>
+              </conditions>
+              <actions>
+                <debug_to_file directory="'protectsector'" name="'debug_' + this.ship.fleet.name + '_' + this.ship.knownname + '_' + this.ship.idcode + '_' + this.ship"
+                  text="'[%s (%s - %s) at %s, %s] - moving is interrupted by %s : %s (%s - %s) {%s} status: iswreck: %s, isoperational: %s,  pilot: %s (%s), distance - %s, acceptable distance - %s'
+                    .[
+                      this.ship.knownname,
+                      this.ship.idcode,
+                      this.ship,
+                      this.ship.sector.knownname,
+                      this.ship.fleet.name,
+                      event.name,
+                      $target.name,
+                      $target.idcode,
+                      $target,
+                      $target.class,
+                      $target.iswreck,
+                      $target.isoperational,
+                      $target.pilot,
+                      $target.pilot?,
+                      $targetDistanceTo,
+                      $targetOptimalDistanceForAttack
+                    ]" output="true" append="true" />
+                <do_if value="$recordActionsToLogBook">
+                  <do_if value="event.name == 'event_object_destroyed'">
+                    <set_value name="$textUnit" exact="{1972092401, 1011}.[this.ship.name, this.ship.idcode]" />
+                    <do_if value="@this.ship.subordinates.count gt 0 and @this.ship.toplevelcommander == this.ship">
+                      <set_value name="$textUnit" exact="{1972092401, 1012}.[this.ship.fleet.name, $textUnit]" />
+                    </do_if>
+                    <set_value name="$textEnemy" exact="{1972092401, 1013}.[$textShip, $targetInfo.$name, $targetInfo.$idcode]" />
+                    <write_to_logbook category="general" title="$textTitle" text="{1972092401, 1041}.[$textUnit, $textEnemy, $textHomeSector]" interaction="showonmap" object="this.ship" />
+                  </do_if>
+                </do_if>
+              </actions>
+            </interrupt>
+          </move_to>
+
+          <resume label="targetApproaching" />
+
+        </do_if>
+        <do_else>
+
+          <resume label="targetAttacking" />
+
+        </do_else>
+      </do_if>
+      <do_else>
+
+        <resume label="targetSearching" />
+
+      </do_else>
+
+      <!-- ATTACKING ************************************************************************ -->
+
+      <label name="targetAttacking" />
+
+      <set_value name="$targetDistanceTo" exact="this.ship.distanceto.{$target}" />
+
+      <do_if value="$target.exists and not $target.iswreck and $target.sector == $homeLocation.sector">
+        <do_if value="not $targetOptimalDistanceForAttack? or $targetDistanceTo le $targetOptimalDistanceForAttack">
+          <debug_to_file directory="'protectsector'" name="'debug_' + this.ship.fleet.name + '_' + this.ship.knownname + '_' + this.ship.idcode + '_' + this.ship"
+            text="'[%s (%s - %s) at %s, %s] - Run order.fight.attack.object : %s (%s - %s) {%s} status: iswreck: %s, isoperational: %s,  pilot: %s (%s), distance - %s, acceptable distance - %s'
+              .[
+                this.ship.knownname,
+                this.ship.idcode,
+                this.ship,
+                this.ship.sector.knownname,
+                this.ship.fleet.name,
+                $target.name,
+                $target.idcode,
+                $target,
+                $target.class,
+                $target.iswreck,
+                $target.isoperational,
+                $target.pilot,
+                $target.pilot?,
+                $targetDistanceTo,
+                $targetOptimalDistanceForAttack
+              ]" output="true" append="true" />
+          <do_if value="$recordActionsToLogBook">
+            <set_value name="$textUnit" exact="{1972092401, 1011}.[this.ship.name, this.ship.idcode]" />
+            <do_if value="@this.ship.subordinates.count gt 0 and @this.ship.toplevelcommander == this.ship">
+              <set_value name="$textUnit" exact="{1972092401, 1012}.[this.ship.fleet.name, $textUnit]" />
+            </do_if>
+            <set_value name="$textEnemy" exact="{1972092401, 1013}.[$textShip, $targetInfo.$name, $targetInfo.$idcode]" />
+            <write_to_logbook category="general" title="$textTitle" text="{1972092401, 1032}.[$textUnit, $textEnemy, $textHomeSector]" interaction="showonmap" object="this.ship" />
+          </do_if>
+          <run_script name="'order.fight.attack.object'">
+            <param name="primarytarget" value="$target" />
+            <param name="pursuetargets" value="false" />
+            <param name="allowothertargets" value="true" />
+            <param name="checkrelation" value="true" />
+            <param name="disable" value="$breakOnDestructionPercentage gt 0" />
+            <param name="disablehullpercentagethreshold" value="$breakOnDestructionPercentage" />
+            <param name="maintaindistance" value="true" />
+            <param name="squad_attack" value="true" />
+            <param name="uncover" value="true" />
+            <param name="targetclasses" value="$classesAcceptableForAttack" />
+            <param name="allowboost" value="not $shieldsPreserveOnFlight" />
+            <!-- <param name="forceprimarytarget" value="true"/> -->
+            <param name="debugchance" value="100" />
+          </run_script>
+
+          <set_value name="$targetDistanceTo" exact="this.ship.distanceto.{$target}" />
+
+          <debug_to_file directory="'protectsector'" name="'debug_' + this.ship.fleet.name + '_' + this.ship.knownname + '_' + this.ship.idcode + '_' + this.ship"
+            text="'[%s (%s - %s) at %s, %s] - After run order.fight.attack.object : %s (%s - %s) {%s} status: iswreck: %s, isoperational: %s,  pilot: %s (%s), distance - %s, acceptable distance - %s'
+              .[
+                this.ship.knownname,
+                this.ship.idcode,
+                this.ship,
+                this.ship.sector.knownname,
+                this.ship.fleet.name,
+                $target.name,
+                $target.idcode,
+                $target,
+                $target.class,
+                $target.iswreck,
+                $target.isoperational,
+                $target.pilot,
+                $target.pilot?,
+                $targetDistanceTo,
+                $targetOptimalDistanceForAttack
+              ]" output="true" append="true" />
+
+          <do_if value="$target.exists and not $target.iswreck and $pursueFleeingTarget and $target.sector == $homeLocation.sector">
+            <resume label="targetApproaching" />
+          </do_if>
+        </do_if>
+        <do_else>
+          <resume label="targetApproaching" />
+        </do_else>
+      </do_if>
+
+      <resume label="targetSearching" />
+
+      <!-- HOME ********************************************************************************* -->
+      <label name="flightToHomeSector" />
+
+      <do_if value="not $homeLocation? or not $homeLocation.isclass.zone">
+        <resume label="start" />
+      </do_if>
+
+      <set_command command="command.movetozone" param="$homeLocation" />
+      <set_command_action commandaction="commandaction.flying" />
+
+      <do_if value="$recordActionsToLogBook">
+        <set_value name="$textUnit" exact="{1972092401, 1011}.[this.ship.name, this.ship.idcode]" />
+        <do_if value="@this.ship.subordinates.count gt 0 and @this.ship.toplevelcommander == this.ship">
+          <set_value name="$textUnit" exact="{1972092401, 1012}.[this.ship.fleet.name, $textUnit]" />
+        </do_if>
+        <write_to_logbook category="general" title="$textTitle" text="{1972092401, 1022}.[$textUnit, $textHomeSector]" interaction="showonmap" object="this.ship" />
+      </do_if>
+
+      <get_safe_pos result="$destinationAtHome" zone="$homeLocation" radius="this.ship.size" min="1km" max="35km" />
+
+      <move_to object="this.ship" destination="$homeLocation" travel="true" forceposition="false" finishonapproach="true" commandaction="false">
+        <position value="$destinationAtHome" min="5km" max="6km" />
+      </move_to>
+
+      <wait min="4s" max="5s" />
+
+      <resume label="targetSearching" />
+    </actions>
+  </attention>
+</aiscript>

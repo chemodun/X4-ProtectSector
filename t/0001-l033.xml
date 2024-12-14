@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- France -->
+<diff>
+  <add sel="/language">
+    <page id="1972092401" voice="no" title="Protect Sector" descr="Text for Protect Sector" >
+      <t id="1">Protéger le Secteur</t>
+      <t id="2">Protéger le Secteur contre les vaisseaux hostiles</t>
+      <t id="101">Secteur d'origine</t>
+      <t id="111">Attaquer les stations</t>
+      <t id="121">Attaquer les vaisseaux XL</t>
+      <t id="122">Attaquer les vaisseaux L</t>
+      <t id="123">Attaquer les vaisseaux M</t>
+      <t id="124">Attaquer les vaisseaux S</t>
+      <t id="129">Attaquer plus loin des stations - si un vaisseau hostile est plus proche que la valeur sélectionnée de la station hostile, il ne sera pas attaqué</t>
+      <t id="131">Attaquer uniquement les cibles visibles</t>
+      <t id="132">Attaquer uniquement les cibles hostiles</t>
+      <t id="133">Poursuivre les cibles en fuite</t>
+      <t id="134">Protéger nos vaisseaux et stations dans le secteur</t>
+      <t id="135"> - sauf les vaisseaux militaires</t>      
+      <t id="141">Partager la cible avec d'autres - si activé, permettra à différents Protecteurs de Secteur d'attaquer une même cible</t>
+      <t id="151">Relation maximale propre</t>
+      <t id="152">Relation négative maximale - c'est-à-dire que les vaisseaux avec une relation de -30 à la valeur sélectionnée seront considérés comme hostiles</t>
+      <t id="161">Préserver l'énergie du bouclier</t>
+      <t id="171">Désactiver en cas de menace de destruction</t>
+      <t id="181">Se garer au cœur du secteur</t>
+      <t id="901">Enregistrer dans le journal de bord</t>
+      <t id="1000">..: Protéger le Secteur :..</t>    
+      <t id="1001">vaisseau</t>
+      <t id="1002">station</t>
+      <t id="1003">\033Y%s\033X</t>
+      <t id="1011">\033C%s \(%s\)\033X</t>
+      <t id="1012">Flotte \033B%s\033X avec le leader %s</t>
+      <t id="1013">ennemi %s \033R%s \(%s\)\033X</t>
+      <t id="1014">\033G%s \(%s\)\033X</t>
+      <t id="1015">\033O%s \(%s\)\033X</t>
+      <t id="1021">%s : assigné à travailler dans %s</t>
+      <t id="1022">%s : retour à la maison à %s</t>
+      <t id="1031">%s : en route vers %s dans %s</t>
+      <t id="1032">%s : commence à engager le %s dans %s</t>
+      <t id="1033">%s : va protéger %s dans %s contre %s</t>
+      <t id="1041">%s : %s dans %s est détruit par %s</t>
+      <t id="1042">%s : %s dans %s est abandonné</t>
+      <t id="1043">%s : %s est laissé %s</t>
+      <t id="1044">%s : %s dans %s est trop rapide</t>
+    </page>
+  </add>
+</diff>

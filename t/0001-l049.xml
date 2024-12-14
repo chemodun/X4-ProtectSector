@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- German -->
+<diff>
+  <add sel="/language">
+    <page id="1972092401" voice="no" title="Protect Sector" descr="Text for Protect Sector" >
+      <t id="1">Sektor schützen</t>
+      <t id="2">Sektor gegen feindliche Schiffe schützen</t>
+      <t id="101">Heimatsektor</t>
+      <t id="111">Stationen angreifen</t>
+      <t id="121">XL-Schiffe angreifen</t>
+      <t id="122">L-Schiffe angreifen</t>    
+      <t id="123">M-Schiffe angreifen</t>
+      <t id="124">S-Schiffe angreifen</t>
+      <t id="129">Weiter von Stationen angreifen - wenn das feindliche Schiff näher als der ausgewählte Wert an der feindlichen Station ist, wird es nicht angegriffen</t>
+      <t id="131">Nur sichtbare Ziele angreifen</t>
+      <t id="132">Nur feindliche Ziele angreifen</t>
+      <t id="133">Fliehende Ziele verfolgen</t>
+      <t id="134">Schütze unsere Schiffe und Stationen im Sektor</t>
+      <t id="135"> - außer Militärschiffe</t>      
+      <t id="141">Ziel mit anderen teilen - wenn aktiviert, können verschiedene Sektorschützer dasselbe Ziel angreifen</t>
+      <t id="151">Eigene maximale Beziehung</t>
+      <t id="152">Max. negative Beziehung - d.h. Schiffe mit einer Beziehung von -30 bis zum ausgewählten Wert werden als feindlich angesehen</t>
+      <t id="161">Energie des Schildes bewahren</t>
+      <t id="171">Bei Zerstörungsgefahr deaktivieren</t>
+      <t id="181">Im Sektorkern parken</t>
+      <t id="901">Im Logbuch aufzeichnen</t>
+      <t id="1000">..: Sektor schützen :..</t>
+      <t id="1001">Schiff</t>
+      <t id="1002">Station</t>
+      <t id="1003">\033Y%s\033X</t>
+      <t id="1011">\033C%s \(%s\)\033X</t>
+      <t id="1012">Flotte \033B%s\033X mit Anführer %s</t>
+      <t id="1013">Feind %s \033R%s \(%s\)\033X</t>
+      <t id="1014">\033G%s \(%s\)\033X</t>
+      <t id="1015">\033O%s \(%s\)\033X</t>
+      <t id="1021">%s: zugewiesen, um in %s zu arbeiten</t>
+      <t id="1022">%s: geht zum Heimatort in %s</t>
+      <t id="1031">%s: unterwegs zu %s in %s</t>
+      <t id="1032">%s: beginnt, das %s in %s anzugreifen</t>
+      <t id="1033">%s: wird %s in %s gegen %s schützen</t>
+      <t id="1041">%s: %s in %s wurde von %s zerstört</t>
+      <t id="1042">%s: %s in %s wurde aufgegeben</t>
+      <t id="1043">%s: %s wurde %s zurückgelassen</t>
+      <t id="1044">%s: %s in %s ist zu schnell</t>
+    </page>
+  </add>
+</diff>

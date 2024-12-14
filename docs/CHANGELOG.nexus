@@ -1,0 +1,21 @@
+[size=5][u]Changelog[/u][/size]
+
+[size=4][u][1.01] - 2024-12-13[/u][/size]
+[size=3][u]Added[/u][/size]
+- Added option to protect ships and stations in the desired sector via reaction on attacks on them by hostile ships.
+- Added option to record events to the logbook, including starts, travel to desired sector, flying to the target, attacking the target, destroying the target, etc.
+
+[size=3][u]Changed[/u][/size]
+- Between scans it uses [u]move.idle[/u] script.
+- Changed the type of option to disable on destruction threat: from boolean to the percentage of hull to make this order disabled.
+
+[size=3][u]Improved[/u][/size]
+- Approaching to the target is rewritten.
+- Attack of the ship is now under control of the [u]order.fight.attack.object[/u] script.
+
+[size=4][u][1.00] - 2024-12-06[/u][/size]
+[size=3][u]Added[/u][/size]
+- Initial release of the Protect Sector extension.
+- Allows protection of a sector from hostile ships.
+- Configuration options for home sector, attack stations, attack ships, attack farther from stations, attack only visible targets, attack only hostile targets, pursue fleeing targets, share target with other, preserve shield energy, and disable on destruction threat.
+- Compatibility with X4: Foundations 7.1.

@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<diff>
+  <add sel="/language">
+    <page id="1972092401" voice="no" title="Protect Sector" descr="Text for Protect Sector" >
+      <t id="1">Protect Sector</t>
+      <t id="2">Protect Sector against hostile ships</t>
+      <t id="101">Home sector</t>
+      <t id="111">Attack stations</t>
+      <t id="121">Attack XL ships</t>
+      <t id="122">Attack L ships</t>
+      <t id="123">Attack M ships</t>
+      <t id="124">Attack S ships</t>
+      <t id="129">Attack farther from stations - if hostile ship will be closer then selected value to hostile station - it will not be attacked</t>
+      <t id="131">Attack only visible targets</t>
+      <t id="132">Attack only hostile targets</t>
+      <t id="133">Pursue fleeing targets</t>
+      <t id="134">Protect our ships and stations in sector</t>
+      <t id="135"> - except military ships</t>
+      <t id="141">Share target with other - if set, will give possibility to attack one target by different Sector Protectors</t>
+      <t id="151">Own max. relation </t>
+      <t id="152">Max. negative relation - I.e. ships with relation from -30 to selected value will be assumed as hostile</t>
+      <t id="161">Preserve shield energy</t>
+      <t id="171">Disable on destruction threat</t>
+      <t id="181">Park at sector core</t>
+      <t id="901">Record to logbook</t>
+      <t id="1000">..: Protect Sector :..</t>
+      <t id="1001">ship</t>
+      <t id="1002">station</t>
+      <t id="1003">\033Y%s\033X</t>
+      <t id="1011">\033C%s \(%s\)\033X</t>
+      <t id="1012">Fleet \033B%s\033X with leader %s</t>
+      <t id="1013">enemy %s \033R%s \(%s\)\033X</t>
+      <t id="1014">\033G%s \(%s\)\033X</t>
+      <t id="1015">\033O%s \(%s\)\033X</t>
+      <t id="1021">%s: assigned to work in %s</t>
+      <t id="1022">%s: going to home location in %s</t>
+      <t id="1031">%s: en route to %s in %s</t>
+      <t id="1032">%s: starts engaging the %s in %s</t>
+      <t id="1033">%s: going to protect %s in %s against %s</t>
+      <t id="1041">%s: %s in %s is destroyed by %s</t>
+      <t id="1042">%s: %s in %s is abandoned</t>
+      <t id="1043">%s: %s is left %s</t>
+      <t id="1044">%s: %s in %s is too fast</t>
+    </page>
+  </add>
+</diff>

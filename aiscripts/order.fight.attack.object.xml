@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<diff>
+  <replace sel="//do_if[@value=&quot;@$speak and not this.assignedcontrolled.nextorder and (@$defaultorder.id != 'Patrol') and (@$defaultorder.id != 'ProtectPosition') and (@$defaultorder.id != 'ProtectShip') and (@$defaultorder.id != 'ProtectStation') and (@$defaultorder.id != 'Plunder') and (@$defaultorder.id != 'Police') and (not this.assignedcontrolled.commander or (this.assignedcontrolled.commander == player.occupiedship)) and notification.npc_await_orders.active&quot;]/@value">@$speak and not this.assignedcontrolled.nextorder and (@$defaultorder.id != 'Patrol') and (@$defaultorder.id != 'ProtectSector') and (@$defaultorder.id != 'ProtectPosition') and (@$defaultorder.id != 'ProtectShip') and (@$defaultorder.id != 'ProtectStation') and (@$defaultorder.id != 'Plunder') and (@$defaultorder.id != 'Police') and (not this.assignedcontrolled.commander or (this.assignedcontrolled.commander == player.occupiedship)) and notification.npc_await_orders.active</replace>
+</diff>
+

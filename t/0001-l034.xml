@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Spain -->
+<diff>
+  <add sel="/language">
+    <page id="1972092401" voice="no" title="Protect Sector" descr="Text for Protect Sector" >
+      <t id="1">Proteger el Sector</t>
+      <t id="2">Proteger el Sector contra naves hostiles</t>
+      <t id="101">Sector de origen</t>
+      <t id="111">Atacar estaciones</t>
+      <t id="121">Atacar naves XL</t>
+      <t id="122">Atacar naves L</t>
+      <t id="123">Atacar naves M</t>
+      <t id="124">Atacar naves S</t>
+      <t id="129">Atacar más lejos de las estaciones - si la nave hostil está más cerca del valor seleccionado a la estación hostil, no será atacada</t>
+      <t id="131">Atacar solo objetivos visibles</t>
+      <t id="132">Atacar solo objetivos hostiles</t>
+      <t id="133">Perseguir objetivos en fuga</t>
+      <t id="134">Proteger nuestras naves y estaciones en el sector</t>
+      <t id="135"> - excepto naves militares</t>      
+      <t id="141">Compartir objetivo con otros - si está activado, permitirá que diferentes Protectores de Sector ataquen un mismo objetivo</t>
+      <t id="151">Relación máxima propia</t>
+      <t id="152">Relación negativa máxima - es decir, las naves con una relación de -30 al valor seleccionado serán consideradas hostiles</t>
+      <t id="161">Preservar energía del escudo</t>
+      <t id="171">Desactivar en caso de amenaza de destrucción</t>
+      <t id="181">Aparcar en el núcleo del sector</t>
+      <t id="901">Registrar en el libro de registro</t>
+      <t id="1000">..: Proteger el Sector :..</t>
+      <t id="1001">nave</t>
+      <t id="1002">estación</t>
+      <t id="1003">\033Y%s\033X</t>
+      <t id="1011">\033C%s \(%s\)\033X</t>
+      <t id="1012">Flota \033B%s\033X con líder %s</t>
+      <t id="1013">enemigo %s \033R%s \(%s\)\033X</t>
+      <t id="1014">\033G%s \(%s\)\033X</t>
+      <t id="1015">\033O%s \(%s\)\033X</t>
+      <t id="1021">%s: asignado para trabajar en %s</t>
+      <t id="1022">%s: yendo a la ubicación de origen en %s</t>
+      <t id="1031">%s: en ruta a %s en %s</t>
+      <t id="1032">%s: comienza a atacar a %s en %s</t>
+      <t id="1033">%s: va a proteger %s en %s contra %s</t>
+      <t id="1041">%s: %s en %s es destruido por %s</t>
+      <t id="1042">%s: %s en %s ha sido abandonado</t>
+      <t id="1043">%s: %s ha sido dejado %s</t>
+      <t id="1044">%s: %s en %s es demasiado rápido</t>      
+    </page>
+  </add>
+</diff>
