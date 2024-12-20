@@ -105,6 +105,7 @@
             <param name="shieldsPreserveOnFlight" value="$ps_noboost" />
             <param name="breakOnDestructionPercentage" value="if $ps_disable then 40 else 0" />
             <param name="parkInCenterOfSector" value="$ps_park" />
+            <param name="delayBetweenScans" value="4s" />
             <param name="recordActionsToLogBook" value="true" />
           </create_order>
         </do_if>
@@ -121,14 +122,15 @@
             <param name="attackVisibleOnly" value="$attackVisibleOnly" />
             <param name="attackHostileOnly" value="$attackHostileOnly" />
             <param name="pursueFleeingTarget" value="$pursueFleeingTarget" />
-            <param name="protectPlayerShipsInSector" value="protectPlayerShipsInSector" />
-            <param name="protectOnlyNonMilitaryShips" value="protectOnlyNonMilitaryShips" />
-            <param name="shareTargetsBetweenFleets" value="shareTargetsBetweenFleets" />
-            <param name="shieldsPreserveOnFlight" value="shieldsPreserveOnFlight" />
-            <param name="breakOnDestructionPercentage" value="breakOnDestructionPercentage" />
+            <param name="protectPlayerShipsInSector" value="$protectPlayerShipsInSector" />
+            <param name="protectOnlyNonMilitaryShips" value="$protectOnlyNonMilitaryShips" />
+            <param name="shareTargetsBetweenFleets" value="$shareTargetsBetweenFleets" />
+            <param name="shieldsPreserveOnFlight" value="$shieldsPreserveOnFlight" />
+            <param name="breakOnDestructionPercentage" value="$breakOnDestructionPercentage" />
+            <param name="parkInCenterOfSector" value="$parkInCenterOfSector" />
             <param name="delayBetweenScans" value="4s" />
-            <param name="parkInCenterOfSector" value="parkInCenterOfSector" />
-            <param name="recordActionsToLogBook" value="recordActionsToLogBook" />
+            <param name="recordActionsToLogBook" value="$recordActionsToLogBook" />
+            <param name="debugchance" value="$debugchance" />
           </create_order>
         </do_elseif>
       </actions>
