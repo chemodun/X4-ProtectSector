@@ -928,7 +928,7 @@
         <set_value name="$dy" min="-5" max="5" />
         <set_value name="$dz" min="-5" max="5" />
 
-        <do_if value="not $parkingPosition? or parkingPosition.sector != $homeSector">
+        <do_if value="not $parkingPosition? or $parkingPosition.sector != $homeSector">
           <create_position name="$parkingPosition" x="this.ship.sector.coreposition.x + $dx * 1km" y="this.ship.sector.coreposition.y + 30km + $dy * 1km" z="this.ship.sector.coreposition.z + $dz * 1km" space="this.ship.sector" />
         </do_if>
 
