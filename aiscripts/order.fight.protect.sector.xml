@@ -1183,7 +1183,9 @@
               </actions>
             </interrupt>
           </move_to>
-
+          
+          <wait min="5ms" max="15ms" profile="flat" />
+          
           <resume label="targetApproaching" />
 
         </do_if>
