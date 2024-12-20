@@ -1,5 +1,14 @@
 [size=5][u]Changelog[/u][/size]
 
+[size=4][u][1.02] - 2024-12-20[/u][/size]
+[size=3][u]Added[/u][/size]
+- Added parameter to set exact delay between scans.
+[size=3][u]Fixed[/u][/size]
+- Fixed a bug with approaching to the target - if it has equal speeds the catching is never happened.
+- Added additional small delay in the approaching routine to prevent freezing
+[size=3][u]Improved[/u][/size]
+- Improved the experience gaining
+
 [size=4][u][1.01] - 2024-12-13[/u][/size]
 [size=3][u]Added[/u][/size]
 - Added option to protect ships and stations in the desired sector via reaction on attacks on them by hostile ships.

@@ -107,6 +107,11 @@ If set to non-zero value, the ship will stop attack and protecting when hull is 
 
 If enabled, the ship will try to park at the sector core, when it is not targets to fight against.
 
+[h3][u]Delay between scans, seconds[/u][/h3]
+
+Default value is [b]4 seconds[/b].
+If you want, you can set it between 1 and 90 seconds, with step 4 seconds. Bigger value will make less load on the CPU...
+
 [h3][u]Record to logbook[/u][/h3]
 
 [b]Enabled[/b] by default.
