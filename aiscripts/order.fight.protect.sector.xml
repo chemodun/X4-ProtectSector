@@ -700,7 +700,7 @@
           </do_if> 
 
           <set_value name="$targetPreviousDistanceTo" exact="null" />
-          <set_value name="$targetDistanceToIsIncreasing" exact="0" />
+          <set_value name="$targetDistanceToIsNotDecreasing" exact="0" />
 
           <do_if value="$target.exists and $target.pilot.exists and not $shareTargetsBetweenFleets">
             <set_value name="$target.pilot.$ignoreTime" exact="player.age + 60" />
@@ -1007,18 +1007,18 @@
         <do_if value="$targetDistanceTo gt $targetOptimalDistanceForAttack">
 
           <do_if value="$targetPreviousDistanceTo? and $targetPreviousDistanceTo != null">
-            <do_if value="$targetPreviousDistanceTo lt $targetDistanceTo">
-              <do_if value="not $targetDistanceToIsIncreasing? or $targetDistanceToIsIncreasing == null">
-                <set_value name="$targetDistanceToIsIncreasing" exact="1" />
+            <do_if value="$targetPreviousDistanceTo le $targetDistanceTo">
+              <do_if value="not $targetDistanceToIsNotDecreasing? or $targetDistanceToIsNotDecreasing == null">
+                <set_value name="$targetDistanceToIsNotDecreasing" exact="1" />
               </do_if>
-              <do_elseif value="$targetDistanceToIsIncreasing? ge 1">
-                <set_value name="$targetDistanceToIsIncreasing" exact="$targetDistanceToIsIncreasing + 1" />
+              <do_elseif value="@$targetDistanceToIsNotDecreasing ge 1">
+                <set_value name="$targetDistanceToIsNotDecreasing" exact="$targetDistanceToIsNotDecreasing + 1" />
               </do_elseif>
             </do_if>
             <do_else>
-              <set_value name="$targetDistanceToIsIncreasing" exact="null" />
+              <set_value name="$targetDistanceToIsNotDecreasing" exact="null" />
             </do_else>
-            <do_if value="$targetDistanceToIsIncreasing ge 3">
+            <do_if value="@$targetDistanceToIsNotDecreasing ge 3">
               <debug_to_file directory="'protectsector'" name="'debug_' + this.ship.fleet.name + '_' + this.ship.knownname + '_' + this.ship.idcode + '_' + this.ship"
                 text="'[%s (%s - %s) at %s, %s] - Too fast for us : %s (%s - %s) {%s} status: iswreck: %s, isoperational: %s,  pilot: %s (%s)'
                   .[
@@ -1045,7 +1045,7 @@
                 <write_to_logbook category="general" title="$textTitle" text="{1972092401, 1044}.[$textUnit, $textEnemy, $textHomeSector]" interaction="showonmap" object="this.ship" />
               </do_if>
               <set_value name="$targetPreviousDistanceTo" exact="null" />
-              <set_value name="$targetDistanceToIsIncreasing" exact="null" />
+              <set_value name="$targetDistanceToIsNotDecreasing" exact="null" />
               <resume label="targetSearching" />
             </do_if>
           </do_if>
