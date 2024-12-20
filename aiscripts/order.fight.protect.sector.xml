@@ -338,6 +338,9 @@
       <append_to_list name="$classesForAttack" exact="class.ship_xs" />
     </do_if>
 
+  <set_value name="$targetDistanceToIsNotDecreasing" exact="0" />
+  <set_value name="$approachingIterationsCount" exact="0" />
+
   </init>
 
   <attention min="unknown">
@@ -701,6 +704,7 @@
 
           <set_value name="$targetPreviousDistanceTo" exact="null" />
           <set_value name="$targetDistanceToIsNotDecreasing" exact="0" />
+          <set_value name="$approachingIterationsCount" exact="0" />
 
           <do_if value="$target.exists and $target.pilot.exists and not $shareTargetsBetweenFleets">
             <set_value name="$target.pilot.$ignoreTime" exact="player.age + 60" />
@@ -1004,50 +1008,57 @@
               $targetOptimalDistanceForAttack
             ]" output="true" append="true" />
 
+
+        <set_value name="$approachingIterationsCount" operation="add"/>
+
         <do_if value="$targetDistanceTo gt $targetOptimalDistanceForAttack">
 
           <do_if value="$targetPreviousDistanceTo? and $targetPreviousDistanceTo != null">
             <do_if value="$targetPreviousDistanceTo le $targetDistanceTo">
-              <do_if value="not $targetDistanceToIsNotDecreasing? or $targetDistanceToIsNotDecreasing == null">
+              <do_if value="not $targetDistanceToIsNotDecreasing? or @$targetDistanceToIsNotDecreasing == null or @$targetDistanceToIsNotDecreasing lt 1">  
                 <set_value name="$targetDistanceToIsNotDecreasing" exact="1" />
               </do_if>
               <do_elseif value="@$targetDistanceToIsNotDecreasing ge 1">
-                <set_value name="$targetDistanceToIsNotDecreasing" exact="$targetDistanceToIsNotDecreasing + 1" />
+                <set_value name="$targetDistanceToIsNotDecreasing" operation="add"/>
               </do_elseif>
             </do_if>
             <do_else>
               <set_value name="$targetDistanceToIsNotDecreasing" exact="null" />
             </do_else>
-            <do_if value="@$targetDistanceToIsNotDecreasing ge 3">
-              <debug_to_file directory="'protectsector'" name="'debug_' + this.ship.fleet.name + '_' + this.ship.knownname + '_' + this.ship.idcode + '_' + this.ship"
-                text="'[%s (%s - %s) at %s, %s] - Too fast for us : %s (%s - %s) {%s} status: iswreck: %s, isoperational: %s,  pilot: %s (%s)'
-                  .[
-                    this.ship.knownname,
-                    this.ship.idcode,
-                    this.ship,
-                    this.ship.sector.knownname,
-                    this.ship.fleet.name,
-                    $target.name,
-                    $target.idcode,
-                    $target,
-                    $target.class,
-                    $target.iswreck,
-                    $target.isoperational,
-                    $target.pilot,
-                    $target.pilot?
-                  ]" output="true" append="true" />
-              <do_if value="$recordActionsToLogBook">
-                <set_value name="$textUnit" exact="{1972092401, 1011}.[this.ship.name, this.ship.idcode]" />
-                <do_if value="@this.ship.subordinates.count gt 0 and @this.ship.toplevelcommander == this.ship">
-                  <set_value name="$textUnit" exact="{1972092401, 1012}.[this.ship.fleet.name, $textUnit]" />
-                </do_if>
-                <set_value name="$textEnemy" exact="{1972092401, 1013}.[$textShip, $targetInfo.$name, $targetInfo.$idcode]" />
-                <write_to_logbook category="general" title="$textTitle" text="{1972092401, 1044}.[$textUnit, $textEnemy, $textHomeSector]" interaction="showonmap" object="this.ship" />
+          </do_if>
+        
+          <do_if value="@$targetDistanceToIsNotDecreasing ge 3 or $approachingIterationsCount ge 10">
+            <debug_to_file directory="'protectsector'" name="'debug_' + this.ship.fleet.name + '_' + this.ship.knownname + '_' + this.ship.idcode + '_' + this.ship"
+              text="'[%s (%s - %s) at %s, %s] - Too fast for us : %s (%s - %s) {%s} status: iswreck: %s, isoperational: %s,  pilot: %s (%s), distance: not decreasing count: %s, iterations count: %s'
+                .[
+                  this.ship.knownname,
+                  this.ship.idcode,
+                  this.ship,
+                  this.ship.sector.knownname,
+                  this.ship.fleet.name,
+                  $target.name,
+                  $target.idcode,
+                  $target,
+                  $target.class,
+                  $target.iswreck,
+                  $target.isoperational,
+                  @$target.pilot,
+                  $target.pilot?,
+                  @$targetDistanceToIsNotDecreasing,
+                  @$approachingIterationsCount
+                ]" output="true" append="true" />
+            <do_if value="$recordActionsToLogBook">
+              <set_value name="$textUnit" exact="{1972092401, 1011}.[this.ship.name, this.ship.idcode]" />
+              <do_if value="@this.ship.subordinates.count gt 0 and @this.ship.toplevelcommander == this.ship">
+                <set_value name="$textUnit" exact="{1972092401, 1012}.[this.ship.fleet.name, $textUnit]" />
               </do_if>
-              <set_value name="$targetPreviousDistanceTo" exact="null" />
-              <set_value name="$targetDistanceToIsNotDecreasing" exact="null" />
-              <resume label="targetSearching" />
+              <set_value name="$textEnemy" exact="{1972092401, 1013}.[$textShip, $targetInfo.$name, $targetInfo.$idcode]" />
+              <write_to_logbook category="general" title="$textTitle" text="{1972092401, 1044}.[$textUnit, $textEnemy, $textHomeSector]" interaction="showonmap" object="this.ship" />
             </do_if>
+            <set_value name="$targetPreviousDistanceTo" exact="null" />
+            <set_value name="$targetDistanceToIsNotDecreasing" exact="0" />
+            <set_value name="$approachingIterationsCount" exact="0" />
+            <resume label="targetSearching" />
           </do_if>
 
           <set_value name="$parkedInCenterOfSector" exact="false" />
