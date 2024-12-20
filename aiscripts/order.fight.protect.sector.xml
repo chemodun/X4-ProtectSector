@@ -33,10 +33,11 @@
         <input_param name="step" value="10" />
       </param>
       <param name="parkInCenterOfSector" type="bool" default="false" text="{1972092401, 181}" />
-      <param name="delayBetweenScans" type="time" default="1s" text="{1972092401, 191}">
-        <input_param name="min" value="1s" />
-        <input_param name="max" value="58s" />
-        <input_param name="step" value="3s" />
+      <param name="delayBetweenScans" type="number" default="4" text="{1972092401, 191}">
+        <input_param name="startvalue" value="4" />
+        <input_param name="min" value="1" />
+        <input_param name="max" value="90" />
+        <input_param name="step" value="3" />
       </param>
       <param name="recordActionsToLogBook" type="bool" default="true" text="{1972092401, 901}" />
       <param name="debugchance" type="bool" default="0" advanced="true" text="{1041, 10086}" comment="Print debug output">
