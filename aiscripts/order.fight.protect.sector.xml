@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="iso-8859-1"?>
-<aiscript name="order.fight.protect.sector" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="aiscripts.xsd" version="1">
+<aiscript name="order.fight.protect.sector" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="aiscripts.xsd" version="102">
   <order id="ProtectSector" name="{1972092401, 1}" description="{1972092401, 2}" category="combat" infinite="true">
     <params>
       <param name="homeSector" default="if this.ship.jobmainsector? then this.ship.jobmainsector else this.ship.sector" type="sector" required="true" text="{1972092401, 101}" />
@@ -33,6 +33,11 @@
         <input_param name="step" value="10" />
       </param>
       <param name="parkInCenterOfSector" type="bool" default="false" text="{1972092401, 181}" />
+      <param name="delayBetweenScans" type="time" default="1s" text="{1972092401, 191}">
+        <input_param name="min" value="1s" />
+        <input_param name="max" value="90s" />
+        <input_param name="step" value="3s" />
+      </param>
       <param name="recordActionsToLogBook" type="bool" default="true" text="{1972092401, 901}" />
       <param name="debugchance" type="bool" default="0" advanced="true" text="{1041, 10086}" comment="Print debug output">
         <input_param name="truevalue" value="100"/>
@@ -51,7 +56,7 @@
     <handler ref="AttackHandler" />
     <handler ref="MissileLockHandler" />
     <handler ref="ScannedHandler" />
-    <!-- <handler ref="InspectedHandler" /> -->
+    <handler ref="InspectedHandler" />
     <handler ref="FoundAbandonedHandler" />
     <handler ref="FoundLockboxHandler" />
     <handler>
@@ -68,7 +73,7 @@
             this.ship.fleet.name, 
             @$scriptVersion
           ]" debugchance="100"/>
-          <check_value value="@$scriptVersion lt 101" />
+          <check_value value="@$scriptVersion lt 102" />
         </check_all>
       </conditions>
       <actions>
@@ -103,6 +108,29 @@
             <param name="recordActionsToLogBook" value="true" />
           </create_order>
         </do_if>
+        <do_elseif value="@$scriptVersion lt 102">
+          <cancel_all_orders object="this.ship" />
+          <create_order object="this.ship" id="'ProtectSector'" default="true">
+            <param name="homeSector" value="$homeSector" />
+            <param name="attackStations" value="$attackStations" />
+            <param name="attackShipsXL" value="$attackShipsXL" />
+            <param name="attackShipsL" value="$attackShipsL" />
+            <param name="attackShipsM" value="$attackShipsM" />
+            <param name="attackShipsS" value="$attackShipsS" />
+            <param name="attackShipsOutOfStationsDistance" value="$attackShipsOutOfStationsDistance" />
+            <param name="attackVisibleOnly" value="$attackVisibleOnly" />
+            <param name="attackHostileOnly" value="$attackHostileOnly" />
+            <param name="pursueFleeingTarget" value="$pursueFleeingTarget" />
+            <param name="protectPlayerShipsInSector" value="protectPlayerShipsInSector" />
+            <param name="protectOnlyNonMilitaryShips" value="protectOnlyNonMilitaryShips" />
+            <param name="shareTargetsBetweenFleets" value="shareTargetsBetweenFleets" />
+            <param name="shieldsPreserveOnFlight" value="shieldsPreserveOnFlight" />
+            <param name="breakOnDestructionPercentage" value="breakOnDestructionPercentage" />
+            <param name="delayBetweenScans" value="4s" />
+            <param name="parkInCenterOfSector" value="parkInCenterOfSector" />
+            <param name="recordActionsToLogBook" value="recordActionsToLogBook" />
+          </create_order>
+        </do_elseif>
       </actions>
     </handler>
     <handler>
@@ -255,7 +283,36 @@
   </interrupts>
   <init>
 
-    <set_value name="$scriptVersion" exact="101" />
+    <set_value name="$scriptVersion" exact="102" />
+
+    <debug_to_file directory="'protectsector'" name="'debug_' + this.ship.fleet.name + '_' + this.ship.knownname + '_' + this.ship.idcode + '_' + this.ship"
+      text="'[%s (%s - %s) at %s, %s]  - Version: %s.\nHome Sector: %s\nAttack Stations: %s\nAttack Ships XL: %s\nAttack Ships L: %s\nAttack Ships M: %s\nAttack Ships S: %s\nAttack Ships Out Of Stations Distance: %s\nAttack Visible Only: %s\nAttack Hostile Only: %s\nProtect Player Ships In Sector: %s\nProtect Only Non Military Ships: %s\nPursue Fleeing Target: %s\nShare Targets Between Fleets: %s\nShields Preserve On Flight: %s\nBreak On Destruction Percentage: %s\nPark In Center Of Sector: %s\nRecord Actions To Log Book: %s\nDelay Between Scans: %s\nDebug chance: %s'
+        .[
+          this.ship.knownname, 
+          this.ship.idcode, 
+          this.ship, 
+          this.ship.sector.knownname, 
+          this.ship.fleet.name,
+          @$scriptVersion,
+          $homeSector.knownname,
+          $attackStations,
+          $attackShipsXL,
+          $attackShipsL,
+          $attackShipsM,
+          $attackShipsS,
+          $attackShipsOutOfStationsDistance,
+          $attackVisibleOnly,
+          $attackHostileOnly,
+          $protectPlayerShipsInSector,
+          $protectOnlyNonMilitaryShips,
+          $pursueFleeingTarget,
+          $shareTargetsBetweenFleets,
+          $shieldsPreserveOnFlight,
+          $breakOnDestructionPercentage,
+          $parkInCenterOfSector,
+          $recordActionsToLogBook,
+          $delayBetweenScans,
+        ]" output="true" append="true" />
 
     <set_value name="$target" exact="null" />
     <set_value name="$targetOnResponse" exact="null" />
@@ -712,7 +769,7 @@
 
           <resume label="targetApproaching" />
         </do_if>
-        <wait min="1s" max="2s" />
+        <wait exact="$delayBetweenScans"/>
       </do_if>
       <do_elseif value="$attackStations" negate="true">
 
@@ -1028,37 +1085,37 @@
           </do_if>
         
           <do_if value="@$targetDistanceToIsNotDecreasing ge 3 or $approachingIterationsCount ge 10">
-            <debug_to_file directory="'protectsector'" name="'debug_' + this.ship.fleet.name + '_' + this.ship.knownname + '_' + this.ship.idcode + '_' + this.ship"
+              <debug_to_file directory="'protectsector'" name="'debug_' + this.ship.fleet.name + '_' + this.ship.knownname + '_' + this.ship.idcode + '_' + this.ship"
               text="'[%s (%s - %s) at %s, %s] - Too fast for us : %s (%s - %s) {%s} status: iswreck: %s, isoperational: %s,  pilot: %s (%s), distance: not decreasing count: %s, iterations count: %s'
-                .[
-                  this.ship.knownname,
-                  this.ship.idcode,
-                  this.ship,
-                  this.ship.sector.knownname,
-                  this.ship.fleet.name,
-                  $target.name,
-                  $target.idcode,
-                  $target,
-                  $target.class,
-                  $target.iswreck,
-                  $target.isoperational,
+                  .[
+                    this.ship.knownname,
+                    this.ship.idcode,
+                    this.ship,
+                    this.ship.sector.knownname,
+                    this.ship.fleet.name,
+                    $target.name,
+                    $target.idcode,
+                    $target,
+                    $target.class,
+                    $target.iswreck,
+                    $target.isoperational,
                   @$target.pilot,
                   $target.pilot?,
                   @$targetDistanceToIsNotDecreasing,
                   @$approachingIterationsCount
-                ]" output="true" append="true" />
-            <do_if value="$recordActionsToLogBook">
-              <set_value name="$textUnit" exact="{1972092401, 1011}.[this.ship.name, this.ship.idcode]" />
-              <do_if value="@this.ship.subordinates.count gt 0 and @this.ship.toplevelcommander == this.ship">
-                <set_value name="$textUnit" exact="{1972092401, 1012}.[this.ship.fleet.name, $textUnit]" />
+                  ]" output="true" append="true" />
+              <do_if value="$recordActionsToLogBook">
+                <set_value name="$textUnit" exact="{1972092401, 1011}.[this.ship.name, this.ship.idcode]" />
+                <do_if value="@this.ship.subordinates.count gt 0 and @this.ship.toplevelcommander == this.ship">
+                  <set_value name="$textUnit" exact="{1972092401, 1012}.[this.ship.fleet.name, $textUnit]" />
+                </do_if>
+                <set_value name="$textEnemy" exact="{1972092401, 1013}.[$textShip, $targetInfo.$name, $targetInfo.$idcode]" />
+                <write_to_logbook category="general" title="$textTitle" text="{1972092401, 1044}.[$textUnit, $textEnemy, $textHomeSector]" interaction="showonmap" object="this.ship" />
               </do_if>
-              <set_value name="$textEnemy" exact="{1972092401, 1013}.[$textShip, $targetInfo.$name, $targetInfo.$idcode]" />
-              <write_to_logbook category="general" title="$textTitle" text="{1972092401, 1044}.[$textUnit, $textEnemy, $textHomeSector]" interaction="showonmap" object="this.ship" />
-            </do_if>
-            <set_value name="$targetPreviousDistanceTo" exact="null" />
+              <set_value name="$targetPreviousDistanceTo" exact="null" />
             <set_value name="$targetDistanceToIsNotDecreasing" exact="0" />
             <set_value name="$approachingIterationsCount" exact="0" />
-            <resume label="targetSearching" />
+              <resume label="targetSearching" />
           </do_if>
 
           <set_value name="$parkedInCenterOfSector" exact="false" />
