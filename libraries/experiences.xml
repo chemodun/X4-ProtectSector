@@ -4,9 +4,12 @@
   <experience id="protect_sector">
     <skill ref="piloting">
       <individual base="1.0" falloff="0.75" limit="15"/>
-      <group base="1.0" falloff="0.64" limit="15"/>
+    </skill>
+    <skill ref="engineering">
+      <group base="1.0" falloff="0.68" limit="15"/>
     </skill>
     <skill ref="morale">
+      <individual base="1.0" falloff="0.75" limit="15"/>
       <group base="1.0" falloff="0.83" limit="15"/>
     </skill>
   </experience>

@@ -279,7 +279,7 @@
             </do_if>
             <do_if value="@event.param == this.ship or @this.ship.subordinates.count > 0 and @this.ship.subordinates.indexof.{event.param} gt 0">
               <apply_experience entity="this" experience="'protect_sector'" chance="80"/>
-              <apply_experience entity="this.assignedcontrolled" experience="'protect_sector'" chance="60"/>  
+              <apply_experience object="this.assignedcontrolled" role="entityrole.service" experience="'protect_sector'" chance="60"/>  
             </do_if>
             <abort_called_scripts resume="targetSearching" />
           </do_else>
@@ -955,7 +955,7 @@
           </run_script>
 
           <apply_experience entity="this" experience="'protect_sector'" chance="60"/>
-          <apply_experience entity="this.assignedcontrolled" experience="'protect_sector'" chance="40"/>  
+          <apply_experience object="this.assignedcontrolled" role="entityrole.service" experience="'protect_sector'" chance="30"/>    
 
           <debug_to_file directory="'protectsector'" name="'debug_' + this.ship.fleet.name + '_' + this.ship.knownname + '_' + this.ship.idcode + '_' + this.ship"
             text="'[%s (%s - %s) at %s, %s] - Station after attack : %s (%s - %s) {%s}, iswreck: %s, targets: %s, targetInfo: %s'
@@ -1276,7 +1276,7 @@
           </do_if>
           <do_else>
             <apply_experience entity="this" experience="'protect_sector'" chance="60"/>
-            <apply_experience entity="this.assignedcontrolled" experience="'protect_sector'" chance="40"/>  
+            <apply_experience object="this.assignedcontrolled" role="entityrole.service" experience="'protect_sector'" chance="30"/>    
           </do_else>
         </do_if>
         <do_else>
