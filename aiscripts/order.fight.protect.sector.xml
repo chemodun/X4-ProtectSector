@@ -75,7 +75,7 @@
           <check_any>
           <check_value value="@$scriptVersion lt 103" />
           <!-- to remove before production -->
-          <check_value value="@$do_reset lt 3" />
+          <check_value value="@$do_reset lt 4" />
           <!-- to remove before production -->          
           </check_any>
         </check_all>
@@ -323,7 +323,7 @@
   </interrupts>
   <init>
     <!-- to remove before production -->
-    <set_value name="$do_reset" exact="3" />
+    <set_value name="$do_reset" exact="4" />
     <!-- to remove before production -->
     <set_value name="$scriptVersion" exact="103" />
 
@@ -388,16 +388,17 @@
     <!--     </do_else> -->
 
     <debug_to_file directory="'protectsector'" name="'debug_'  + this.ship.idcode + '_' + this.ship"
-      text="'[%s at %s, %s]  - Init (%s) with %s subordinates and %s as top commander. Debug chance: %s'
+      text="'[%s at %s, %s]  - Init with %s subordinates and %s as top commander. Debug chance: %s'
         .[
           this.ship.debugname,
           this.ship.sector.knownname, 
           this.ship.fleet.name,
-          @$isInit,
           @this.ship.subordinates.count,
           @this.ship.toplevelcommander,
           $debugchance
         ]" output="true" append="true" />
+
+    <create_position name="$parkingPosition" x="$homeSector.coreposition.x + $dx * 1km" y="$homeSector.coreposition.y + 30km + $dy * 1km" z="$homeSector.coreposition.z + $dz * 1km" space="$homeSector.sector" />
 
     <set_value name="$textTitle" exact="{1972092401, 1000}" />
     <set_value name="$textShip" exact="{1972092401, 1001}" />
@@ -1007,8 +1008,8 @@
         <set_value name="$dy" min="-5" max="5" />
         <set_value name="$dz" min="-5" max="5" />
 
-        <do_if value="not $parkingPosition? or $parkingPosition.sector != $homeSector">
-          <create_position name="$parkingPosition" x="this.ship.sector.coreposition.x + $dx * 1km" y="this.ship.sector.coreposition.y + 30km + $dy * 1km" z="this.ship.sector.coreposition.z + $dz * 1km" space="this.ship.sector" />
+        <do_if value="$parkingPosition.sector != $homeSector">
+          <create_position name="$parkingPosition" x="$homeSector.coreposition.x + $dx * 1km" y="$homeSector.coreposition.y + 30km + $dy * 1km" z="$homeSector.coreposition.z + $dz * 1km" space="$homeSector.sector" />
         </do_if>
 
         <create_orientation name="$orientation" orientation="look_at" refposition="$parkingPosition">
