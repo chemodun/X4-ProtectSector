@@ -616,7 +616,7 @@
             </do_if>
             <set_value name="$relation" exact="$ship.relationto.{faction.player}" />
             <debug_to_file directory="'protectsector'" name="'debug_'  + this.ship.idcode + '_' + this.ship"
-              text="'[%s at %s, %s] - %s - Target to check: %s {%s}, distance - %s, relation - %s, share targets: %s, to skip - %s'
+              text="'[%s at %s, %s] - %s - Target to check: %s {%s}, distance - %s, relation - %s, share targets: %s, to skip - %s, ignore time: %s, player age: %s'
                 .[
                   this.ship.debugname,
                   this.ship.sector.knownname,
@@ -627,7 +627,9 @@
                   this.ship.distanceto.{$ship},
                   $relation,
                   $shareTargetsBetweenFleets,
-                  $ship.pilot.$ignoreTime?
+                  $ship.pilot.$ignoreTime?,
+                  @$ship.pilot.$ignoreTime,
+                  player.age
                 ]" output="true" append="true" />
             <do_if value="$relation le $relationsThreshold">
               <do_if value="$ship.pilot.$ignoreTime? and not $shareTargetsBetweenFleets" negate="true">
@@ -766,6 +768,18 @@
 
           <do_if value="$target.exists and $target.pilot.exists and not $shareTargetsBetweenFleets">
             <set_value name="$target.pilot.$ignoreTime" exact="player.age + 60" />
+            <debug_to_file directory="'protectsector'" name="'debug_'  + this.ship.idcode + '_' + this.ship"
+              text="'[%s at %s, %s] - Target marked to ignore: %s {%s}, ignore time: %s, player age: %s'
+                .[
+                  this.ship.debugname,
+                  this.ship.sector.knownname,
+                  this.ship.fleet.name,
+                  $target.debugname,
+                  $target.class,
+                  $ship.pilot.$ignoreTime?,
+                  @$ship.pilot.$ignoreTime,
+                  player.age
+                ]" output="true" append="true" />            
           </do_if>
 
           <resume label="targetApproaching" />
