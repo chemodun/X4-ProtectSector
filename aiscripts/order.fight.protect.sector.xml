@@ -75,7 +75,7 @@
           <check_any>
           <check_value value="@$scriptVersion lt 103" />
           <!-- to remove before production -->
-          <check_value value="@$do_reset lt 2" />
+          <check_value value="@$do_reset lt 3" />
           <!-- to remove before production -->          
           </check_any>
         </check_all>
@@ -323,7 +323,7 @@
   </interrupts>
   <init>
     <!-- to remove before production -->
-    <set_value name="$do_reset" exact="2" />
+    <set_value name="$do_reset" exact="3" />
     <!-- to remove before production -->
     <set_value name="$scriptVersion" exact="103" />
 
