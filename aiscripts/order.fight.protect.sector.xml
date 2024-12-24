@@ -600,6 +600,7 @@
                 @$target,
               ]" output="true" append="true" />
             <set_value name="$targetOnResponse" exact="null" />
+            <wait min="10ms" max="50ms" /> <!-- to give a chance to mark the target as own -->
         </do_else>
 
         <set_value name="$indexShips" exact="1" />
