@@ -72,10 +72,12 @@
             this.ship.fleet.name, 
             @$scriptVersion
           ]" debugchance="100"/>
+          <check_any>
           <check_value value="@$scriptVersion lt 103" />
           <!-- to remove before production -->
           <check_value value="@$do_reset lt 1" />
           <!-- to remove before production -->          
+          </check_any>
         </check_all>
       </conditions>
       <actions>
@@ -588,7 +590,7 @@
           <create_list name="$ships" />
           <append_to_list name="$ships" exact="$targetOnResponse" />
           <debug_to_file directory="'protectsector'" name="'debug_'  + this.ship.idcode + '_' + this.ship"
-            text="'[%s at %s, %s] : Response on attack by: %s. List of ships: %s. Target: %s'
+            text="'[%s at %s, %s] : Response on attack by: %s. List of ships: %s. Target: %s'.
               [
                 this.ship.debugname,
                 this.ship.sector.knownname,
