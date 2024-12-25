@@ -40,6 +40,7 @@
         <input_param name="step" value="3" />
       </param>
       <param name="recordActionsToLogBook" type="bool" default="true" text="{1972092401, 901}" />
+      <param name="isStartedByPlayer" type="internal" default="true" text="Started by Player"></param>
       <param name="debugchance" type="bool" default="0" advanced="true" text="{1041, 10086}" comment="Print debug output">
         <input_param name="truevalue" value="100"/>
         <editable/>
@@ -75,7 +76,7 @@
           <check_any>
           <check_value value="@$scriptVersion lt 103" />
           <!-- to remove before production -->
-          <check_value value="@$do_reset lt 4" />
+          <check_value value="@$do_reset lt 5" />
           <!-- to remove before production -->          
           </check_any>
         </check_all>
@@ -110,6 +111,7 @@
             <param name="parkInCenterOfSector" value="$ps_park" />
             <param name="delayBetweenScans" value="4" />
             <param name="recordActionsToLogBook" value="true" />
+            <param name="isStartedByPlayer" value="false" />
           </create_order>
         </do_if>
         <do_elseif value="@$scriptVersion lt 102">
@@ -133,6 +135,7 @@
             <param name="parkInCenterOfSector" value="$parkInCenterOfSector" />
             <param name="delayBetweenScans" value="4" />
             <param name="recordActionsToLogBook" value="$recordActionsToLogBook" />
+            <param name="isStartedByPlayer" value="false" />
             <param name="debugchance" value="$debugchance" />
           </create_order>
         </do_elseif>
@@ -157,6 +160,7 @@
             <param name="parkInCenterOfSector" value="$parkInCenterOfSector" />
             <param name="delayBetweenScans" value="if $delayBetweenScans == 4s then 4 else $delayBetweenScans" />
             <param name="recordActionsToLogBook" value="$recordActionsToLogBook" />
+            <param name="isStartedByPlayer" value="false" />
             <param name="debugchance" value="$debugchance" />
           </create_order>
         </do_elseif>     
@@ -181,6 +185,7 @@
             <param name="parkInCenterOfSector" value="$parkInCenterOfSector" />
             <param name="delayBetweenScans" value="$delayBetweenScans" />
             <param name="recordActionsToLogBook" value="$recordActionsToLogBook" />
+            <param name="isStartedByPlayer" value="false" />
             <param name="debugchance" value="$debugchance" />
           </create_order>
         </do_else>            
@@ -323,7 +328,7 @@
   </interrupts>
   <init>
     <!-- to remove before production -->
-    <set_value name="$do_reset" exact="4" />
+    <set_value name="$do_reset" exact="5" />
     <!-- to remove before production -->
     <set_value name="$scriptVersion" exact="103" />
 
@@ -388,11 +393,12 @@
     <!--     </do_else> -->
 
     <debug_to_file directory="'protectsector'" name="'debug_'  + this.ship.idcode + '_' + this.ship"
-      text="'[%s at %s, %s]  - Init with %s subordinates and %s as top commander. Debug chance: %s'
+      text="'[%s at %s, %s]  - Started (by player: %s) with %s subordinates and %s as top commander. Debug chance: %s'
         .[
           this.ship.debugname,
           this.ship.sector.knownname, 
           this.ship.fleet.name,
+          $isStartedByPlayer,
           @this.ship.subordinates.count,
           @this.ship.toplevelcommander,
           $debugchance
@@ -405,15 +411,15 @@
     <set_value name="$textStation" exact="{1972092401, 1002}" />
     <set_value name="$textHomeSector" exact="{1972092401, 1003}.[$homeLocation.sector.knownname]" />
 
-    <do_if value="$recordActionsToLogBook">
-      <set_value name="$textUnit" exact="{1972092401, 1011}.[this.ship.name, this.ship.idcode]" />
-      <do_if value="@this.ship.subordinates.count gt 0 and @this.ship.toplevelcommander == this.ship">
-        <set_value name="$textUnit" exact="{1972092401, 1012}.[this.ship.fleet.name, $textUnit]" />
-      </do_if>
+    <set_value name="$textUnit" exact="{1972092401, 1011}.[this.ship.name, this.ship.idcode]" />
+    <do_if value="@this.ship.subordinates.count gt 0 and @this.ship.toplevelcommander == this.ship">
+      <set_value name="$textUnit" exact="{1972092401, 1012}.[this.ship.fleet.name, $textUnit]" />
+    </do_if>
+
+    <do_if value="$isStartedByPlayer">
       <write_to_logbook category="general" title="$textTitle" text="{1972092401, 1021}.[$textUnit, $textHomeSector]" interaction="showonmap" object="this.ship" />
     </do_if>
 
-    <set_value name="$isInit" exact="true" />
     <set_value name="$classesForAttack" exact="[]" />
     <set_value name="$classesAcceptableForAttack" exact="[class.ship_xs, class.ship_s, class.ship_m, class.ship_l, class.ship_xl]" />
 
@@ -440,9 +446,10 @@
       <append_to_list name="$classesForAttack" exact="class.ship_xs" />
     </do_if>
 
-  <set_value name="$targetDistanceToIsNotDecreasing" exact="0" />
-  <set_value name="$approachingIterationsCount" exact="0" />
+    <set_value name="$targetDistanceToIsNotDecreasing" exact="0" />
+    <set_value name="$approachingIterationsCount" exact="0" />
 
+    <set_value name="$isStartedByPlayer" exact="false" />
   </init>
 
   <attention min="unknown">
