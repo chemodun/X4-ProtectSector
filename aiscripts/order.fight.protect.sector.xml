@@ -93,7 +93,7 @@
         <do_if value="@$scriptVersion lt 101">
           <cancel_all_orders object="this.ship" />
           <create_order object="this.ship" id="'ProtectSector'" default="true">
-            <param name="homeSector" value="$ps_space" />
+            <param name="homeSector" value="if $ps_space.isclass.sector then $ps_space else $ps_space.sector" />
             <param name="attackStations" value="$ps_attack_stations" />
             <param name="attackShipsXL" value="$ps_attack_xl" />
             <param name="attackShipsL" value="$ps_attack_l" />
@@ -117,7 +117,7 @@
         <do_elseif value="@$scriptVersion lt 102">
           <cancel_all_orders object="this.ship" />
           <create_order object="this.ship" id="'ProtectSector'" default="true">
-            <param name="homeSector" value="$homeSector" />
+            <param name="homeSector" value="if $homeSector.isclass.sector then $homeSector else $homeSector.sector" />
             <param name="attackStations" value="$attackStations" />
             <param name="attackShipsXL" value="$attackShipsXL" />
             <param name="attackShipsL" value="$attackShipsL" />
@@ -142,7 +142,7 @@
         <do_elseif value="@$scriptVersion lt 103">
           <cancel_all_orders object="this.ship" />
           <create_order object="this.ship" id="'ProtectSector'" default="true">
-            <param name="homeSector" value="$homeSector" />
+            <param name="homeSector" value="if $homeSector.isclass.sector then $homeSector else $homeSector.sector" />
             <param name="attackStations" value="$attackStations" />
             <param name="attackShipsXL" value="$attackShipsXL" />
             <param name="attackShipsL" value="$attackShipsL" />
@@ -167,7 +167,7 @@
         <do_else>
           <cancel_all_orders object="this.ship" />
           <create_order object="this.ship" id="'ProtectSector'" default="true">
-            <param name="homeSector" value="$homeSector" />
+            <param name="homeSector" value="if $homeSector.isclass.sector then $homeSector else $homeSector.sector" />
             <param name="attackStations" value="$attackStations" />
             <param name="attackShipsXL" value="$attackShipsXL" />
             <param name="attackShipsL" value="$attackShipsL" />
@@ -206,7 +206,7 @@
               </check_any>
             </check_all>
           </check_any>
-          <check_value value="event.object.sector == this.ship.sector and $homeLocation.sector == this.ship.sector" />
+          <check_value value="event.object.sector == this.ship.sector and $homeSector == this.ship.sector" />
           <check_value value="event.object.isclass.ship or event.object.isclass.station" />
           <check_value value="event.object != this.ship" />
           <check_value value="@event.object.order.id != 'ProtectSector'" />
@@ -299,7 +299,7 @@
           <set_value name="$textEnemyClass" exact="if @$targetInfo.$isShip then $textShip else $textStation" />
           <set_value name="$textEnemy" exact="{1972092401, 1013}.[$textEnemyClass, $targetInfo.$name, $targetInfo.$idcode]" />
           <do_if value="event.name == 'event_object_changed_sector'">
-            <do_if value="$homeLocation.sector !=  event.object.sector">
+            <do_if value="$homeSector !=  event.object.sector">
               <do_if value="$recordActionsToLogBook">
                 <write_to_logbook category="general" title="$textTitle" text="{1972092401, 1043}.[$textUnit, $textEnemy, $textHomeSector]" interaction="showonmap" object="this.ship" />
               </do_if>
@@ -372,18 +372,9 @@
 
     <set_value name="$debugChance" exact="100" />
 
-    <do_if value="$homeSector == null">
-      <set_value name="$homeSector" exact="this.ship.zone" />
-      <edit_order_param order="this.assignedcontrolled.defaultorder" param="'homeSector'" value="$homeSector.sector" />
-    </do_if>
+    <find_zone name="$homeLocation" space="$homeSector" normalzone="true" sortbydistanceto="this.ship" />
 
-    <do_if value="$homeSector.isclass.sector">
-      <find_zone name="$homeSector" space="$homeSector" normalzone="true" sortbydistanceto="this.ship" />
-    </do_if>
-
-    <set_value name="$homeLocation" exact="$homeSector" />
-
-    <set_command_action commandaction="commandaction.scanningto" param="$homeLocation.sector" />
+    <set_command_action commandaction="commandaction.scanningto" param="$homeSector" />
 
     <!--     <do_if value="$relationThresholdConfigurationEnabled? and $relationThresholdConfigurationEnabled and $relationThresholdConfigured?">
       <set_value name="$relationsThreshold" exact="-$relationThresholdConfigured" />
@@ -404,12 +395,17 @@
           $debugchance
         ]" output="true" append="true" />
 
+
+    <set_value name="$dx" min="-5" max="5" />
+    <set_value name="$dy" min="-5" max="5" />
+    <set_value name="$dz" min="-5" max="5" />
+        
     <create_position name="$parkingPosition" x="$homeSector.coreposition.x + $dx * 1km" y="$homeSector.coreposition.y + 30km + $dy * 1km" z="$homeSector.coreposition.z + $dz * 1km" space="$homeSector.sector" />
 
     <set_value name="$textTitle" exact="{1972092401, 1000}" />
     <set_value name="$textShip" exact="{1972092401, 1001}" />
     <set_value name="$textStation" exact="{1972092401, 1002}" />
-    <set_value name="$textHomeSector" exact="{1972092401, 1003}.[$homeLocation.sector.knownname]" />
+    <set_value name="$textHomeSector" exact="{1972092401, 1003}.[$homeSector.knownname]" />
 
     <set_value name="$textUnit" exact="{1972092401, 1011}.[this.ship.name, this.ship.idcode]" />
     <do_if value="@this.ship.subordinates.count gt 0 and @this.ship.toplevelcommander == this.ship">
@@ -450,6 +446,12 @@
     <set_value name="$approachingIterationsCount" exact="0" />
 
     <set_value name="$isStartedByPlayer" exact="false" />
+
+    
+    <do_if value="not $debugChance? or $debugChance == null">
+      <set_value name="$debugChance" exact="100" />
+    </do_if>
+
   </init>
 
   <attention min="unknown">
@@ -467,22 +469,14 @@
       <!-- SEARCH ******************************************************************************* -->
       <label name="targetSearching" />
 
-      <do_if value="$homeLocation? or not $homeLocation.isclass.zone" negate="true">
-        <resume label="start" />
-      </do_if>
-
       <set_value name="$target" exact="null" />
 
       <do_if value="not $homeLocation? or not $homeLocation.isclass.zone">
         <resume label="start" />
       </do_if>
 
-      <do_if value="$homeLocation? and $homeLocation.sector != this.ship.sector">
+      <do_if value="this.ship.sector != $homeSector">
         <resume label="flightToHomeSector" />
-      </do_if>
-
-      <do_if value="not $debugChance? or $debugChance == null">
-        <set_value name="$debugChance" exact="100" />
       </do_if>
 
       <do_if value="this.ship.order" comment="Safety check in case the script is called from non-order script">
@@ -492,7 +486,7 @@
 
       <set_command command="command.patrol" />
 
-      <set_command_action commandaction="commandaction.scanningto" param="$homeLocation.sector" />
+      <set_command_action commandaction="commandaction.scanningto" param="$homeSector" />
 
       <wait min="1s" max="2s" />
 
@@ -1011,13 +1005,6 @@
       <!-- IDLE ************************************************************************ -->
 
       <do_if value="$parkInCenterOfSector and (not @$parkedInCenterOfSector)">
-        <set_value name="$dx" min="-5" max="5" />
-        <set_value name="$dy" min="-5" max="5" />
-        <set_value name="$dz" min="-5" max="5" />
-
-        <do_if value="$parkingPosition.sector != $homeSector">
-          <create_position name="$parkingPosition" x="$homeSector.coreposition.x + $dx * 1km" y="$homeSector.coreposition.y + 30km + $dy * 1km" z="$homeSector.coreposition.z + $dz * 1km" space="$homeSector.sector" />
-        </do_if>
 
         <create_orientation name="$orientation" orientation="look_at" refposition="$parkingPosition">
           <position object="this.ship" />
@@ -1060,7 +1047,7 @@
       <!-- APPROACHING ************************************************************************ -->
       <label name="targetApproaching" />
 
-      <do_if value="$target? and $target != null and $target.exists and not $target.iswreck and $target.sector == $homeLocation.sector">
+      <do_if value="$target? and $target != null and $target.exists and not $target.iswreck and $target.sector == $homeSector">
 
         <set_value name="$targetDistanceTo" exact="this.ship.distanceto.{$target}" />
 
@@ -1135,7 +1122,7 @@
 
           <set_command_action commandaction="commandaction.flyingto" param="$target" />
 
-          <get_safe_pos object="$target" zone="$target.zone" radius="this.ship.size / 2" allowyaxis="true" result="$destination" ignored="this.ship" sector="$homeLocation.sector" />
+          <get_safe_pos object="$target" zone="$target.zone" radius="this.ship.size / 2" allowyaxis="true" result="$destination" ignored="this.ship" sector="$homeSector" />
 
           <set_value name="$targetPreviousDistanceTo" exact="$targetDistanceTo" />
 
@@ -1206,7 +1193,7 @@
 
       <set_value name="$targetDistanceTo" exact="this.ship.distanceto.{$target}" />
 
-      <do_if value="$target.exists and not $target.iswreck and $target.sector == $homeLocation.sector">
+      <do_if value="$target.exists and not $target.iswreck and $target.sector == $homeSector">
         <do_if value="not $targetOptimalDistanceForAttack? or $targetDistanceTo le $targetOptimalDistanceForAttack">
           <debug_to_file directory="'protectsector'" name="'debug_'  + this.ship.idcode + '_' + this.ship"
             text="'[%s at %s, %s] - Run order.fight.attack.object : %s {%s} status: iswreck: %s, isoperational: %s,  pilot: %s (%s), distance - %s, acceptable distance - %s'
@@ -1265,7 +1252,7 @@
                 $targetOptimalDistanceForAttack
               ]" output="true" append="true" />
 
-          <do_if value="$target.exists and not $target.iswreck and $pursueFleeingTarget and $target.sector == $homeLocation.sector">
+          <do_if value="$target.exists and not $target.iswreck and $pursueFleeingTarget and $target.sector == $homeSector">
             <resume label="targetApproaching" />
           </do_if>
           <do_else>
