@@ -23,7 +23,7 @@
                 <param name="parkInCenterOfSector" value="$orderdef.$parkInCenterOfSector" />
                 <param name="delayBetweenScans" value="$orderdef.$delayBetweenScans" />
                 <param name="recordActionsToLogBook" value="$orderdef.$recordActionsToLogBook" /> 
-                
+                <param name="isStartedByPlayer" value="false" />
               </create_order>              
             </do_if>
             <do_else>
