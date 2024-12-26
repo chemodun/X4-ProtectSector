@@ -1,40 +1,35 @@
 [size=5][u]Protect Sector[/u][/size]
 
 This extension allows you to protect a sector from being harassed by hostile ships.
-This is useful when you want to prevent hostile ships to attack your ships and stations. Or when you want to prevent from building in a sector. 
+This is useful when you want to prevent hostile ships to attack your ships and stations. Or when you want to prevent from building in a sector.
 
-Always the closest possible target will be selected to attack. 
-
+[size=4][u]General information[/u][/size]
+Always the closest possible target will be selected to attack.
+Several ships/fleets with one order can work in one sector.
+Not recommended to use single ship - the fleet is always better.
+[b]Mimic[/b] order in a fleet is fully supported. But, again, not set single ship to mimic mode - use the fleet instead.
 
 [size=4][u]Compatibility[/u][/size]
 Compatible with [u]X4: Foundations 7.1[/u]. At least it written and tested with this version.
 
-
 [size=4][u]Executing the order[/u][/size]
-
 You can select the order as any other, like "Protect Station" or "Protect Ship", from the "Combat" section of  orders.
 Please be aware - this order required the ship captain to have at least two stars in the "Pilot" skill.
 
-
 [size=4][u]Configuration[/u][/size]
-
 There are a several configuration options available. You can see all of them on a screenshot.
-
+[img]https://staticdelivery.nexusmods.com/mods/2659/images/1566/1566-1734721806-1598864116.jpeg[/img]
 
 [size=3][u]Home Sector[/u][/size]
 This is a sector which will be protected. You can select it from the list of discovered sectors.
 If you select not current sector, the ship will fly to the selected sector to some "safe" point before to start protecting it.
-
-It can be any known sector, even if it is not yours. 
-
+It can be any known sector, even if it is not yours.
 
 [size=3][u]Attack Stations[/u][/size]
 [b]Disabled[/b] by default.
-
 If enabled, hostile stations in the protected sector will be attacked by ship and his squad.
 It uses the specific logic to attack stations - equal to "Coordinate Attack" from the context menu.
 With only one exception - the syncpoint will not be created. So, all squad ships will form the similar order but will not wait for each other.
-
 
 [size=3][u]Attack Ships[/u][/size]
 You can select exact ship types:
@@ -44,98 +39,67 @@ You can select exact ship types:
 [*] M - [b]Enabled[/b] by default
 [*] S - [b]Enabled[/b] by default
 [/list]
-
-By default, the S and M ships are selected. 
-
+By default, the S and M ships are selected.
 If it will find a hostile squad - it will not be attacked, if it contains at least one ship of the type higher than highest selected one.
-
 
 [size=3][u]Attack farther from stations[/u][/size]
 There is a slider to define a minimal distance from the possible target to the hostile station. If the distance is less than the defined value, the ship will be selected as a target.
 If value is 0 - the distance will not be checked.
 
-
 [size=3][u]Attack only visible targets[/u][/size]
 [b]Enabled[/b] by default.
-
-Used to prevent the ship from attacking the target, which is not revealed yet or not visible for the player. 
+Used to prevent the ship from attacking the target, which is not revealed yet or not visible for the player.
 
 It has slightly different behavior for stations and ships:
 - For stations - the station should be visible on a map. So - it has to be revealed, but it is not required to be in a live view, i.e. in radar range of your ships, stations, satellites, etc.
 - For ships - the ship should be visible online. So - it has to be in a radar range of your ships, stations, satellites, etc.
 
-
 [size=3][u]Attack only hostile targets[/u][/size]
 [b]Enabled[/b] by default.
-
 If enabled, the ship will attack only hostile targets. It will use the appropriate command to filter the targets.
 
-
 [size=3][u]Protect our ships and stations in sector[/u][/size]
-
 [b]Enabled[/b] by default.
-
 If enabled, the ship will react on the event when the player's ships or stations are attacked in the sector. It will try to protect them by attacking the hostile ships.
 
-
 [size=3][u] - except military ships[/u][/size]
-
 [b]Enabled[/b] by default.
-
 If enabled, the ship will not protect the military ships. It will not attack the hostile ships, which are attacking the military ships.
-
 
 [size=3][u]Pursue fleeing targets[/u][/size]
 [b]Disabled[/b] by default.
-
-If enabled, the ship will pursue the target, which is trying to flee after is being attacked. 
-
+If enabled, the ship will pursue the target, which is trying to flee after is being attacked.
 
 [size=3][u]Share target with other[/u][/size]
 [b]Enabled[/b] by default.
-
 If you have more than one ship or squad with the same order, you can disable this option to prevent them from attacking the same target.
-
 
 [size=3][u]Preserve shield energy[/u][/size]
 [b]Disabled[/b] by default.
-
 If enabled, the ship will not use the boosters to increase the speed. It will try to preserve the shield energy.
-
 
 [size=3][u]Disable on destruction threat[/u][/size]
 It is a percentage of hull to make this order disabled.
-
 By default, it is [b]40 percent[/b]. To disable this check - set it to 0.
-
 If set to non-zero value, the ship will stop attack and protecting when hull is less than desired percent and will try to flee.
 
 [size=3][u]Park at sector core[/u][/size]
 [b]Disabled[/b] by default.
-
 If enabled, the ship will try to park at the sector core, when it is not targets to fight against.
 
 [size=3][u]Delay between scans, seconds[/u][/size]
-
 Default value is [b]4 seconds[/b].
 If you want - you can set it in between 1 and 90 seconds, with step 4 seconds. Bigger value will make less load on the CPU...
 
 [size=3][u]Record to logbook[/u][/size]
-
 [b]Enabled[/b] by default.
-
-If enabled, the ship will record the events to the logbook. I.e. starts, travel to desired sector, flying to the target, attacking the target, destroying the target, etc. 
-
+If enabled, the ship will record the events to the logbook. I.e. starts, travel to desired sector, flying to the target, attacking the target, destroying the target, etc.
 
 [size=4][u]Situation when nothing to attack[/u][/size]
 If no Attack target is selected (i.e. no station and no any ship types are selected) - the ship's captain will periodically call to the player to inform about absence of the order.
 
-
 [size=4][u]Special Thanks[/u][/size]
-
-Special thanks to the pilot [url=https://www.nexusmods.com/x4foundations/users/62117576]Assailer[/url] for his awesome script [url=https://www.nexusmods.com/x4foundations/mods/767?tab=description]"Sector Patrol"[/url] which was used as a base for this one. 
-
+Special thanks to the pilot [url=https://www.nexusmods.com/x4foundations/users/62117576]Assailer[/url] for his awesome script [url=https://www.nexusmods.com/x4foundations/mods/767?tab=description]"Sector Patrol"[/url] which was used as a base for this one.
 
 [size=4][u]Links[/u][/size]
-
 There is a thread on EgoSoft forum - [url=https://forum.egosoft.com/viewtopic.php?p=5257237][Mod/AIScript] Order "Protect Sector"[/url]

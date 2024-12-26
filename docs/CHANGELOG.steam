@@ -1,5 +1,11 @@
 [h1]Changelog[/h1]
 
+[h2][1.03] - 2024-12-26[/h2]
+[h3]Added[/h3]
+- Added possibility to use the [b]Protect Sector[/b] order in the fleet mode with the [b]Mimic[/b] order.
+[h3]Improved[/h3]
+- Improved the target separation in case of "sharing" is disabled - variable wait is solve the problem with the same target selection.
+
 [h2][1.02] - 2024-12-20[/h2]
 [h3]Added[/h3]
 - Added parameter to set exact delay between scans.
@@ -13,11 +19,9 @@
 [h3]Added[/h3]
 - Added option to protect ships and stations in the desired sector via reaction on attacks on them by hostile ships.
 - Added option to record events to the logbook, including starts, travel to desired sector, flying to the target, attacking the target, destroying the target, etc.
-
 [h3]Changed[/h3]
 - Between scans it uses [u]move.idle[/u] script.
 - Changed the type of option to disable on destruction threat: from boolean to the percentage of hull to make this order disabled.
-
 [h3]Improved[/h3]
 - Approaching to the target is rewritten.
 - Attack of the ship is now under control of the [u]order.fight.attack.object[/u] script..

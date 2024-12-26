@@ -1,36 +1,35 @@
-# Changelog
+[size=150][u]Changelog[/u][/size]
 
-## [1.03] - 2024-12-26
-### Added
-- Added possibility to use the `Protect Sector` order in the fleet mode with the `Mimic` order.
-### Improved
-- Improved the target separation in case of  "sharing" is disabled - variable wait is solve the problem with the same target selection.
+[size=120][u][1.03] - 2024-12-26[/u][/size]
+[size=100][u]Added[/u][/size]
+- Added possibility to use the [b]Protect Sector[/b] order in the fleet mode with the [b]Mimic[/b] order.
+[size=100][u]Improved[/u][/size]
+- Improved the target separation in case of "sharing" is disabled - variable wait is solve the problem with the same target selection.
 
-
-## [1.02] - 2024-12-20
-### Added
+[size=120][u][1.02] - 2024-12-20[/u][/size]
+[size=100][u]Added[/u][/size]
 - Added parameter to set exact delay between scans.
-### Fixed
+[size=100][u]Fixed[/u][/size]
 - Fixed a bug with approaching to the target - if it has equal speeds the catching is never happened.
 - Added additional small delay in the approaching routine to prevent freezing
-### Improved
+[size=100][u]Improved[/u][/size]
 - Improved the experience gaining
 
-
-## [1.01] - 2024-12-13
-### Added
+[size=120][u][1.01] - 2024-12-13[/u][/size]
+[size=100][u]Added[/u][/size]
 - Added option to protect ships and stations in the desired sector via reaction on attacks on them by hostile ships.
 - Added option to record events to the logbook, including starts, travel to desired sector, flying to the target, attacking the target, destroying the target, etc.
-### Changed
-- Between scans it uses `move.idle` script.
+
+[size=100][u]Changed[/u][/size]
+- Between scans it uses [u]move.idle[/u] script.
 - Changed the type of option to disable on destruction threat: from boolean to the percentage of hull to make this order disabled.
-### Improved
+
+[size=100][u]Improved[/u][/size]
 - Approaching to the target is rewritten.
-- Attack of the ship is now under control of the `order.fight.attack.object` script.
+- Attack of the ship is now under control of the [u]order.fight.attack.object[/u] script.
 
-
-## [1.00] - 2024-12-06
-### Added
+[size=120][u][1.00] - 2024-12-06[/u][/size]
+[size=100][u]Added[/u][/size]
 - Initial release of the Protect Sector extension.
 - Allows protection of a sector from hostile ships.
 - Configuration options for home sector, attack stations, attack ships, attack farther from stations, attack only visible targets, attack only hostile targets, pursue fleeing targets, share target with other, preserve shield energy, and disable on destruction threat.

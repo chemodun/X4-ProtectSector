@@ -1,5 +1,11 @@
 [size=5][u]Changelog[/u][/size]
 
+[size=4][u][1.03] - 2024-12-26[/u][/size]
+[size=3][u]Added[/u][/size]
+- Added possibility to use the [b]Protect Sector[/b] order in the fleet mode with the [b]Mimic[/b] order.
+[size=3][u]Improved[/u][/size]
+- Improved the target separation in case of "sharing" is disabled - variable wait is solve the problem with the same target selection.
+
 [size=4][u][1.02] - 2024-12-20[/u][/size]
 [size=3][u]Added[/u][/size]
 - Added parameter to set exact delay between scans.

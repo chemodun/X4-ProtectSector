@@ -74,10 +74,7 @@
             @$scriptVersion
           ]" debugchance="100"/>
           <check_any>
-          <check_value value="@$scriptVersion lt 103" />
-          <!-- to remove before production -->
-          <check_value value="@$do_reset lt 5" />
-          <!-- to remove before production -->
+            <check_value value="@$scriptVersion lt 103" />
           </check_any>
         </check_all>
       </conditions>
@@ -164,31 +161,6 @@
             <param name="debugchance" value="$debugchance" />
           </create_order>
         </do_elseif>
-        <do_else>
-          <cancel_all_orders object="this.ship" />
-          <create_order object="this.ship" id="'ProtectSector'" default="true">
-            <param name="homeSector" value="if $homeSector.isclass.sector then $homeSector else $homeSector.sector" />
-            <param name="attackStations" value="$attackStations" />
-            <param name="attackShipsXL" value="$attackShipsXL" />
-            <param name="attackShipsL" value="$attackShipsL" />
-            <param name="attackShipsM" value="$attackShipsM" />
-            <param name="attackShipsS" value="$attackShipsS" />
-            <param name="attackShipsOutOfStationsDistance" value="$attackShipsOutOfStationsDistance" />
-            <param name="attackVisibleOnly" value="$attackVisibleOnly" />
-            <param name="attackHostileOnly" value="$attackHostileOnly" />
-            <param name="pursueFleeingTarget" value="$pursueFleeingTarget" />
-            <param name="protectPlayerShipsInSector" value="$protectPlayerShipsInSector" />
-            <param name="protectOnlyNonMilitaryShips" value="$protectOnlyNonMilitaryShips" />
-            <param name="shareTargetsBetweenFleets" value="$shareTargetsBetweenFleets" />
-            <param name="shieldsPreserveOnFlight" value="$shieldsPreserveOnFlight" />
-            <param name="breakOnDestructionPercentage" value="$breakOnDestructionPercentage" />
-            <param name="parkInCenterOfSector" value="$parkInCenterOfSector" />
-            <param name="delayBetweenScans" value="$delayBetweenScans" />
-            <param name="recordActionsToLogBook" value="$recordActionsToLogBook" />
-            <param name="isStartedByPlayer" value="false" />
-            <param name="debugchance" value="$debugchance" />
-          </create_order>
-        </do_else>
       </actions>
     </handler>
     <handler>
@@ -327,9 +299,7 @@
     </handler>
   </interrupts>
   <init>
-    <!-- to remove before production -->
-    <set_value name="$do_reset" exact="5" />
-    <!-- to remove before production -->
+    <set_value name="$do_reset" exact="0" />
     <set_value name="$scriptVersion" exact="103" />
 
     <set_value name="$oneSecond" exact="1s"/>
