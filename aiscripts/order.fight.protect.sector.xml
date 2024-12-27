@@ -75,6 +75,7 @@
           ]" debugchance="100"/>
           <check_any>
             <check_value value="@$scriptVersion lt 103" />
+            <check_value value="$do_reset lt 10" />
           </check_any>
         </check_all>
       </conditions>
@@ -156,6 +157,31 @@
             <param name="breakOnDestructionPercentage" value="$breakOnDestructionPercentage" />
             <param name="parkInCenterOfSector" value="$parkInCenterOfSector" />
             <param name="delayBetweenScans" value="if $delayBetweenScans == 4s then 4 else $delayBetweenScans" />
+            <param name="recordActionsToLogBook" value="$recordActionsToLogBook" />
+            <param name="isStartedByPlayer" value="false" />
+            <param name="debugchance" value="$debugchance" />
+          </create_order>
+        </do_elseif>
+        <do_elseif value="do_reset lt 10">
+          <cancel_all_orders object="this.ship" />
+          <create_order object="this.ship" id="'ProtectSector'" default="true">
+            <param name="homeSector" value="if $homeSector.isclass.sector then $homeSector else $homeSector.sector" />
+            <param name="attackStations" value="$attackStations" />
+            <param name="attackShipsXL" value="$attackShipsXL" />
+            <param name="attackShipsL" value="$attackShipsL" />
+            <param name="attackShipsM" value="$attackShipsM" />
+            <param name="attackShipsS" value="$attackShipsS" />
+            <param name="attackShipsOutOfStationsDistance" value="$attackShipsOutOfStationsDistance" />
+            <param name="attackVisibleOnly" value="$attackVisibleOnly" />
+            <param name="attackHostileOnly" value="$attackHostileOnly" />
+            <param name="pursueFleeingTarget" value="$pursueFleeingTarget" />
+            <param name="protectPlayerShipsInSector" value="$protectPlayerShipsInSector" />
+            <param name="protectOnlyNonMilitaryShips" value="$protectOnlyNonMilitaryShips" />
+            <param name="shareTargetsBetweenFleets" value="$shareTargetsBetweenFleets" />
+            <param name="shieldsPreserveOnFlight" value="$shieldsPreserveOnFlight" />
+            <param name="breakOnDestructionPercentage" value="$breakOnDestructionPercentage" />
+            <param name="parkInCenterOfSector" value="$parkInCenterOfSector" />
+            <param name="delayBetweenScans" value="$delayBetweenScans" />
             <param name="recordActionsToLogBook" value="$recordActionsToLogBook" />
             <param name="isStartedByPlayer" value="false" />
             <param name="debugchance" value="$debugchance" />
@@ -299,7 +325,7 @@
     </handler>
   </interrupts>
   <init>
-    <set_value name="$do_reset" exact="0" />
+    <set_value name="$do_reset" exact="10" />
     <set_value name="$scriptVersion" exact="103" />
 
     <set_value name="$oneSecond" exact="1s"/>
@@ -421,6 +447,8 @@
     <do_if value="not $debugChance? or $debugChance == null">
       <set_value name="$debugChance" exact="100" />
     </do_if>
+
+    <set_value name="$idleDelay" exact="$delayBetweenScansInSeconds" />
 
   </init>
 
@@ -772,13 +800,10 @@
           <param name="interactive" value="false" />
         </run_script>
 
-        <run_script name="'move.idle'">
-          <param name="Min" value="3min" />
-          <param name="Max" value="5min" />
-        </run_script>
+        <set_value name="$idleDelay" min="3min" max="5min"/>
 
+        <resume label="goingIdle" />
 
-        <resume label="targetSearching" />
       </do_elseif>
       <do_if value="$attackStations">
 
@@ -974,21 +999,34 @@
 
       <!-- IDLE ************************************************************************ -->
 
+      <label name="goingIdle" />
+
       <do_if value="$parkInCenterOfSector and (not @$parkedInCenterOfSector)">
 
         <create_orientation name="$orientation" orientation="look_at" refposition="$parkingPosition">
           <position object="this.ship" />
         </create_orientation>
 
+        <set_value name="$interruptAfterTime" min="[50s, $idleDelay].min" max="[50s, $idleDelay].max"/>
+        <set_value name="$parkingTimestamp" exact="player.age" />
+
         <move_to object="this.ship" destination="this.ship.sector" abortpath="true" forcerotation="true" forceposition="true" uselocalhighways="false" boost="true" travel="true">
           <position value="$parkingPosition" />
           <rotation value="$orientation" />
-          <interrupt_after_time time="50s" />
+          <interrupt_after_time time="$interruptAfterTime" />
         </move_to>
 
         <do_if value="this.ship.distanceto.{$parkingPosition} le 5km">
           <set_value name="$parkedInCenterOfSector" exact="true" />
         </do_if>
+
+        <do_if value="$parkedInCenterOfSector and $idleDelay - (player.age - $parkingTimestamp) gt 10s">
+          <set_value name="$idleDelay" exact="$idleDelay - (player.age - $parkingTimestamp)" />
+        </do_if>
+        <do_else>
+          <resume label="targetSearching" />
+        </do_else>
+
       </do_if>
       <do_else>
         <do_if value="this.ship.speed">
@@ -996,20 +1034,15 @@
         </do_if>
       </do_else>
 
-      <do_if value="$protectPlayerShipsInSector">
+      <run_script name="'move.idle'">
+        <param name="Min" value="[30s, $idleDelay].min" />
+        <param name="Max" value="[30s, $idleDelay].max" />
+        <param name="anchorpos_sector" value="if $parkInCenterOfSector then @$parkingPosition else null" />
+        <param name="MaxDistance" value="20km"/>
+        <param name="debugchance" value="100"/>
+      </run_script>
 
-        <run_script name="'move.idle'">
-          <param name="Min" value="[30s, $delayBetweenScansInSeconds].min" />
-          <param name="Max" value="[30s, $delayBetweenScansInSeconds].max" />
-          <param name="anchorpos_sector" value="@$parkingPosition" />
-          <param name="MaxDistance" value="20km"/>
-          <param name="debugchance" value="100"/>
-        </run_script>
-
-      </do_if>
-      <do_else>
-        <wait exact="$delayBetweenScansInSeconds"/>
-      </do_else>
+      <set_value name="$idleDelay" exact="$delayBetweenScansInSeconds" />
 
       <resume label="targetSearching" />
 
@@ -1152,8 +1185,7 @@
       </do_if>
       <do_else>
 
-        <wait exact="$delayBetweenScansInSeconds"/>
-        <resume label="targetSearching" />
+        <resume label="goingIdle" />
 
       </do_else>
 
@@ -1235,9 +1267,7 @@
         </do_else>
       </do_if>
 
-      <wait exact="$delayBetweenScansInSeconds"/>
-
-      <resume label="targetSearching" />
+      <resume label="goingIdle" />
 
       <!-- HOME ********************************************************************************* -->
       <label name="flightToHomeSector" />
@@ -1263,7 +1293,7 @@
         <position value="$destinationAtHome" min="5km" max="6km" />
       </move_to>
 
-      <wait exact="$delayBetweenScansInSeconds"/>
+      <wait min="5ms" max="15ms" profile="flat" />
 
       <resume label="targetSearching" />
     </actions>
