@@ -162,7 +162,7 @@
             <param name="debugchance" value="$debugchance" />
           </create_order>
         </do_elseif>
-        <do_elseif value="$do_reset lt 10">
+        <do_else>
           <cancel_all_orders object="this.ship" />
           <create_order object="this.ship" id="'ProtectSector'" default="true">
             <param name="homeSector" value="if $homeSector.isclass.sector then $homeSector else $homeSector.sector" />
@@ -186,7 +186,7 @@
             <param name="isStartedByPlayer" value="false" />
             <param name="debugchance" value="$debugchance" />
           </create_order>
-        </do_elseif>
+        </do_else>
       </actions>
     </handler>
     <handler>
@@ -1001,6 +1001,10 @@
 
       <label name="goingIdle" />
 
+      <do_if value="$idleDelay?" negate="true">
+        <resume label="targetSearching" />
+      </do_if>
+
       <do_if value="$parkInCenterOfSector and (not @$parkedInCenterOfSector)">
 
         <create_orientation name="$orientation" orientation="look_at" refposition="$parkingPosition">
@@ -1134,11 +1138,11 @@
             <interrupt>
               <conditions>
                 <check_any>
-                  <event_object_changed_zone object="$target" />
-                  <event_object_destroyed object="$target" />
-                  <event_object_abandoned object="$target" />
-                  <event_object_changed_sector object="$target" />
-                  <event_object_target_invalid object="this.ship" />
+                  <event_object_changed_zone group="$targets" />
+                  <event_object_destroyed group="$targets" />
+                  <event_object_abandoned group="$targets" />
+                  <event_object_changed_sector group="$targets" />
+                  <event_object_target_invalid group="$targets" />
                 </check_any>
               </conditions>
               <actions>
