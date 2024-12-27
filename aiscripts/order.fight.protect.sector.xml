@@ -162,7 +162,7 @@
             <param name="debugchance" value="$debugchance" />
           </create_order>
         </do_elseif>
-        <do_elseif value="do_reset lt 10">
+        <do_elseif value="$do_reset lt 10">
           <cancel_all_orders object="this.ship" />
           <create_order object="this.ship" id="'ProtectSector'" default="true">
             <param name="homeSector" value="if $homeSector.isclass.sector then $homeSector else $homeSector.sector" />
