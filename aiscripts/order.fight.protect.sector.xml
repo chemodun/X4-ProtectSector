@@ -1023,6 +1023,9 @@
         <do_if value="this.ship.distanceto.{$parkingPosition} le 5km">
           <set_value name="$parkedInCenterOfSector" exact="true" />
         </do_if>
+        <do_else>
+          <set_value name="$parkedInCenterOfSector" exact="false" />
+        </do_else>
 
         <do_if value="$parkedInCenterOfSector and $idleDelay - (player.age - $parkingTimestamp) gt 10s">
           <set_value name="$idleDelay" exact="$idleDelay - (player.age - $parkingTimestamp)" />
