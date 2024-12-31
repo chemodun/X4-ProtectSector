@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="iso-8859-1"?>
-<aiscript name="order.fight.protect.sector" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="aiscripts.xsd" version="103">
+<aiscript name="order.fight.protect.sector" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="aiscripts.xsd" version="104">
   <order id="ProtectSector" name="{1972092401, 1}" description="{1972092401, 2}" category="combat" infinite="true">
     <params>
       <param name="homeSector" default="if this.ship.jobmainsector? then this.ship.jobmainsector else this.ship.sector" type="sector" required="true" text="{1972092401, 101}" />
@@ -75,7 +75,6 @@
           ]" debugchance="100"/>
           <check_any>
             <check_value value="@$scriptVersion lt 103" />
-            <check_value value="$do_reset lt 10" />
           </check_any>
         </check_all>
       </conditions>
@@ -162,31 +161,6 @@
             <param name="debugchance" value="$debugchance" />
           </create_order>
         </do_elseif>
-        <do_else>
-          <cancel_all_orders object="this.ship" />
-          <create_order object="this.ship" id="'ProtectSector'" default="true">
-            <param name="homeSector" value="if $homeSector.isclass.sector then $homeSector else $homeSector.sector" />
-            <param name="attackStations" value="$attackStations" />
-            <param name="attackShipsXL" value="$attackShipsXL" />
-            <param name="attackShipsL" value="$attackShipsL" />
-            <param name="attackShipsM" value="$attackShipsM" />
-            <param name="attackShipsS" value="$attackShipsS" />
-            <param name="attackShipsOutOfStationsDistance" value="$attackShipsOutOfStationsDistance" />
-            <param name="attackVisibleOnly" value="$attackVisibleOnly" />
-            <param name="attackHostileOnly" value="$attackHostileOnly" />
-            <param name="pursueFleeingTarget" value="$pursueFleeingTarget" />
-            <param name="protectPlayerShipsInSector" value="$protectPlayerShipsInSector" />
-            <param name="protectOnlyNonMilitaryShips" value="$protectOnlyNonMilitaryShips" />
-            <param name="shareTargetsBetweenFleets" value="$shareTargetsBetweenFleets" />
-            <param name="shieldsPreserveOnFlight" value="$shieldsPreserveOnFlight" />
-            <param name="breakOnDestructionPercentage" value="$breakOnDestructionPercentage" />
-            <param name="parkInCenterOfSector" value="$parkInCenterOfSector" />
-            <param name="delayBetweenScans" value="$delayBetweenScans" />
-            <param name="recordActionsToLogBook" value="$recordActionsToLogBook" />
-            <param name="isStartedByPlayer" value="false" />
-            <param name="debugchance" value="$debugchance" />
-          </create_order>
-        </do_else>
       </actions>
     </handler>
     <handler>
@@ -325,8 +299,7 @@
     </handler>
   </interrupts>
   <init>
-    <set_value name="$do_reset" exact="10" />
-    <set_value name="$scriptVersion" exact="103" />
+    <set_value name="$scriptVersion" exact="104" />
 
     <set_value name="$oneSecond" exact="1s"/>
     <set_value name="$delayBetweenScansInSeconds" exact="$oneSecond * $delayBetweenScans" />
@@ -451,7 +424,17 @@
     <set_value name="$idleDelay" exact="$delayBetweenScansInSeconds" />
 
   </init>
-
+  <patch sinceversion="104">
+    <set_value name="$idleDelay" exact="$delayBetweenScansInSeconds" />
+    <debug_to_file directory="'protectsector'" name="'debug_'  + this.ship.idcode + '_' + this.ship"
+      text="'[%s at %s, %s]  - Patched for version 104. Debug chance: %s'
+        .[
+          this.ship.debugname,
+          this.ship.sector.knownname,
+          this.ship.fleet.name,
+          $debugchance
+        ]" output="true" append="true" />
+  </patch>
   <attention min="unknown">
     <actions>
       <!-- START ******************************************************************************* -->
@@ -459,7 +442,7 @@
       <label name="start" />
 
       <do_if value="not $homeLocation? or not $homeLocation.isclass.zone">
-        <set_value name="$homeLocation" exact="this.ship.zone" />
+        <find_zone name="$homeLocation" space="$homeSector" normalzone="true" sortbydistanceto="this.ship" />
         <wait min="500ms" max="1s" />
         <resume label="flightToHomeSector" />
       </do_if>

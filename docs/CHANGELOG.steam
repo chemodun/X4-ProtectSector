@@ -1,5 +1,9 @@
 [h1]Changelog[/h1]
 
+[h2][1.04] - 2024-12-31[/h2]
+[h3]Fixed[/h3]
+- Slow floating to sector center when the "Park at sector core" is not enabled.
+
 [h2][1.03] - 2024-12-26[/h2]
 [h3]Added[/h3]
 - Added possibility to use the [b]Protect Sector[/b] order in the fleet mode with the [b]Mimic[/b] order.

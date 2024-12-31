@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.04] - 2024-12-31
+### Fixed
+- Slow floating to sector center when the "Park at sector core" is not enabled.
+
 ## [1.03] - 2024-12-26
 ### Added
 - Added possibility to use the `Protect Sector` order in the fleet mode with the `Mimic` order.
