@@ -103,11 +103,11 @@ If enabled, the ship will not use the boosters to increase the speed. It will tr
 
 ### Disable on destruction threat
 
-It is a percentage of hull to make this order disabled.
+It is a percentage of hull of the target to make this order disabled. Useful when you want to achieve more abandoned ships.
 
 By default, it is `40 percent`. To disable this check - set it to 0.
 
-If set to non-zero value, the ship will stop attack and protecting when hull is less than desired percent and will try to flee.
+If set to non-zero value, the ship will stop attacking when hull is less than desired percent.
 
 ### Park at sector core
 
