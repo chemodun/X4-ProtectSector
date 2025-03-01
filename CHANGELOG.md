@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.06] - 2025-03-01
+
+### Fixed
+
+- The Lost Ship Replacement not always works correctly.
+
 ## [1.05] - 2025-03-01
 
 ### Added
