@@ -20,10 +20,11 @@
       <t id="141">Compartilhar alvo com outros - se definido, permitirá atacar um alvo por diferentes Protetores de Setor</t>
       <t id="151">Relação máxima própria</t>
       <t id="152">Relação negativa máxima - ou seja, naves com relação de -30 ao valor selecionado serão consideradas hostis</t>
-      <t id="161">Preservar energia do escudo</t>
-      <t id="171">Desativar em ameaça de destruição</t>
+      <t id="161">Evitar o uso de propulsores</t>
+      <t id="171">Abandonar alvo com percentagem de casco</t>
       <t id="181">Estacionar no núcleo do setor</t>
       <t id="191">Intervalo entre varreduras, segundos</t>
+      <t id="201">Distância de ataque: porcentagem do alcance do radar</t>
       <t id="901">Registrar no diário de bordo</t>
       <t id="1000">..: Proteger Setor :..</t>
       <t id="1001">nave</t>
@@ -42,7 +43,7 @@
       <t id="1041">%s: %s em %s foi destruído por %s</t>
       <t id="1042">%s: %s em %s foi abandonado</t>
       <t id="1043">%s: %s foi deixado %s</t>
-      <t id="1044">%s: %s em %s é muito rápido</t>      
+      <t id="1044">%s: %s em %s é muito rápido</t>
     </page>
   </add>
 </diff>

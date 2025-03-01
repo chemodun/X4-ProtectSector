@@ -19,10 +19,11 @@
       <t id="141">Share target with other - if set, will give possibility to attack one target by different Sector Protectors</t>
       <t id="151">Own max. relation </t>
       <t id="152">Max. negative relation - I.e. ships with relation from -30 to selected value will be assumed as hostile</t>
-      <t id="161">Preserve shield energy</t>
-      <t id="171">Disable on destruction threat</t>
+      <t id="161">Avoid boosters usage</t>
+      <t id="171">Leave target with hull percentage</t>
       <t id="181">Park at sector core</t>
       <t id="191">Delay between scans, seconds</t>
+      <t id="201">Attack distance: percentage of radar range</t>
       <t id="901">Record to logbook</t>
       <t id="1000">..: Protect Sector :..</t>
       <t id="1001">ship</t>

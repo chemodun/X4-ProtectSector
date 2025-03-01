@@ -8,7 +8,7 @@
       <t id="101">Heimatsektor</t>
       <t id="111">Stationen angreifen</t>
       <t id="121">XL-Schiffe angreifen</t>
-      <t id="122">L-Schiffe angreifen</t>    
+      <t id="122">L-Schiffe angreifen</t>
       <t id="123">M-Schiffe angreifen</t>
       <t id="124">S-Schiffe angreifen</t>
       <t id="129">Weiter von Stationen angreifen - wenn das feindliche Schiff näher als der ausgewählte Wert an der feindlichen Station ist, wird es nicht angegriffen</t>
@@ -16,14 +16,15 @@
       <t id="132">Nur feindliche Ziele angreifen</t>
       <t id="133">Fliehende Ziele verfolgen</t>
       <t id="134">Schütze unsere Schiffe und Stationen im Sektor</t>
-      <t id="135"> - außer Militärschiffe</t>      
+      <t id="135"> - außer Militärschiffe</t>
       <t id="141">Ziel mit anderen teilen - wenn aktiviert, können verschiedene Sektorschützer dasselbe Ziel angreifen</t>
       <t id="151">Eigene maximale Beziehung</t>
       <t id="152">Max. negative Beziehung - d.h. Schiffe mit einer Beziehung von -30 bis zum ausgewählten Wert werden als feindlich angesehen</t>
-      <t id="161">Energie des Schildes bewahren</t>
-      <t id="171">Bei Zerstörungsgefahr deaktivieren</t>
+      <t id="161">Booster-Nutzung vermeiden</t>
+      <t id="171">Ziel verlassen bei Hüllenstärke-Prozentsatz</t>
       <t id="181">Im Sektorkern parken</t>
       <t id="191">Verzögerung zwischen Scans, Sekunden</t>
+      <t id="201">Angriffsreichweite: Prozentsatz der Radarreichweite</t>
       <t id="901">Im Logbuch aufzeichnen</t>
       <t id="1000">..: Sektor schützen :..</t>
       <t id="1001">Schiff</t>

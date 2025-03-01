@@ -16,14 +16,15 @@
       <t id="132">Atacar solo objetivos hostiles</t>
       <t id="133">Perseguir objetivos en fuga</t>
       <t id="134">Proteger nuestras naves y estaciones en el sector</t>
-      <t id="135"> - excepto naves militares</t>      
+      <t id="135"> - excepto naves militares</t>
       <t id="141">Compartir objetivo con otros - si está activado, permitirá que diferentes Protectores de Sector ataquen un mismo objetivo</t>
       <t id="151">Relación máxima propia</t>
       <t id="152">Relación negativa máxima - es decir, las naves con una relación de -30 al valor seleccionado serán consideradas hostiles</t>
-      <t id="161">Preservar energía del escudo</t>
-      <t id="171">Desactivar en caso de amenaza de destrucción</t>
+      <t id="161">Evitar el uso de propulsores</t>
+      <t id="171">Abandonar objetivo con porcentaje de casco</t>
       <t id="181">Aparcar en el núcleo del sector</t>
       <t id="191">Retraso entre escaneos, segundos</t>
+      <t id="201">Distancia de ataque: porcentaje del alcance del radar</t>
       <t id="901">Registrar en el libro de registro</t>
       <t id="1000">..: Proteger el Sector :..</t>
       <t id="1001">nave</t>
@@ -42,7 +43,7 @@
       <t id="1041">%s: %s en %s es destruido por %s</t>
       <t id="1042">%s: %s en %s ha sido abandonado</t>
       <t id="1043">%s: %s ha sido dejado %s</t>
-      <t id="1044">%s: %s en %s es demasiado rápido</t>      
+      <t id="1044">%s: %s en %s es demasiado rápido</t>
     </page>
   </add>
 </diff>

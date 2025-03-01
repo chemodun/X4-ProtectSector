@@ -1,14 +1,16 @@
 <?xml version="1.0" encoding="iso-8859-1"?>
-<aiscript name="order.fight.protect.sector" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="aiscripts.xsd" version="104">
+<aiscript name="order.fight.protect.sector" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="aiscripts.xsd" version="105">
   <order id="ProtectSector" name="{1972092401, 1}" description="{1972092401, 2}" category="combat" infinite="true">
     <params>
-      <param name="homeSector" default="if this.ship.jobmainsector? then this.ship.jobmainsector else this.ship.sector" type="sector" required="true" text="{1972092401, 101}" />
+      <param name="homeSector" default="if this.ship.jobmainsector? then this.ship.jobmainsector else this.ship.sector" type="sector" required="true" text="{1972092401, 101}" >
+        <patch sinceversion="102" early="true" setvariable="true" value="if $homeSector.isclass.sector then $homeSector else $homeSector.sector" comment="Added patch to set default value" />
+      </param>
       <param name="attackStations" type="bool" default="false" text="{1972092401, 111}" />
       <param name="attackShipsXL" type="bool" default="false" text="{1972092401, 121}" />
       <param name="attackShipsL" type="bool" default="false" text="{1972092401, 122}" />
       <param name="attackShipsM" type="bool" default="true" text="{1972092401, 123}" />
       <param name="attackShipsS" type="bool" default="true" text="{1972092401, 124}" />
-      <param name="attackShipsOutOfStationsDistance" type="length" default="0km" text="{1972092401, 129}" comment="Maximal negative relation to be attacked (from -30 to 0)">
+      <param name="attackShipsOutOfStationsDistance" type="length" default="0km" text="{1972092401, 129}" comment="Minimal acceptable distance to the enemy station">
         <input_param name="min" value="0km" />
         <input_param name="max" value="30km" />
         <input_param name="step" value="1km" />
@@ -26,11 +28,20 @@
         <input_param name="max" value="30" />
         <input_param name="step" value="1" />
       </param> -->
-      <param name="shieldsPreserveOnFlight" type="bool" default="false" text="{1972092401, 161}" />
-      <param name="breakOnDestructionPercentage" type="number" default="40" text="{1972092401, 171}">
+      <param name="attackDistanceAsPercentageOfRadarRange" type="number" default="70" text="{1972092401, 201}">
+        <input_param name="min" value="10" />
+        <input_param name="max" value="90" />
+        <input_param name="step" value="5" />
+        <patch sinceversion="105" early="true" setvariable="true" value="70" condition="@$attackDistanceAsPercentageOfRadarRange == null" comment="Added patch to set default value" />
+      </param>
+      <param name="shieldsPreserveOnFlight" type="bool" default="false" text="{1972092401, 161}" >
+        <patch sinceversion="105" value="if player.gameversion ge 750 then false else $shieldsPreserveOnFlight" comment="From 7.50 has no dependency on shields" />
+      </param>
+      <param name="breakOnDestructionPercentage" type="number" default="0" text="{1972092401, 171}">
         <input_param name="min" value="0" />
         <input_param name="max" value="100" />
         <input_param name="step" value="10" />
+        <patch sinceversion="105" early="true" setvariable="true" value="if $breakOnDestructionPercentage == 40 then 0 else $breakOnDestructionPercentage" comment="Added patch to disable break on destruction" />
       </param>
       <param name="parkInCenterOfSector" type="bool" default="false" text="{1972092401, 181}" />
       <param name="delayBetweenScans" type="number" default="4" text="{1972092401, 191}">
@@ -38,6 +49,7 @@
         <input_param name="min" value="1" />
         <input_param name="max" value="90" />
         <input_param name="step" value="3" />
+         <patch sinceversion="103" early="true" setvariable="true" value="if typeof (@$delayBetweenScans == null or @$delayBetweenScans == datatype.time) then 4 else $delayBetweenScans" comment="Added patch to set default value" />
       </param>
       <param name="recordActionsToLogBook" type="bool" default="true" text="{1972092401, 901}" />
       <param name="isStartedByPlayer" type="internal" default="true" text="Started by Player"></param>
@@ -53,7 +65,6 @@
     </requires>
     <location object="$homeSector" condition="$homeSector.zone.exists" />
   </order>
-
   <interrupts>
     <handler ref="AttackHandler" />
     <handler ref="MissileLockHandler" />
@@ -61,11 +72,12 @@
     <handler ref="InspectedHandler" />
     <handler ref="FoundAbandonedHandler" />
     <handler ref="FoundLockboxHandler" />
+    <handler ref="ResupplyHandler" />
     <handler>
       <conditions>
         <check_all>
           <event_game_loaded />
-          <debug_text text="'%s [%s at %s, %s] - Game loaded with version %s'.
+          <debug_text text="'%s [%s at %s, %s] - Game loaded with script version %s'.
           [
             player.age,
             this.ship.debugname,
@@ -74,13 +86,13 @@
             @$scriptVersion
           ]" debugchance="100"/>
           <check_any>
-            <check_value value="@$scriptVersion lt 103" />
+            <check_value value="@$scriptVersion lt 101" />
           </check_any>
         </check_all>
       </conditions>
       <actions>
         <debug_to_file directory="'protectsector'" name="'debug_'  + this.ship.idcode + '_' + this.ship"
-          text="'[%s at %s, %s] - Re-init for versions prior to 1.03'
+          text="'[%s at %s, %s] - Re-init for versions %s prior to 1.01'
           .[
             this.ship.debugname,
             this.ship.sector.knownname,
@@ -88,7 +100,6 @@
             @$scriptVersion,
           ]" output="true" append="true" />
         <do_if value="@$scriptVersion lt 101">
-          <cancel_all_orders object="this.ship" />
           <create_order object="this.ship" id="'ProtectSector'" default="true">
             <param name="homeSector" value="if $ps_space.isclass.sector then $ps_space else $ps_space.sector" />
             <param name="attackStations" value="$ps_attack_stations" />
@@ -103,64 +114,16 @@
             <param name="protectPlayerShipsInSector" value="true" />
             <param name="protectOnlyNonMilitaryShips" value="true" />
             <param name="shareTargetsBetweenFleets" value="if $ps_target_share? then $ps_target_share else $target_share" />
+            <param name="attackDistanceAsPercentageOfRadarRange" value="70" />
             <param name="shieldsPreserveOnFlight" value="$ps_noboost" />
-            <param name="breakOnDestructionPercentage" value="if $ps_disable then 40 else 0" />
+            <param name="breakOnDestructionPercentage" value="0" />
             <param name="parkInCenterOfSector" value="$ps_park" />
             <param name="delayBetweenScans" value="4" />
             <param name="recordActionsToLogBook" value="true" />
             <param name="isStartedByPlayer" value="false" />
           </create_order>
+          <return/>
         </do_if>
-        <do_elseif value="@$scriptVersion lt 102">
-          <cancel_all_orders object="this.ship" />
-          <create_order object="this.ship" id="'ProtectSector'" default="true">
-            <param name="homeSector" value="if $homeSector.isclass.sector then $homeSector else $homeSector.sector" />
-            <param name="attackStations" value="$attackStations" />
-            <param name="attackShipsXL" value="$attackShipsXL" />
-            <param name="attackShipsL" value="$attackShipsL" />
-            <param name="attackShipsM" value="$attackShipsM" />
-            <param name="attackShipsS" value="$attackShipsS" />
-            <param name="attackShipsOutOfStationsDistance" value="$attackShipsOutOfStationsDistance" />
-            <param name="attackVisibleOnly" value="$attackVisibleOnly" />
-            <param name="attackHostileOnly" value="$attackHostileOnly" />
-            <param name="pursueFleeingTarget" value="$pursueFleeingTarget" />
-            <param name="protectPlayerShipsInSector" value="$protectPlayerShipsInSector" />
-            <param name="protectOnlyNonMilitaryShips" value="$protectOnlyNonMilitaryShips" />
-            <param name="shareTargetsBetweenFleets" value="$shareTargetsBetweenFleets" />
-            <param name="shieldsPreserveOnFlight" value="$shieldsPreserveOnFlight" />
-            <param name="breakOnDestructionPercentage" value="$breakOnDestructionPercentage" />
-            <param name="parkInCenterOfSector" value="$parkInCenterOfSector" />
-            <param name="delayBetweenScans" value="4" />
-            <param name="recordActionsToLogBook" value="$recordActionsToLogBook" />
-            <param name="isStartedByPlayer" value="false" />
-            <param name="debugchance" value="$debugchance" />
-          </create_order>
-        </do_elseif>
-        <do_elseif value="@$scriptVersion lt 103">
-          <cancel_all_orders object="this.ship" />
-          <create_order object="this.ship" id="'ProtectSector'" default="true">
-            <param name="homeSector" value="if $homeSector.isclass.sector then $homeSector else $homeSector.sector" />
-            <param name="attackStations" value="$attackStations" />
-            <param name="attackShipsXL" value="$attackShipsXL" />
-            <param name="attackShipsL" value="$attackShipsL" />
-            <param name="attackShipsM" value="$attackShipsM" />
-            <param name="attackShipsS" value="$attackShipsS" />
-            <param name="attackShipsOutOfStationsDistance" value="$attackShipsOutOfStationsDistance" />
-            <param name="attackVisibleOnly" value="$attackVisibleOnly" />
-            <param name="attackHostileOnly" value="$attackHostileOnly" />
-            <param name="pursueFleeingTarget" value="$pursueFleeingTarget" />
-            <param name="protectPlayerShipsInSector" value="$protectPlayerShipsInSector" />
-            <param name="protectOnlyNonMilitaryShips" value="$protectOnlyNonMilitaryShips" />
-            <param name="shareTargetsBetweenFleets" value="$shareTargetsBetweenFleets" />
-            <param name="shieldsPreserveOnFlight" value="$shieldsPreserveOnFlight" />
-            <param name="breakOnDestructionPercentage" value="$breakOnDestructionPercentage" />
-            <param name="parkInCenterOfSector" value="$parkInCenterOfSector" />
-            <param name="delayBetweenScans" value="if $delayBetweenScans == 4s then 4 else $delayBetweenScans" />
-            <param name="recordActionsToLogBook" value="$recordActionsToLogBook" />
-            <param name="isStartedByPlayer" value="false" />
-            <param name="debugchance" value="$debugchance" />
-          </create_order>
-        </do_elseif>
       </actions>
     </handler>
     <handler>
@@ -297,9 +260,37 @@
         </do_if>
       </actions>
     </handler>
+    <handler>
+      <conditions>
+        <event_object_destroyed group="@$subordinates" check="false"/>
+        <check_value value="@this.assignedcontrolled.fleetunits.count"/>
+        <check_value value="not @this.assignedcontrolled.commander"/>
+        <check_value value="not @this.assignedcontrolled.fleetunit"/>
+        <check_value value="player.gameversion ge 750"/>
+      </conditions>
+      <actions>
+        <debug_to_file directory="'protectsector'" name="'debug_'  + this.ship.idcode + '_' + this.ship"
+          text="'[%s at %s, %s] requesting fleet replacements for %s units.'
+            .[this.ship.debugname,
+          this.ship.sector.knownname,
+          this.ship.fleet.name,
+          this.assignedcontrolled.fleetunits.count]" output="true" append="true" />
+        <clear_group group="$subordinates" />
+        <add_to_group groupname="$subordinates" list="this.assignedcontrolled.allsubordinates"/>
+        <do_for_each name="$subordinate" in="$subordinates" reverse="true">
+          <do_if value="$subordinate.isunit or not $subordinate.subordinategroupid">
+            <remove_from_group group="$subordinates" object="$subordinate"/>
+          </do_if>
+        </do_for_each>
+        <set_value name="$subordinatesToBeUpdated" exact="player.age + 60" />
+        <signal_objects object="player.entity" param="'reconstitute_fleet'" param2="this.assignedcontrolled" param3="this.assignedcontrolled.fleetunits"/>
+      </actions>
+    </handler>
   </interrupts>
   <init>
-    <set_value name="$scriptVersion" exact="104" />
+    <set_value name="$scriptVersion" exact="105" />
+
+    <set_value name="$shieldsPreserveOnFlight" exact="if player.gameversion ge 750 then false else $shieldsPreserveOnFlight" />
 
     <set_value name="$oneSecond" exact="1s"/>
     <set_value name="$delayBetweenScansInSeconds" exact="$oneSecond * $delayBetweenScans" />
@@ -423,17 +414,49 @@
 
     <set_value name="$idleDelay" exact="$delayBetweenScansInSeconds" />
 
+    <set_value name="$isSubordinateDestroyed" exact="false" />
+
+    <!-- prepare group of subordinates to request fleet reinstate -->
+    <create_group groupname="$subordinates"/>
+    <do_if value="player.gameversion ge 750">
+      <do_if value="not this.assignedcontrolled.commander">
+        <add_to_group groupname="$subordinates" list="this.assignedcontrolled.allsubordinates"/>
+        <do_for_each name="$subordinate" in="$subordinates" reverse="true">
+          <do_if value="$subordinate.isunit or not $subordinate.subordinategroupid">
+            <remove_from_group group="$subordinates" object="$subordinate"/>
+          </do_if>
+        </do_for_each>
+      </do_if>
+    </do_if>
+    <set_value name="$subordinatesToBeUpdated" exact="player.age + 60" />
+
   </init>
   <patch sinceversion="104">
     <set_value name="$idleDelay" exact="$delayBetweenScansInSeconds" />
     <debug_to_file directory="'protectsector'" name="'debug_'  + this.ship.idcode + '_' + this.ship"
-      text="'[%s at %s, %s]  - Patched for version 104. Debug chance: %s'
+      text="'[%s at %s, %s]  - Patched for version 104. Idle delay: %s. Debug chance: %s'
         .[
           this.ship.debugname,
           this.ship.sector.knownname,
           this.ship.fleet.name,
+          $idleDelay,
           $debugchance
         ]" output="true" append="true" />
+  </patch>
+  <patch sinceversion="105">
+    <!-- prepare group of subordinates to request fleet reinstate -->
+    <create_group groupname="$subordinates"/>
+    <do_if value="player.gameversion ge 750">
+      <do_if value="not this.assignedcontrolled.commander">
+        <add_to_group groupname="$subordinates" list="this.assignedcontrolled.allsubordinates"/>
+        <do_for_each name="$subordinate" in="$subordinates" reverse="true">
+          <do_if value="$subordinate.isunit or not $subordinate.subordinategroupid">
+            <remove_from_group group="$subordinates" object="$subordinate"/>
+          </do_if>
+        </do_for_each>
+        <set_value name="$subordinatesToBeUpdated" exact="player.age + 60" />
+      </do_if>
+    </do_if>
   </patch>
   <attention min="unknown">
     <actions>
@@ -997,6 +1020,20 @@
         <set_value name="$interruptAfterTime" min="[50s, $idleDelay].min" max="[50s, $idleDelay].max"/>
         <set_value name="$parkingTimestamp" exact="player.age" />
 
+        <!-- prepare group of subordinates to request fleet reinstate -->
+        <do_if value="player.gameversion ge 750 and $subordinatesToBeUpdated gt player.age">
+          <clear_group group="$subordinates" />
+          <do_if value="not this.assignedcontrolled.commander">
+            <add_to_group groupname="$subordinates" list="this.assignedcontrolled.allsubordinates"/>
+            <do_for_each name="$subordinate" in="$subordinates" reverse="true">
+              <do_if value="$subordinate.isunit or not $subordinate.subordinategroupid">
+                <remove_from_group group="$subordinates" object="$subordinate"/>
+              </do_if>
+            </do_for_each>
+            <set_value name="$subordinatesToBeUpdated" exact="player.age + 60" />
+          </do_if>
+        </do_if>
+
         <move_to object="this.ship" destination="this.ship.sector" abortpath="true" forcerotation="true" forceposition="true" uselocalhighways="false" boost="true" travel="true">
           <position value="$parkingPosition" />
           <rotation value="$orientation" />
@@ -1044,10 +1081,10 @@
 
         <set_value name="$targetDistanceTo" exact="this.ship.distanceto.{$target}" />
 
-        <set_value name="$targetOptimalDistanceForAttack" exact="this.ship.size + this.ship.maxradarrange * 0.7 + $target.size" />
+        <set_value name="$targetOptimalDistanceForAttack" exact="this.ship.size + this.ship.maxradarrange * $attackDistanceAsPercentageOfRadarRange * 0.01 + $target.size" />
 
         <debug_to_file directory="'protectsector'" name="'debug_'  + this.ship.idcode + '_' + this.ship"
-          text="'[%s at %s, %s] - move iteration : %s {%s} status: iswreck: %s, isoperational: %s,  pilot: %s (%s), distance - %s, acceptable distance - %s'
+          text="'[%s at %s, %s] - move iteration : %s {%s} status: iswreck: %s, isoperational: %s,  pilot: %s (%s), distance - %s, radar percentage: %s, acceptable distance - %s'
             .[
               this.ship.debugname,
               this.ship.sector.knownname,
@@ -1059,9 +1096,9 @@
               $target.pilot,
               $target.pilot?,
               $targetDistanceTo,
+              $attackDistanceAsPercentageOfRadarRange,
               $targetOptimalDistanceForAttack
             ]" output="true" append="true" />
-
 
         <set_value name="$approachingIterationsCount" operation="add"/>
 
@@ -1222,7 +1259,7 @@
             <param name="uncover" value="true" />
             <param name="targetclasses" value="$classesAcceptableForAttack" />
             <param name="allowboost" value="not $shieldsPreserveOnFlight" />
-            <!-- <param name="forceprimarytarget" value="true"/> -->
+            <param name="forceprimarytarget" value="true"/>
             <param name="debugchance" value="100" />
           </run_script>
 

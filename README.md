@@ -4,14 +4,16 @@ This extension allows you to protect a sector from being harassed by hostile shi
 This is useful when you want to prevent hostile ships to attack your ships and stations. Or when you want to prevent from building in a sector.
 
 ## Compatibility
-Compatible with `X4: Foundations 7.1`. At least it written and tested with this version.
 
-## General information
-Always the closest possible target will be selected to attack.
-Several ships/fleets with one order can work in one sector or crossed sectors.
-Not recommended to use single ship - the fleet is always better.
-`Mimic` order in a fleet is fully supported.
-But, again, not set single ship to mimic mode - use the fleet instead.
+Compatible with `X4: Foundations 7.10` and upper. At least it written and tested with versions `7.10` and `7.50`.
+
+## Features
+
+- Always the closest possible target will be selected to attack.
+- Several ships/fleets with one order can work in one sector or crossed sectors.
+- Not recommended to use single ship - the fleet is always better.
+- `Mimic` order in a fleet is fully supported. But, again, not set single ship to mimic mode - use the fleet instead.
+- The `Lost Ship Replacement` feature of version `7.50` is fully supported.
 
 ## Executing the order
 
@@ -23,6 +25,7 @@ Please be aware - this order required the ship captain to have at least two star
 There are a several configuration options available. You can see all of them on a screenshot.
 
 ### Home Sector
+
 This is a sector which will be protected. You can select it from the list of discovered sectors.
 If you select not current sector, the ship will fly to the selected sector to some "safe" point before to start protecting it.
 
@@ -37,7 +40,9 @@ It uses the specific logic to attack stations - equal to "Coordinate Attack" fro
 With only one exception - the syncpoint will not be created. So, all squad ships will form the similar order but will not wait for each other.
 
 ### Attack Ships
+
 You can select exact ship types:
+
 - XL
 - L
 - M - `enabled` by default
@@ -48,6 +53,7 @@ By default, the S and M ships are selected.
 If it will find a hostile squad - it will not be attacked, if it contains at least one ship of the type higher than highest selected one.
 
 ### Attack farther from stations
+
 There is a slider to define a minimal distance from the possible target to the hostile station. If the distance is less than the defined value, the ship will be selected as a target.
 If value is 0 - the distance will not be checked.
 
@@ -60,6 +66,7 @@ Default value is `0`.
 Used to prevent the ship from attacking the target, which is not revealed yet or not visible for the player.
 
 It has slightly different behavior for stations and ships:
+
 - For stations - the station should be visible on a map. So - it has to be revealed, but it is not required to be in a live view, i.e. in radar range of your ships, stations, satellites, etc.
 - For ships - the ship should be visible online. So - it has to be in a radar range of your ships, stations, satellites, etc.
 
@@ -75,13 +82,11 @@ If enabled, the ship will attack only hostile targets. It will use the appropria
 
 If enabled, the ship will react on the event when the player's ships or stations are attacked in the sector. It will try to protect them by attacking the hostile ships.
 
-
 ### - except military ships
 
 `Enabled` by default.
 
 If enabled, the ship will not protect the military ships. It will not attack the hostile ships, which are attacking the military ships.
-
 
 ### Pursue fleeing targets
 
@@ -95,17 +100,25 @@ If enabled, the ship will pursue the target, which is trying to flee after is be
 
 If you have more than one ship or squad with the same order, you can disable this option to prevent them from attacking the same target.
 
-### Preserve shield energy
+### Attack distance: percentage of radar range
+
+This setting allows you to define the ship behavior when the target is identified and selected.
+The attack de facto contains two stages:
+
+- The ship is trying to reach the target till some acceptable distance. This distance is defined as a percentage of the radar range.
+- The ship is trying to attack the target when it is in the acceptable distance.
+
+### Avoid boosters usage
 
 `Disabled` by default.
 
-If enabled, the ship will not use the boosters to increase the speed. It will try to preserve the shield energy.
+If enabled, the ship will not use the boosters to increase the speed. In game version prior `7.50` it will help to preserve the shield energy. For version `7.50` and higher, boosters are used always, despite the `Avoid boosters usage` option.
 
 ### Disable on destruction threat
 
 It is a percentage of hull of the target to make this order disabled. Useful when you want to achieve more abandoned ships.
 
-By default, it is `40 percent`. To disable this check - set it to 0.
+By default, it is `0 percent` - i.e. disabled this check.
 
 If set to non-zero value, the ship will stop attacking when hull is less than desired percent.
 

@@ -20,10 +20,11 @@
       <t id="141">Condividi obiettivo con altri - se impostato, darà la possibilità di attaccare un obiettivo da diversi Protettori di Settore</t>
       <t id="151">Relazione massima propria</t>
       <t id="152">Relazione negativa massima - cioè, le navi con una relazione da -30 al valore selezionato saranno considerate ostili</t>
-      <t id="161">Preserva l'energia dello scudo</t>
-      <t id="171">Disattiva in caso di minaccia di distruzione</t>
+      <t id="161">Evita l'uso dei potenziatori</t>
+      <t id="171">Abbandona obiettivo con percentuale scafo</t>
       <t id="181">Parcheggia al centro del settore</t>
       <t id="191">Ritardo tra le scansioni, secondi</t>
+      <t id="201">Distanza di attacco: percentuale della portata radar</t>
       <t id="901">Registra nel diario di bordo</t>
       <t id="1000">..: Proteggi Settore :..</t>
       <t id="1001">nave</t>
