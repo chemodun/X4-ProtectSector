@@ -154,4 +154,4 @@ Special thanks to the pilot [Assailer](https://steamcommunity.com/profiles/76561
 
 ## Links
 
-There is a thread on EgoSoft forum - [[Mod/AIScript] Order "Protect Sector"](url=https://forum.egosoft.com/viewtopic.php?p=5257237)
+There is a thread on EgoSoft forum - [[Mod/AIScript] Order "Protect Sector"](https://forum.egosoft.com/viewtopic.php?p=5257237)
