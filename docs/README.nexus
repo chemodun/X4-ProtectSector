@@ -15,10 +15,15 @@ Compatible with [b]X4: Foundations 7.10[/b] and upper. At least it written and t
 [*] [b]Mimic[/b] order in a fleet is fully supported. But, again, not set single ship to mimic mode - use the fleet instead.
 [*] The [b]Lost Ship Replacement[/b] feature of version [b]7.50[/b] is fully supported.
 [/list]
+[size=3][u][b]Download[/b][/u][/size]
+
+You can download the latest version via Steam client - [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3379427822]Protect Sector[/url]
+Or you can do it via the [url=https://www.nexusmods.com/x4foundations/mods/1566]Nexus Mods[/url]
+
 [size=3][u][b]Executing the order[/b][/u][/size]
 
 You can select the order as any other, like "Protect Station" or "Protect Ship", from the "Combat" section of  orders.
-Please be aware - this order required the ship captain to have at least two stars in the "Pilot" skill.
+Please be aware - this order requires the ship captain to have at least [b]two stars[/b] in the "Pilot" skill.
 
 [size=3][u][b]Configuration[/b][/u][/size]
 
