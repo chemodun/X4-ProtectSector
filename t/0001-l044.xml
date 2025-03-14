@@ -2,7 +2,7 @@
 <!-- English -->
 <diff>
   <add sel="/language">
-    <page id="1972092401" voice="no" title="Protect Sector" descr="Text for Protect Sector" >
+    <page id="1972092401" voice="no" title="Protect Sector" descr="Text for Protect Sector">
       <t id="1">Protect Sector</t>
       <t id="2">Protect Sector against hostile ships</t>
       <t id="101">Home sector</t>
@@ -19,7 +19,7 @@
       <t id="135"> - except military ships</t>
       <t id="141">Share target with other - if set, will give possibility to attack one target by different Sector Protectors</t>
       <t id="151">Own max. relation </t>
-      <t id="152">Max. negative relation - I.e. ships with relation from -30 to selected value will be assumed as hostile</t>
+      <t id="152">By negative relation - I.e. ships with relation from -30 to selected value will be assumed as hostile</t>
       <t id="161">Avoid boosters usage</t>
       <t id="171">Leave target with hull percentage</t>
       <t id="181">Park at sector core</t>

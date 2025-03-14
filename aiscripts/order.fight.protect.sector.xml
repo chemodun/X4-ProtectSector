@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="iso-8859-1"?>
 <aiscript name="order.fight.protect.sector" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-  xsi:noNamespaceSchemaLocation="aiscripts.xsd" version="106">
+  xsi:noNamespaceSchemaLocation="aiscripts.xsd" version="107">
   <order id="ProtectSector" name="{1972092401, 1}" description="{1972092401, 2}" category="combat" infinite="true">
     <params>
       <param name="homeSector" default="if this.ship.jobmainsector? then this.ship.jobmainsector else this.ship.sector" type="sector"
@@ -21,18 +21,18 @@
       </param>
       <param name="attackVisibleOnly" type="bool" default="true" text="{1972092401, 131}" />
       <param name="attackHostileOnly" type="bool" default="true" text="{1972092401, 132}" />
+      <param name="relationsThreshold" default="25" type="number" text="{1972092401, 152}" comment="">
+        <input_param name="startvalue" value="25" />
+        <input_param name="min" value="if $attackHostileOnly then 25 else 1" />
+        <input_param name="max" value="30" />
+        <input_param name="step" value="1" />
+        <patch sinceversion="107" early="true" setvariable="true" value="25" comment="Default, -0.32" />
+      </param>
       <param name="protectPlayerShipsInSector" type="bool" default="true" text="{1972092401, 134}" />
       <param name="protectOnlyNonMilitaryShips" type="bool" default="true" text="{1972092401, 135}" />
       <param name="pursueFleeingTarget" type="bool" default="false" text="{1972092401, 133}" />
       <param name="shareTargetsBetweenFleets" type="bool" default="true" text="{1972092401, 141}" />
-      <!-- <param name="relationThresholdConfigurationEnabled" type="bool" default="false" text="{1972092401, 151}" />
-      <param name="relationThresholdConfigured" default="1" type="number" text="{1972092401, 152}" comment="Do not attack ships closest to
-      hostile station, then value">
-        <input_param name="startvalue" value="1" />
-        <input_param name="min" value="0" />
-        <input_param name="max" value="30" />
-        <input_param name="step" value="1" />
-      </param> -->
+      <!-- <param name="relationThresholdConfigurationEnabled" type="bool" default="false" text="{1972092401, 151}" /> -->
       <param name="attackDistanceAsPercentageOfRadarRange" type="number" default="70" text="{1972092401, 201}">
         <input_param name="min" value="10" />
         <input_param name="max" value="90" />
@@ -41,7 +41,7 @@
           comment="Added patch to set default value" />
       </param>
       <param name="shieldsPreserveOnFlight" type="bool" default="false" text="{1972092401, 161}">
-        <patch sinceversion="106" value="if player.gameversion ge 750 then false else $shieldsPreserveOnFlight"
+        <patch sinceversion="107" value="if player.gameversion ge 750 then false else $shieldsPreserveOnFlight"
           comment="From 7.50 has no dependency on shields" />
       </param>
       <param name="breakOnDestructionPercentage" type="number" default="0" text="{1972092401, 171}">
@@ -127,6 +127,41 @@
             <set_value name="$subordinatesToBeUpdatedAfter" exact="player.age + 60" />
           </do_if>
         </do_if>
+      </actions>
+      <actions name="RelationsConversionList">
+        <set_value name="$relationsConversionList"
+          exact="[
+          -0.00064,
+          -0.00128,
+          -0.00192,
+          -0.00256,
+          -0.0032,
+          -0.003981,
+          -0.005012,
+          -0.00631,
+          -0.007943,
+          -0.01,
+          -0.012589,
+          -0.015849,
+          -0.019953,
+          -0.025119,
+          -0.031623,
+          -0.039811,
+          -0.050119,
+          -0.063096,
+          -0.079433,
+          -0.1,
+          -0.125893,
+          -0.158489,
+          -0.199526,
+          -0.251189,
+          -0.316228,
+          -0.398107,
+          -0.5,
+          -0.630957,
+          -0.794328,
+          -1.0
+        ]" />
       </actions>
     </library>
     <handler ref="AttackHandler" />
@@ -226,7 +261,7 @@
               this.ship.debugname,
               this.ship.sector.knownname,
               this.ship.fleet.name,
-              event.name,
+              @event.name,
               @event.object.debugname,
               @event.object.class,
               @event.object.sector.knownname,
@@ -243,8 +278,8 @@
               @event.object.assignedcontrolled.toplevelcommander.class,
               @event.object.assignedcontrolled.toplevelcommander.sector.knownname,
               @event.object.assignedcontrolled.toplevelcommander.defaultorder.id,
-              event.param.debugname,
-              event.param.class
+              @event.param.debugname,
+              @event.param.class
             ]"
           output="true" append="true" />
         <set_value name="$targetOnResponse" exact="event.param" />
@@ -282,16 +317,16 @@
               this.ship.debugname,
               this.ship.sector.knownname,
               this.ship.fleet.name,
-              event.name,
-              event.object.debugname,
-              event.object.class,
-              event.object.iswreck,
-              event.object.isoperational,
-              event.object.pilot,
+              @event.name,
+              @event.object.debugname,
+              @event.object.class,
+              @event.object.iswreck,
+              @event.object.isoperational,
+              @event.object.pilot,
               event.object.pilot?,
-              event.param.debugname,
-              event.param.class,
-              $targetInfo
+              @event.param.debugname,
+              @event.param.class,
+              @$targetInfo
             ]"
           output="true" append="true" />
         <do_if value="$targetInfo? and $targetInfo != null and $targetInfo.$name? and @$targetInfo.$isShip">
@@ -359,13 +394,15 @@
     </handler>
   </interrupts>
   <init>
-    <set_value name="$scriptVersion" exact="106" />
+    <set_value name="$scriptVersion" exact="107" />
 
     <set_value name="$shieldsPreserveOnFlight" exact="if player.gameversion ge 750 then false else $shieldsPreserveOnFlight" />
 
     <set_value name="$oneSecond" exact="1s" />
     <set_value name="$delayBetweenScansInSeconds" exact="$oneSecond * $delayBetweenScans" />
     <set_value name="$macrosToSkip" exact="[macro.asteroid_turret_m_01_macro]" />
+
+    <include_interrupt_actions ref="RelationsConversionList" />
 
     <debug_to_file directory="'protectsector'" name="'debug_'  + this.ship.idcode + '_' + this.ship"
       text="'[%s at %s, %s]  - Version: %s.\nHome Sector: %s\nAttack Stations: %s\nAttack Ships XL: %s\nAttack Ships L: %s\nAttack Ships M: %s\nAttack Ships S: %s\nAttack Ships Out Of Stations Distance: %s\nAttack Visible Only: %s\nAttack Hostile Only: %s\nProtect Player Ships In Sector: %s\nProtect Only Non Military Ships: %s\nPursue Fleeing Target: %s\nShare Targets Between Fleets: %s\nShields Preserve On Flight: %s\nBreak On Destruction Percentage: %s\nPark In Center Of Sector: %s\nRecord Actions To Log Book: %s\nDelay Between Scans: %s, in seconds: %s\nDebug chance: %s'
@@ -408,16 +445,14 @@
 
     <set_command_action commandaction="commandaction.scanningto" param="$homeSector" />
 
-    <!--     <do_if value="$relationThresholdConfigurationEnabled? and $relationThresholdConfigurationEnabled and
-    $relationThresholdConfigured?">
-      <set_value name="$relationsThreshold" exact="-$relationThresholdConfigured" />
+    <do_if value="$attackHostileOnly and $relationsThreshold lt 25">
+      <set_value name="$relationsThreshold" exact="25" />
+      <edit_order_param order="this.assignedcontrolled.order" param="'relationsThreshold'" value="25" />
     </do_if>
-    <do_else> -->
-    <set_value name="$relationsThreshold" exact="-0.5" />
-    <!--     </do_else> -->
+    <set_value name="$relationsThresholdInternal" exact="$relationsConversionList.{$relationsThreshold}" />
 
     <debug_to_file directory="'protectsector'" name="'debug_'  + this.ship.idcode + '_' + this.ship"
-      text="'[%s at %s, %s]  - Started (by player: %s) with %s subordinates and %s as top commander. Debug chance: %s'
+      text="'[%s at %s, %s]  - Started (by player: %s) with %s subordinates and %s as top commander. Relation Threshold: %s (%s). Debug chance: %s'
         .[
           this.ship.debugname,
           this.ship.sector.knownname,
@@ -425,6 +460,8 @@
           $isStartedByPlayer,
           @this.ship.subordinates.count,
           @this.ship.toplevelcommander,
+          $relationsThresholdInternal,
+          $relationsThreshold,
           $debugchance
         ]"
       output="true" append="true" />
@@ -509,6 +546,10 @@
   <patch sinceversion="106">
     <include_interrupt_actions ref="SubordinatesRefresh" />
   </patch>
+  <patch sinceversion="107">
+    <include_interrupt_actions ref="RelationsConversionList" />
+    <set_value name="$relationsThresholdInternal" exact="-0.32" />
+  </patch>
   <attention min="unknown">
     <actions>
       <!-- START ******************************************************************************* -->
@@ -585,7 +626,7 @@
               this.ship.fleet.name
             ]" output="true" append="true" /> -->
           <do_if value="$attackVisibleOnly">
-            <do_if value="$attackHostileOnly">
+            <do_if value="$relationsThreshold ge 25">
               <!-- <debug_to_file directory="'protectsector'" name="'debug_'  + this.ship.idcode + '_' + this.ship"
                 text="'[%s at %s, %s] : Find Visible and Hostile'.
                   [
@@ -613,7 +654,7 @@
             </do_else>
           </do_if>
           <do_else>
-            <do_if value="$attackHostileOnly">
+            <do_if value="$relationsThreshold ge 25">
               <!-- <debug_to_file directory="'protectsector'" name="'debug_'  + this.ship.idcode + '_' + this.ship"
                 text="'[%s at %s, %s] : Find Hostile'.
                   [
@@ -655,7 +696,7 @@
                 @$target,
               ]"
             output="true" append="true" />
-          <set_value name="$targetOnResponse" exact="null" />
+          <!-- <set_value name="$targetOnResponse" exact="null" /> -->
           <wait min="10ms" max="50ms" /> <!-- to give a chance to mark the target as own -->
         </do_else>
 
@@ -670,9 +711,9 @@
                 <remove_value name="$ship.pilot.$ignoreTime" />
               </do_if>
             </do_if>
-            <set_value name="$relation" exact="$ship.relationto.{faction.player}" />
+            <set_value name="$relation" exact="$ship.relationto.{this.owner}" />
             <debug_to_file directory="'protectsector'" name="'debug_'  + this.ship.idcode + '_' + this.ship"
-              text="'[%s at %s, %s] - %s - Target to check: %s {%s}, distance - %s, relation - %s, share targets: %s, to skip - %s, ignore time: %s, player age: %s'
+              text="'[%s at %s, %s] - %s - Target to check: %s {%s}, distance - %s, relation - %s, threshold: %s, share targets: %s, to skip - %s, ignore time: %s, player age: %s'
                 .[
                   this.ship.debugname,
                   this.ship.sector.knownname,
@@ -682,19 +723,20 @@
                   $ship.class,
                   this.ship.distanceto.{$ship},
                   $relation,
+                  $relationsThresholdInternal,
                   $shareTargetsBetweenFleets,
                   $ship.pilot.$ignoreTime?,
                   @$ship.pilot.$ignoreTime,
                   player.age
                 ]"
               output="true" append="true" />
-            <do_if value="$relation le $relationsThreshold">
+            <do_if value="$relation le $relationsThresholdInternal">
               <do_if value="$ship.pilot.$ignoreTime? and not $shareTargetsBetweenFleets" negate="true">
                 <set_value name="$target" exact="$ship" />
                 <set_value name="$targetClassIsAllowed" exact="true" />
                 <do_while
-                  value="$targetClassIsAllowed and $target.commander? and $target.commander.canbeattacked and ($target.commander.sector == $target.sector)">
-                  <do_if value="$target.isclass.{$classesAcceptableForAttack}">
+                  value="$targetClassIsAllowed and $target.commander? and $target.commander.canbeattacked and ($target.commander.sector == $target.sector) and $target.commander.isclass.ship">
+                  <do_if value="$target.commander.isclass.{$classesAcceptableForAttack}">
                     <debug_to_file directory="'protectsector'" name="'debug_'  + this.ship.idcode + '_' + this.ship"
                       text="'[%s at %s, %s] - %s - New target is: %s {%s}. Selected target was: %s {%s}'
                         .[
@@ -731,23 +773,31 @@
               </do_if>
               <do_if value="$target != null and $attackShipsOutOfStationsDistance gt 0km">
                 <do_if value="$attackVisibleOnly">
-                  <find_object name="$stations" space="this.ship.sector" class="[class.station]" recursive="true" multiple="true"
-                    sortbydistanceto="this.ship" ishostileto="this.owner" known="true">
-                    <match_relation_to object="this.ship" relation="enemy" comparison="le" />
-                  </find_object>
+                  <do_if value="$relationsThreshold ge 25">
+                    <find_object name="$stations" space="this.ship.sector" class="[class.station]" recursive="true" multiple="true"
+                      sortbydistanceto="this.ship" ishostileto="this.owner" known="true" />
+                  </do_if>
+                  <do_else>
+                    <find_object name="$stations" space="this.ship.sector" class="[class.station]" recursive="true" multiple="true"
+                      sortbydistanceto="this.ship" ishostileto="this.owner" known="true">
+                      <match_relation_to object="this.ship" relation="neutral" comparison="le" />
+                    </find_object>
+                  </do_else>
                 </do_if>
                 <do_else>
-                  <find_object name="$stations" space="this.ship.sector" class="[class.station]" recursive="true" multiple="true"
-                    sortbydistanceto="this.ship" ishostileto="this.owner">
-                    <match_relation_to object="this.ship" relation="enemy" comparison="le" />
-                  </find_object>
+                  <do_if value="$relationsThreshold ge 25">
+                    <find_object name="$stations" space="this.ship.sector" class="[class.station]" recursive="true" multiple="true"
+                      sortbydistanceto="this.ship" ishostileto="this.owner" />
+                  </do_if>
+                  <do_else>
+                    <find_object name="$stations" space="this.ship.sector" class="[class.station]" recursive="true" multiple="true"
+                      sortbydistanceto="this.ship" ishostileto="this.owner">
+                      <match_relation_to object="this.ship" relation="neutral" comparison="le" />
+                    </find_object>
+                  </do_else>
                 </do_else>
-                <do_if value="$stations.count gt 0">
-                  <set_value name="$indexStations" exact="1" />
-                  <do_while value="$indexStations le $stations.count and $target != null">
-                    <set_value name="$station" exact="$stations.{$indexStations}" />
-                    <set_value name="$target_to_station_distance" exact="$target.distanceto.{$station}" />
-                    <!-- <debug_to_file directory="'protectsector'" name="'debug_'  + this.ship.idcode + '_' + this.ship"
+                <do_for_each name="$station" in="$stations">
+                  <!-- <debug_to_file directory="'protectsector'" name="'debug_'  + this.ship.idcode + '_' + this.ship"
                       text="'[%s at %s, %s] - %s - Station to check is near: %s {%s}, distance to target - %s, minimal distance - %s'
                         .[
                           this.ship.debugname,
@@ -756,12 +806,12 @@
                           $indexShips,
                           $station.debugname,
                           $station.class,
-                          $target_to_station_distance,
+                          $target.distanceto.{$station},
                           $attackShipsOutOfStationsDistance
                         ]" output="true" append="true" /> -->
-                    <do_if value="$target_to_station_distance le $attackShipsOutOfStationsDistance">
-                      <debug_to_file directory="'protectsector'" name="'debug_'  + this.ship.idcode + '_' + this.ship"
-                        text="'[%s at %s, %s] - Target: %s {%s} is too close to station: %s {%s}, distance - %s, minimal distance - %s'
+                  <do_if value="$target.distanceto.{$station} le $attackShipsOutOfStationsDistance">
+                    <debug_to_file directory="'protectsector'" name="'debug_'  + this.ship.idcode + '_' + this.ship"
+                      text="'[%s at %s, %s] - Target: %s {%s} is too close to station: %s {%s}, distance - %s, minimal distance - %s'
                           .[
                             this.ship.debugname,
                             this.ship.sector.knownname,
@@ -770,15 +820,28 @@
                             $target.class,
                             $station.debugname,
                             $station.class,
-                            $target_to_station_distance,
+                            $target.distanceto.{$station},
                             $attackShipsOutOfStationsDistance
                           ]"
+                      output="true" append="true" />
+                    <do_if value="$station.relationto.{this.ship} le $relationsThresholdInternal">
+                      <debug_to_file directory="'protectsector'" name="'debug_'  + this.ship.idcode + '_' + this.ship"
+                        text="'[%s at %s, %s] - Station: %s {%s} has relation lower than threshold to ship: %s {%s}.'
+                            .[
+                              this.ship.debugname,
+                              this.ship.sector.knownname,
+                              this.ship.fleet.name,
+                              $station.debugname,
+                              $station.class,
+                              this.ship.debugname,
+                              this.ship.class
+                            ]"
                         output="true" append="true" />
                       <set_value name="$target" exact="null" />
+                      <break />
                     </do_if>
-                    <set_value name="$indexStations" exact="$indexStations + 1" />
-                  </do_while>
-                </do_if>
+                  </do_if>
+                </do_for_each>
               </do_if>
             </do_if>
           </do_if>
@@ -900,82 +963,111 @@
             ]" output="true" append="true" /> -->
 
         <do_if value="$attackVisibleOnly">
-          <do_if value="$macrosToSkip.count == 1">
-            <find_object name="$stations" space="this.ship.sector" class="[class.station, class.buildstorage]" recursive="true"
-              multiple="true" sortbydistanceto="this.ship" ishostileto="this.owner" known="true">
-              <match_relation_to object="this.ship" relation="enemy" comparison="le" />
-              <match macro="$macrosToSkip.{1}" negate="true" />
-            </find_object>
+          <do_if value="$relationsThreshold ge 25">
+            <do_if value="$macrosToSkip.count == 1">
+              <find_object name="$stations" space="this.ship.sector" class="[class.station, class.buildstorage]" recursive="true"
+                multiple="true" sortbydistanceto="this.ship" ishostileto="this.owner" known="true">
+                <match macro="$macrosToSkip.{1}" negate="true" />
+              </find_object>
+            </do_if>
+            <do_else>
+              <find_object name="$stations" space="this.ship.sector" class="[class.station, class.buildstorage]" recursive="true"
+                multiple="true" sortbydistanceto="this.ship" ishostileto="this.owner" known="true" />
+            </do_else>
           </do_if>
           <do_else>
-            <find_object name="$stations" space="this.ship.sector" class="[class.station, class.buildstorage]" recursive="true"
-              multiple="true" sortbydistanceto="this.ship" ishostileto="this.owner" known="true">
-              <match_relation_to object="this.ship" relation="enemy" comparison="le" />
-            </find_object>
+            <do_if value="$macrosToSkip.count == 1">
+              <find_object name="$stations" space="this.ship.sector" class="[class.station, class.buildstorage]" recursive="true"
+                multiple="true" sortbydistanceto="this.ship" known="true">
+                <match_relation_to object="this.ship" relation="neutral" comparison="le" />
+                <match macro="$macrosToSkip.{1}" negate="true" />
+              </find_object>
+            </do_if>
+            <do_else>
+              <find_object name="$stations" space="this.ship.sector" class="[class.station, class.buildstorage]" recursive="true"
+                multiple="true" sortbydistanceto="this.ship" known="true">
+                <match_relation_to object="this.ship" relation="neutral" comparison="le" />
+              </find_object>
+            </do_else>
           </do_else>
         </do_if>
         <do_else>
-          <do_if value="$macrosToSkip.count == 1">
-            <find_object name="$stations" space="this.ship.sector" class="[class.station, class.buildstorage]" recursive="true"
-              multiple="true" sortbydistanceto="this.ship" ishostileto="this.owner">
-              <match_relation_to object="this.ship" relation="enemy" comparison="le" />
-              <match macro="$macrosToSkip.{1}" negate="true" />
-            </find_object>
+          <do_if value="$relationsThreshold ge 25">
+            <do_if value="$macrosToSkip.count == 1">
+              <find_object name="$stations" space="this.ship.sector" class="[class.station, class.buildstorage]" recursive="true"
+                multiple="true" sortbydistanceto="this.ship" ishostileto="this.owner">
+                <match macro="$macrosToSkip.{1}" negate="true" />
+              </find_object>
+            </do_if>
+            <do_else>
+              <find_object name="$stations" space="this.ship.sector" class="[class.station, class.buildstorage]" recursive="true"
+                multiple="true" sortbydistanceto="this.ship" ishostileto="this.owner" />
+            </do_else>
           </do_if>
           <do_else>
-            <find_object name="$stations" space="this.ship.sector" class="[class.station, class.buildstorage]" recursive="true"
-              multiple="true" sortbydistanceto="this.ship" ishostileto="this.owner">
-              <match_relation_to object="this.ship" relation="enemy" comparison="le" />
-            </find_object>
+            <do_if value="$macrosToSkip.count == 1">
+              <find_object name="$stations" space="this.ship.sector" class="[class.station, class.buildstorage]" recursive="true"
+                multiple="true" sortbydistanceto="this.ship" ishostileto="this.owner">
+                <match_relation_to object="this.ship" relation="neutral" comparison="le" />
+                <match macro="$macrosToSkip.{1}" negate="true" />
+              </find_object>
+            </do_if>
+            <do_else>
+              <find_object name="$stations" space="this.ship.sector" class="[class.station, class.buildstorage]" recursive="true"
+                multiple="true" sortbydistanceto="this.ship" ishostileto="this.owner">
+                <match_relation_to object="this.ship" relation="neutral" comparison="le" />
+              </find_object>
+            </do_else>
           </do_else>
         </do_else>
 
-        <set_value name="$indexStations" exact="1" />
         <set_value name="$target" exact="null" />
 
-        <do_while value="$indexStations le $stations.count and $target == null">
-          <set_value name="$station" exact="$stations.{$indexStations}" />
-          <set_value name="$stationRelation" exact="$station.relationto.{faction.player}" />
-          <set_value name="$stationDistanceTo" exact="this.ship.distanceto.{$station}" />
-          <do_if value="$station.isclass.[class.station]">
-            <debug_to_file directory="'protectsector'" name="'debug_'  + this.ship.idcode + '_' + this.ship"
-              text="'[%s at %s, %s] - %s - Station to check: %s {%s}, distance - %s, relation - %s'
-                .[
-                  this.ship.debugname,
-                  this.ship.sector.knownname,
-                  this.ship.fleet.name,
-                  $indexStations,
-                  $station.debugname,
-                  $station.class,
-                  $stationDistanceTo,
-                  $stationRelation
-                ]"
-              output="true" append="true" />
-            <set_value name="$target" exact="$station" />
-          </do_if>
-          <do_elseif
-            value="$station.isclass.[class.buildstorage] and $station.base.isclass.[class.object] and not $station.base.isclass.[class.station]">
-            <set_value name="$station" exact="$station.base" />
+        <do_for_each name="$station" in="$stations" counter="$stationIndex">
+          <set_value name="$stationRelation" exact="$station.relationto.{this.owner}" />
+          <do_if value="$stationRelation le $relationsThresholdInternal">
             <set_value name="$stationDistanceTo" exact="this.ship.distanceto.{$station}" />
-            <set_value name="$stationRelation" exact="$station.relationto.{faction.player}" />
-            <debug_to_file directory="'protectsector'" name="'debug_'  + this.ship.idcode + '_' + this.ship"
-              text="'[%s at %s, %s] - %s - Station under construction to check: %s {%s}, distance - %s, relation - %s'
+            <do_if value="$station.isclass.[class.station]">
+              <debug_to_file directory="'protectsector'" name="'debug_'  + this.ship.idcode + '_' + this.ship"
+                text="'[%s at %s, %s] - %s - Station to check: %s {%s}, distance - %s, relation - %s, threshold: %s'
                 .[
                   this.ship.debugname,
                   this.ship.sector.knownname,
                   this.ship.fleet.name,
-                  $indexStations,
+                  $stationIndex,
                   $station.debugname,
                   $station.class,
                   $stationDistanceTo,
-                  $stationRelation
+                  $stationRelation,
+                  $relationsThresholdInternal
                 ]"
-              output="true" append="true" />
-            <set_value name="$target" exact="$station" />
-          </do_elseif>
-          <do_if value="$target != null and $macrosToSkip.indexof.{@$target.macro} gt 0">
-            <debug_to_file directory="'protectsector'" name="'debug_'  + this.ship.idcode + '_' + this.ship"
-              text="'[%s at %s, %s] - Station: %s - is an a list of macros to skip: %s. Skipping'
+                output="true" append="true" />
+              <set_value name="$target" exact="$station" />
+            </do_if>
+            <do_elseif
+              value="$station.isclass.[class.buildstorage] and $station.base.isclass.[class.object] and not $station.base.isclass.[class.station]">
+              <set_value name="$station" exact="$station.base" />
+              <set_value name="$stationDistanceTo" exact="this.ship.distanceto.{$station}" />
+              <set_value name="$stationRelation" exact="$station.relationto.{faction.player}" />
+              <debug_to_file directory="'protectsector'" name="'debug_'  + this.ship.idcode + '_' + this.ship"
+                text="'[%s at %s, %s] - %s - Station under construction to check: %s {%s}, distance - %s, relation - %s, threshold: %s'
+                .[
+                  this.ship.debugname,
+                  this.ship.sector.knownname,
+                  this.ship.fleet.name,
+                  $stationIndex,
+                  $station.debugname,
+                  $station.class,
+                  $stationDistanceTo,
+                  $stationRelation,
+                  $relationsThresholdInternal
+                ]"
+                output="true" append="true" />
+              <set_value name="$target" exact="$station" />
+            </do_elseif>
+            <do_if value="$target != null and $macrosToSkip.indexof.{@$target.macro} gt 0">
+              <debug_to_file directory="'protectsector'" name="'debug_'  + this.ship.idcode + '_' + this.ship"
+                text="'[%s at %s, %s] - Station: %s - is an a list of macros to skip: %s. Skipping'
                 .[
                   this.ship.debugname,
                   this.ship.sector.knownname,
@@ -983,13 +1075,16 @@
                   $target.debugname,
                   macrosToSkip
                 ]"
-              output="true" append="true" />
-            <set_value name="$target" exact="null" />
+                output="true" append="true" />
+              <set_value name="$target" exact="null" />
+            </do_if>
           </do_if>
-          <set_value name="$indexStations" exact="$indexStations + 1" />
+          <do_if value="$target != null">
+            <break />
+          </do_if>
           <wait min="5ms" max="15ms" profile="flat"
             comment="we fire while targetApproaching the target. wait is just to ensure we don't have infinite loops if moving returns immediately" />
-        </do_while>
+        </do_for_each>
 
 
         <do_if value="$target != null">
@@ -1343,7 +1438,7 @@
             <param name="primarytarget" value="$target" />
             <param name="pursuetargets" value="false" />
             <param name="allowothertargets" value="true" />
-            <param name="checkrelation" value="true" />
+            <param name="checkrelation" value="$attackHostileOnly" />
             <param name="disable" value="$breakOnDestructionPercentage gt 0" />
             <param name="disablehullpercentagethreshold" value="$breakOnDestructionPercentage" />
             <param name="maintaindistance" value="true" />
