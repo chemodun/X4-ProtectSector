@@ -817,13 +817,11 @@
                 <do_if value="$attackVisibleOnly">
                   <do_if value="$relationsThreshold ge 25">
                     <find_object name="$stations" space="this.assignedcontrolled.sector" class="[class.station]" recursive="true"
-                      multiple="true"
-                      sortbydistanceto="this.assignedcontrolled" ishostileto="this.owner" known="true" />
+                      multiple="true" sortbydistanceto="this.assignedcontrolled" ishostileto="this.owner" known="true" />
                   </do_if>
                   <do_else>
                     <find_object name="$stations" space="this.assignedcontrolled.sector" class="[class.station]" recursive="true"
-                      multiple="true"
-                      sortbydistanceto="this.assignedcontrolled" ishostileto="this.owner" known="true">
+                      multiple="true" sortbydistanceto="this.assignedcontrolled" known="true">
                       <match_relation_to object="this.assignedcontrolled" relation="neutral" comparison="le" />
                     </find_object>
                   </do_else>
@@ -831,13 +829,11 @@
                 <do_else>
                   <do_if value="$relationsThreshold ge 25">
                     <find_object name="$stations" space="this.assignedcontrolled.sector" class="[class.station]" recursive="true"
-                      multiple="true"
-                      sortbydistanceto="this.assignedcontrolled" ishostileto="this.owner" />
+                      multiple="true" sortbydistanceto="this.assignedcontrolled" ishostileto="this.owner" />
                   </do_if>
                   <do_else>
                     <find_object name="$stations" space="this.assignedcontrolled.sector" class="[class.station]" recursive="true"
-                      multiple="true"
-                      sortbydistanceto="this.assignedcontrolled" ishostileto="this.owner">
+                      multiple="true" sortbydistanceto="this.assignedcontrolled">
                       <match_relation_to object="this.assignedcontrolled" relation="neutral" comparison="le" />
                     </find_object>
                   </do_else>
@@ -1000,6 +996,7 @@
         <resume label="goingIdle" />
 
       </do_elseif>
+
       <do_if value="$attackStations">
 
         <!-- SEARCHING  STATION ************************************************************************ -->
@@ -1016,30 +1013,26 @@
           <do_if value="$relationsThreshold ge 25">
             <do_if value="$macrosToSkip.count == 1">
               <find_object name="$stations" space="this.assignedcontrolled.sector" class="[class.station, class.buildstorage]"
-                recursive="true"
-                multiple="true" sortbydistanceto="this.assignedcontrolled" ishostileto="this.owner" known="true">
+                recursive="true" multiple="true" sortbydistanceto="this.assignedcontrolled" ishostileto="this.owner" known="true">
                 <match macro="$macrosToSkip.{1}" negate="true" />
               </find_object>
             </do_if>
             <do_else>
               <find_object name="$stations" space="this.assignedcontrolled.sector" class="[class.station, class.buildstorage]"
-                recursive="true"
-                multiple="true" sortbydistanceto="this.assignedcontrolled" ishostileto="this.owner" known="true" />
+                recursive="true" multiple="true" sortbydistanceto="this.assignedcontrolled" ishostileto="this.owner" known="true" />
             </do_else>
           </do_if>
           <do_else>
             <do_if value="$macrosToSkip.count == 1">
               <find_object name="$stations" space="this.assignedcontrolled.sector" class="[class.station, class.buildstorage]"
-                recursive="true"
-                multiple="true" sortbydistanceto="this.assignedcontrolled" known="true">
+                recursive="true" multiple="true" sortbydistanceto="this.assignedcontrolled" known="true">
                 <match_relation_to object="this.assignedcontrolled" relation="neutral" comparison="le" />
                 <match macro="$macrosToSkip.{1}" negate="true" />
               </find_object>
             </do_if>
             <do_else>
               <find_object name="$stations" space="this.assignedcontrolled.sector" class="[class.station, class.buildstorage]"
-                recursive="true"
-                multiple="true" sortbydistanceto="this.assignedcontrolled" known="true">
+                recursive="true" multiple="true" sortbydistanceto="this.assignedcontrolled" known="true">
                 <match_relation_to object="this.assignedcontrolled" relation="neutral" comparison="le" />
               </find_object>
             </do_else>
@@ -1049,30 +1042,26 @@
           <do_if value="$relationsThreshold ge 25">
             <do_if value="$macrosToSkip.count == 1">
               <find_object name="$stations" space="this.assignedcontrolled.sector" class="[class.station, class.buildstorage]"
-                recursive="true"
-                multiple="true" sortbydistanceto="this.assignedcontrolled" ishostileto="this.owner">
+                recursive="true" multiple="true" sortbydistanceto="this.assignedcontrolled" ishostileto="this.owner">
                 <match macro="$macrosToSkip.{1}" negate="true" />
               </find_object>
             </do_if>
             <do_else>
               <find_object name="$stations" space="this.assignedcontrolled.sector" class="[class.station, class.buildstorage]"
-                recursive="true"
-                multiple="true" sortbydistanceto="this.assignedcontrolled" ishostileto="this.owner" />
+                recursive="true" multiple="true" sortbydistanceto="this.assignedcontrolled" ishostileto="this.owner" />
             </do_else>
           </do_if>
           <do_else>
             <do_if value="$macrosToSkip.count == 1">
               <find_object name="$stations" space="this.assignedcontrolled.sector" class="[class.station, class.buildstorage]"
-                recursive="true"
-                multiple="true" sortbydistanceto="this.assignedcontrolled" ishostileto="this.owner">
+                recursive="true" multiple="true" sortbydistanceto="this.assignedcontrolled">
                 <match_relation_to object="this.assignedcontrolled" relation="neutral" comparison="le" />
                 <match macro="$macrosToSkip.{1}" negate="true" />
               </find_object>
             </do_if>
             <do_else>
               <find_object name="$stations" space="this.assignedcontrolled.sector" class="[class.station, class.buildstorage]"
-                recursive="true"
-                multiple="true" sortbydistanceto="this.assignedcontrolled" ishostileto="this.owner">
+                recursive="true" multiple="true" sortbydistanceto="this.assignedcontrolled">
                 <match_relation_to object="this.assignedcontrolled" relation="neutral" comparison="le" />
               </find_object>
             </do_else>
@@ -1154,6 +1143,7 @@
           <!-- ATTACKING  STATION ************************************************************************ -->
 
           <set_value name="$parkedAtPosition" exact="false" />
+          <set_value name="$positionIdle" exact="null" />
 
           <add_to_group groupname="$targets" object="$target" />
           <set_value name="$targetInfo"
@@ -1275,7 +1265,7 @@
         </move_to>
 
         <set_value name="$parkedAtPosition"
-          exact="($parkingPosition != null) and (this.assignedcontrolled.distanceto.{$parkingPosition} le 5km)" />
+          exact="($parkingPosition != null) and (this.assignedcontrolled.distanceto.{$parkingPosition} le 10km)" />
 
         <do_if value="$parkedAtPosition and $idleDelay - (player.age - $parkingTimestamp) gt 10s">
           <set_value name="$idleDelay" exact="$idleDelay - (player.age - $parkingTimestamp)" />
@@ -1283,6 +1273,7 @@
         <do_else>
           <resume label="targetSearching" />
         </do_else>
+        <set_value name="$positionIdle" exact="@$parkingPosition" />
       </do_if>
 
       <do_else>
@@ -1294,11 +1285,23 @@
       <!-- prepare group of subordinates to request fleet reinstate -->
       <include_interrupt_actions ref="SubordinatesRefresh" />
 
+
+      <do_if value="$positionIdle == null">
+        <find_object name="$stations" space="this.assignedcontrolled.sector" class="[class.station]"
+          recursive="true" multiple="true">
+          <match_relation_to object="this.assignedcontrolled" relation="neutral" comparison="ge" />
+          <match macro="$macrosToSkip.{1}" negate="true" />
+        </find_object>
+        <do_if value="$stations.count gt 0">
+          <create_position name="$positionIdle" space="this.assignedcontrolled.sector" object="$stations.random" />
+        </do_if>
+      </do_if>
+
       <run_script name="'move.idle'">
         <param name="Min" value="[30s, $idleDelay].min" />
         <param name="Max" value="[30s, $idleDelay].max" />
-        <param name="anchorpos_sector" value="@$parkingPosition" />
-        <param name="MaxDistance" value="20km" />
+        <param name="anchorpos_sector" value="$positionIdle" />
+        <param name="MaxDistance" value="if @$parkingPosition != null then 10km else 100km" />
         <param name="debugchance" value="100" />
       </run_script>
 
@@ -1306,9 +1309,10 @@
 
       <resume label="targetSearching" />
 
-
       <!-- APPROACHING ************************************************************************ -->
       <label name="targetApproaching" />
+
+      <set_value name="$positionIdle" exact="null" />
 
       <do_if value="$target? and $target != null and $target.exists and not $target.iswreck and $target.sector == $homeSector">
 
@@ -1466,6 +1470,8 @@
       <!-- ATTACKING ************************************************************************ -->
 
       <label name="targetAttacking" />
+
+      <set_value name="$positionIdle" exact="null" />
 
       <set_value name="$targetDistanceTo" exact="this.assignedcontrolled.distanceto.{$target}" />
 
