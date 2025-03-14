@@ -557,6 +557,8 @@
 
     <include_interrupt_actions ref="SubordinatesRefresh" />
 
+    <set_value name="$positionIdle" exact="true" />
+    <set_value name="$positionIdleTime" exact="player.age" />
   </init>
   <patch sinceversion="104">
     <set_value name="$idleDelay" exact="$delayBetweenScansInSeconds" />
@@ -590,6 +592,8 @@
     <do_else>
       <set_value name="$parkedAtPosition" exact="false" />
     </do_else>
+    <set_value name="$positionIdle" exact="true" />
+    <set_value name="$positionIdleTime" exact="player.age" />
   </patch>
   <attention min="unknown">
     <actions>
@@ -1286,7 +1290,7 @@
       <include_interrupt_actions ref="SubordinatesRefresh" />
 
 
-      <do_if value="$positionIdle == null">
+      <do_if value="$positionIdle == null or $positionIdleTime ge player.age">
         <find_object name="$stations" space="this.assignedcontrolled.sector" class="[class.station]"
           recursive="true" multiple="true">
           <match_relation_to object="this.assignedcontrolled" relation="neutral" comparison="ge" />
@@ -1295,6 +1299,10 @@
         <do_if value="$stations.count gt 0">
           <create_position name="$positionIdle" space="this.assignedcontrolled.sector" object="$stations.random" />
         </do_if>
+        <do_else>
+          <set_value name="$positionIdle" exact="null" />
+        </do_else>
+        <set_value name="$positionIdleTime" exact="player.age + 5min" />
       </do_if>
 
       <run_script name="'move.idle'">
