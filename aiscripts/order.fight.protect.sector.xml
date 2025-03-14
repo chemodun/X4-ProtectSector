@@ -557,7 +557,6 @@
 
     <include_interrupt_actions ref="SubordinatesRefresh" />
 
-    <set_value name="$positionIdle" exact="true" />
     <set_value name="$positionIdleTime" exact="player.age" />
   </init>
   <patch sinceversion="104">
@@ -592,7 +591,6 @@
     <do_else>
       <set_value name="$parkedAtPosition" exact="false" />
     </do_else>
-    <set_value name="$positionIdle" exact="true" />
     <set_value name="$positionIdleTime" exact="player.age" />
   </patch>
   <attention min="unknown">
@@ -1147,7 +1145,7 @@
           <!-- ATTACKING  STATION ************************************************************************ -->
 
           <set_value name="$parkedAtPosition" exact="false" />
-          <set_value name="$positionIdle" exact="null" />
+          <remove_value name="$positionIdle" />
 
           <add_to_group groupname="$targets" object="$target" />
           <set_value name="$targetInfo"
@@ -1277,7 +1275,7 @@
         <do_else>
           <resume label="targetSearching" />
         </do_else>
-        <set_value name="$positionIdle" exact="@$parkingPosition" />
+        <set_value name="$positionIdle" exact="$parkingPosition" />
       </do_if>
 
       <do_else>
@@ -1289,20 +1287,22 @@
       <!-- prepare group of subordinates to request fleet reinstate -->
       <include_interrupt_actions ref="SubordinatesRefresh" />
 
-
-      <do_if value="$positionIdle == null or $positionIdleTime ge player.age">
-        <find_object name="$stations" space="this.assignedcontrolled.sector" class="[class.station]"
+      <do_if value="(not $positionIdle?) or (player.age ge @$positionIdleTime)">
+        <find_object name="$objects" space="this.assignedcontrolled.sector"
+          class="[class.station, class.gate, class.highwayentrygate, class.highwayexitgate]" known="true"
           recursive="true" multiple="true">
           <match_relation_to object="this.assignedcontrolled" relation="neutral" comparison="ge" />
-          <match macro="$macrosToSkip.{1}" negate="true" />
         </find_object>
-        <do_if value="$stations.count gt 0">
-          <create_position name="$positionIdle" space="this.assignedcontrolled.sector" object="$stations.random" />
+        <do_if value="$objects.count gt 0">
+          <set_value name="$object" exact="$objects.random" />
+          <create_position name="$positionIdle" space="this.assignedcontrolled.sector" object="$object" />
+          <remove_value name="$object" />
         </do_if>
         <do_else>
           <set_value name="$positionIdle" exact="null" />
         </do_else>
-        <set_value name="$positionIdleTime" exact="player.age + 5min" />
+        <remove_value name="$objects" />
+        <set_value name="$positionIdleTime" exact="player.age + 300" />
       </do_if>
 
       <run_script name="'move.idle'">
@@ -1320,9 +1320,10 @@
       <!-- APPROACHING ************************************************************************ -->
       <label name="targetApproaching" />
 
-      <set_value name="$positionIdle" exact="null" />
 
       <do_if value="$target? and $target != null and $target.exists and not $target.iswreck and $target.sector == $homeSector">
+
+        <remove_value name="$positionIdle" />
 
         <set_value name="$targetDistanceTo" exact="this.assignedcontrolled.distanceto.{$target}" />
 
@@ -1479,11 +1480,12 @@
 
       <label name="targetAttacking" />
 
-      <set_value name="$positionIdle" exact="null" />
-
       <set_value name="$targetDistanceTo" exact="this.assignedcontrolled.distanceto.{$target}" />
 
       <do_if value="$target.exists and not $target.iswreck and $target.sector == $homeSector">
+
+        <remove_value name="$positionIdle" />
+
         <do_if value="not $targetOptimalDistanceForAttack? or $targetDistanceTo le $targetOptimalDistanceForAttack">
           <debug_to_file directory="'protectsector'" name="'debug_'  + this.assignedcontrolled.idcode + '_' + this.assignedcontrolled"
             text="'[%s at %s, %s] - Run order.fight.attack.object : %s {%s} status: iswreck: %s, isoperational: %s,  pilot: %s (%s), distance - %s, acceptable distance - %s'
