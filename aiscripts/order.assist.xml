@@ -14,6 +14,7 @@
           <param name="attackShipsOutOfStationsDistance" value="$orderdef.$attackShipsOutOfStationsDistance" />
           <param name="attackVisibleOnly" value="$orderdef.$attackVisibleOnly" />
           <param name="attackHostileOnly" value="$orderdef.$attackHostileOnly" />
+          <param name="relationsThreshold" value="$orderdef.$relationsThreshold" />
           <param name="pursueFleeingTarget" value="$orderdef.$pursueFleeingTarget" />
           <param name="protectPlayerShipsInSector" value="$orderdef.$protectPlayerShipsInSector" />
           <param name="protectOnlyNonMilitaryShips" value="$orderdef.$protectOnlyNonMilitaryShips" />
@@ -21,6 +22,7 @@
           <param name="shieldsPreserveOnFlight" value="$orderdef.$shieldsPreserveOnFlight" />
           <param name="breakOnDestructionPercentage" value="$orderdef.$breakOnDestructionPercentage" />
           <param name="parkInCenterOfSector" value="$orderdef.$parkInCenterOfSector" />
+          <param name="desiredParkingPosition" value="$orderdef.$desiredParkingPosition" />
           <param name="delayBetweenScans" value="$orderdef.$delayBetweenScans" />
           <param name="recordActionsToLogBook" value="$orderdef.$recordActionsToLogBook" />
           <param name="isStartedByPlayer" value="false" />
@@ -36,6 +38,7 @@
         <set_value name="$orderdef.$attackShipsOutOfStationsDistance" exact="$order.$attackShipsOutOfStationsDistance" />
         <set_value name="$orderdef.$attackVisibleOnly" exact="$order.$attackVisibleOnly" />
         <set_value name="$orderdef.$attackHostileOnly" exact="$order.$attackHostileOnly" />
+        <set_value name="$orderdef.$relationsThreshold" exact="$order.$relationsThreshold" />
         <set_value name="$orderdef.$pursueFleeingTarget" exact="$order.$pursueFleeingTarget" />
         <set_value name="$orderdef.$protectPlayerShipsInSector" exact="$order.$protectPlayerShipsInSector" />
         <set_value name="$orderdef.$protectOnlyNonMilitaryShips" exact="$order.$protectOnlyNonMilitaryShips" />
@@ -43,6 +46,7 @@
         <set_value name="$orderdef.$shieldsPreserveOnFlight" exact="$order.$shieldsPreserveOnFlight" />
         <set_value name="$orderdef.$breakOnDestructionPercentage" exact="$order.$breakOnDestructionPercentage" />
         <set_value name="$orderdef.$parkInCenterOfSector" exact="$order.$parkInCenterOfSector" />
+        <set_value name="$orderdef.$desiredParkingPosition" exact="$order.$desiredParkingPosition" />
         <set_value name="$orderdef.$delayBetweenScans" exact="$order.$delayBetweenScans" />
         <set_value name="$orderdef.$recordActionsToLogBook" exact="$order.$recordActionsToLogBook" />
         <run_script name="$scriptname">
@@ -55,6 +59,7 @@
           <param name="attackShipsOutOfStationsDistance" value="$orderdef.$attackShipsOutOfStationsDistance" />
           <param name="attackVisibleOnly" value="$orderdef.$attackVisibleOnly" />
           <param name="attackHostileOnly" value="$orderdef.$attackHostileOnly" />
+          <param name="relationsThreshold" value="$orderdef.$relationsThreshold" />
           <param name="pursueFleeingTarget" value="$orderdef.$pursueFleeingTarget" />
           <param name="protectPlayerShipsInSector" value="$orderdef.$protectPlayerShipsInSector" />
           <param name="protectOnlyNonMilitaryShips" value="$orderdef.$protectOnlyNonMilitaryShips" />
@@ -62,6 +67,7 @@
           <param name="shieldsPreserveOnFlight" value="$orderdef.$shieldsPreserveOnFlight" />
           <param name="breakOnDestructionPercentage" value="$orderdef.$breakOnDestructionPercentage" />
           <param name="parkInCenterOfSector" value="$orderdef.$parkInCenterOfSector" />
+          <param name="desiredParkingPosition" value="$orderdef.$desiredParkingPosition" />
           <param name="delayBetweenScans" value="$orderdef.$delayBetweenScans" />
           <param name="recordActionsToLogBook" value="$orderdef.$recordActionsToLogBook" />
           <param name="isStartedByPlayer" value="false" />

@@ -4,9 +4,11 @@
   <order id="ProtectSector" name="{1972092401, 1}" description="{1972092401, 2}" category="combat" infinite="true">
     <params>
       <param name="homeSector"
-        default="if this.assignedcontrolled.jobmainsector? then this.assignedcontrolled.jobmainsector else this.assignedcontrolled.sector"
+        default="if @$desiredParkingPosition.{1} != null then @$desiredParkingPosition.{1} else this.assignedcontrolled.sector"
         type="sector"
         required="true" text="{1972092401, 101}">
+        <input_param name="startvalue"
+          value="if @$desiredParkingPosition.{1} != null then @$desiredParkingPosition.{1} else this.assignedcontrolled.sector" />
         <patch sinceversion="102" early="true" setvariable="true"
           value="if $homeSector.isclass.sector then $homeSector else $homeSector.sector" comment="Added patch to set default value" />
       </param>
@@ -54,6 +56,10 @@
           comment="Added patch to disable break on destruction" />
       </param>
       <param name="parkInCenterOfSector" type="bool" default="false" text="{1972092401, 181}" />
+      <param name="desiredParkingPosition" type="position" default="null" required="false" text="{1972092401, 182}">
+        <input_param name="class" value="class.sector" />
+        <patch sinceversion="107" early="true" setvariable="true" value="null" comment="Added patch to set default value" />
+      </param>
       <param name="delayBetweenScans" type="number" default="4" text="{1972092401, 191}">
         <input_param name="startvalue" value="4" />
         <input_param name="min" value="1" />
@@ -76,6 +82,8 @@
       <match primarypurpose="purpose.fight" />
     </requires>
     <location object="$homeSector" condition="$homeSector.zone.exists" />
+    <location object="@$desiredParkingPosition.{1}" position="@$desiredParkingPosition.{2}"
+      condition="@$desiredParkingPosition.{1} and @$desiredParkingPosition.{2}" />
   </order>
   <interrupts>
     <library>
@@ -409,7 +417,7 @@
     <include_interrupt_actions ref="RelationsConversionList" />
 
     <debug_to_file directory="'protectsector'" name="'debug_'  + this.assignedcontrolled.idcode + '_' + this.assignedcontrolled"
-      text="'[%s at %s, %s]  - Version: %s.\nHome Sector: %s\nAttack Stations: %s\nAttack Ships XL: %s\nAttack Ships L: %s\nAttack Ships M: %s\nAttack Ships S: %s\nAttack Ships Out Of Stations Distance: %s\nAttack Visible Only: %s\nAttack Hostile Only: %s\nProtect Player Ships In Sector: %s\nProtect Only Non Military Ships: %s\nPursue Fleeing Target: %s\nShare Targets Between Fleets: %s\nShields Preserve On Flight: %s\nBreak On Destruction Percentage: %s\nPark In Center Of Sector: %s\nRecord Actions To Log Book: %s\nDelay Between Scans: %s, in seconds: %s\nDebug chance: %s'
+      text="'[%s at %s, %s]  - Version: %s.\nHome Sector: %s\nAttack Stations: %s\nAttack Ships XL: %s\nAttack Ships L: %s\nAttack Ships M: %s\nAttack Ships S: %s\nAttack Ships Out Of Stations Distance: %s\nAttack Visible Only: %s\nAttack Hostile Only: %s\nRelation Threshold: %s\nProtect Player Ships In Sector: %s\nProtect Only Non Military Ships: %s\nPursue Fleeing Target: %s\nShare Targets Between Fleets: %s\nShields Preserve On Flight: %s\nBreak On Destruction Percentage: %s\nPark In Center Of Sector: %s\nDesired Parking Position: %s at %s\nRecord Actions To Log Book: %s\nDelay Between Scans: %s, in seconds: %s\nDebug chance: %s'
         .[
           this.assignedcontrolled.debugname,
           this.assignedcontrolled.sector.knownname,
@@ -424,6 +432,7 @@
           $attackShipsOutOfStationsDistance,
           $attackVisibleOnly,
           $attackHostileOnly,
+          $relationsThreshold,
           $protectPlayerShipsInSector,
           $protectOnlyNonMilitaryShips,
           $pursueFleeingTarget,
@@ -431,6 +440,8 @@
           $shieldsPreserveOnFlight,
           $breakOnDestructionPercentage,
           $parkInCenterOfSector,
+          @$desiredParkingPosition.{2},
+          @$desiredParkingPosition.{1}.name,
           $recordActionsToLogBook,
           $delayBetweenScans,
           $delayBetweenScansInSeconds,
@@ -445,7 +456,13 @@
 
     <set_value name="$debugChance" exact="100" />
 
-    <find_zone name="$homeLocation" space="$homeSector" normalzone="true" sortbydistanceto="this.assignedcontrolled" />
+    <do_if value="$parkInCenterOfSector and $desiredParkingPosition != null">
+      <edit_order_param order="this.assignedcontrolled.order" param="'desiredParkingPosition'" value="null" />
+    </do_if>
+    <do_elseif
+      value="$desiredParkingPosition != null and @$desiredParkingPosition.{1}.isclass.sector and @$desiredParkingPosition.{1} != $homeSector">
+      <edit_order_param order="this.assignedcontrolled.order" param="'homeSector'" value="$desiredParkingPosition.{1}" />
+    </do_elseif>
 
     <set_command_action commandaction="commandaction.scanningto" param="$homeSector" />
 
@@ -471,12 +488,18 @@
       output="true" append="true" />
 
 
-    <set_value name="$dx" min="-5" max="5" />
-    <set_value name="$dy" min="-5" max="5" />
-    <set_value name="$dz" min="-5" max="5" />
+    <set_value name="$parkingPosition" exact="null" />
 
-    <create_position name="$parkingPosition" x="$homeSector.coreposition.x + $dx * 1km" y="$homeSector.coreposition.y + 30km + $dy * 1km"
-      z="$homeSector.coreposition.z + $dz * 1km" space="$homeSector.sector" />
+    <do_if value="$parkInCenterOfSector">
+      <set_value name="$dx" min="-5" max="5" />
+      <set_value name="$dy" min="-5" max="5" />
+      <set_value name="$dz" min="-5" max="5" />
+      <create_position name="$parkingPosition" x="$homeSector.coreposition.x + $dx * 1km" y="$homeSector.coreposition.y + 30km + $dy * 1km"
+        z="$homeSector.coreposition.z + $dz * 1km" space="$homeSector.sector" />
+    </do_if>
+    <do_elseif value="@$desiredParkingPosition != null and @$desiredParkingPosition.{2} != null">
+      <set_value name="$parkingPosition" exact="@$desiredParkingPosition.{2}" />
+    </do_elseif>
 
     <set_value name="$textTitle" exact="{1972092401, 1000}" />
     <set_value name="$textShip" exact="{1972092401, 1001}" />
@@ -554,6 +577,19 @@
   <patch sinceversion="107">
     <include_interrupt_actions ref="RelationsConversionList" />
     <set_value name="$relationsThresholdInternal" exact="-0.32" />
+    <set_value name="$parkingPosition" exact="null" />
+    <do_if value="$parkInCenterOfSector">
+      <set_value name="$dx" min="-5" max="5" />
+      <set_value name="$dy" min="-5" max="5" />
+      <set_value name="$dz" min="-5" max="5" />
+      <create_position name="$parkingPosition" x="$homeSector.coreposition.x + $dx * 1km" y="$homeSector.coreposition.y + 30km + $dy * 1km"
+        z="$homeSector.coreposition.z + $dz * 1km" space="$homeSector.sector" />
+      <set_value name="$parkedAtPosition"
+        exact="($parkingPosition != null) and (this.assignedcontrolled.distanceto.{$parkingPosition} le 5km)" />
+    </do_if>
+    <do_else>
+      <set_value name="$parkedAtPosition" exact="false" />
+    </do_else>
   </patch>
   <attention min="unknown">
     <actions>
@@ -561,8 +597,7 @@
 
       <label name="start" />
 
-      <do_if value="not $homeLocation? or not $homeLocation.isclass.zone">
-        <find_zone name="$homeLocation" space="$homeSector" normalzone="true" sortbydistanceto="this.assignedcontrolled" />
+      <do_if value="this.assignedcontrolled.sector != $homeSector">
         <wait min="500ms" max="1s" />
         <resume label="flightToHomeSector" />
       </do_if>
@@ -571,10 +606,6 @@
       <label name="targetSearching" />
 
       <set_value name="$target" exact="null" />
-
-      <do_if value="not $homeLocation? or not $homeLocation.isclass.zone">
-        <resume label="start" />
-      </do_if>
 
       <do_if value="this.assignedcontrolled.sector != $homeSector">
         <resume label="flightToHomeSector" />
@@ -1122,7 +1153,7 @@
 
           <!-- ATTACKING  STATION ************************************************************************ -->
 
-          <set_value name="$parkedInCenterOfSector" exact="false" />
+          <set_value name="$parkedAtPosition" exact="false" />
 
           <add_to_group groupname="$targets" object="$target" />
           <set_value name="$targetInfo"
@@ -1226,7 +1257,7 @@
         <resume label="targetSearching" />
       </do_if>
 
-      <do_if value="$parkInCenterOfSector and (not @$parkedInCenterOfSector)">
+      <do_if value="(@$parkingPosition != null) and (not @$parkedAtPosition)">
 
         <create_orientation name="$orientation" orientation="look_at" refposition="$parkingPosition">
           <position object="this.assignedcontrolled" />
@@ -1243,14 +1274,10 @@
           <interrupt_after_time time="$interruptAfterTime" />
         </move_to>
 
-        <do_if value="this.assignedcontrolled.distanceto.{$parkingPosition} le 5km">
-          <set_value name="$parkedInCenterOfSector" exact="true" />
-        </do_if>
-        <do_else>
-          <set_value name="$parkedInCenterOfSector" exact="false" />
-        </do_else>
+        <set_value name="$parkedAtPosition"
+          exact="($parkingPosition != null) and (this.assignedcontrolled.distanceto.{$parkingPosition} le 5km)" />
 
-        <do_if value="$parkedInCenterOfSector and $idleDelay - (player.age - $parkingTimestamp) gt 10s">
+        <do_if value="$parkedAtPosition and $idleDelay - (player.age - $parkingTimestamp) gt 10s">
           <set_value name="$idleDelay" exact="$idleDelay - (player.age - $parkingTimestamp)" />
         </do_if>
         <do_else>
@@ -1270,7 +1297,7 @@
       <run_script name="'move.idle'">
         <param name="Min" value="[30s, $idleDelay].min" />
         <param name="Max" value="[30s, $idleDelay].max" />
-        <param name="anchorpos_sector" value="if $parkInCenterOfSector then @$parkingPosition else null" />
+        <param name="anchorpos_sector" value="@$parkingPosition" />
         <param name="MaxDistance" value="20km" />
         <param name="debugchance" value="100" />
       </run_script>
@@ -1360,7 +1387,7 @@
             <resume label="targetSearching" />
           </do_if>
 
-          <set_value name="$parkedInCenterOfSector" exact="false" />
+          <set_value name="$parkedAtPosition" exact="false" />
 
           <set_command_action commandaction="commandaction.flyingto" param="$target" />
 
@@ -1523,9 +1550,29 @@
       <!-- HOME ********************************************************************************* -->
       <label name="flightToHomeSector" />
 
-      <do_if value="not $homeLocation? or not $homeLocation.isclass.zone">
+      <do_if value="this.assignedcontrolled.sector == $homeSector">
         <resume label="start" />
       </do_if>
+
+      <get_jump_path component="$jumpPath" multiple="true" uselocalhighways="true" refobject="this.assignedcontrolled"
+        useknownpath="this.isplayerowned">
+        <start object="this.assignedcontrolled" />
+        <end object="$homeSector" />
+      </get_jump_path>
+
+      <do_if value="$jumpPath.count lt 2">
+        <debug_to_file directory="'protectsector'" name="'debug_'  + this.assignedcontrolled.idcode + '_' + this.assignedcontrolled"
+          text="'ERROR: we are not at the target sector, but no jump path found from %s %s to %s %s. aborting.'.[this.sector.knownname, this.sector, $targetsector.knownname, $targetsector]"
+          output="true" append="true" />
+        <do_all exact="$jumpPath.count" counter="$pathIndex">
+          <debug_to_file directory="'protectsector'" name="'debug_'  + this.assignedcontrolled.idcode + '_' + this.assignedcontrolled"
+            text="'jumpPath entry %s: %s %s %s'.[$pathIndex, $jumpPath.{$pathIndex}.class, $jumpPath.{$pathIndex}.knownname, $jumpPath.{$pathIndex}]"
+            output="true" append="true" />
+        </do_all>
+        <resume label="cleanup" />
+      </do_if>
+      <find_zone name="$homeLocation" space="$homeSector" normalzone="true" sortbydistanceto="$jumpPath.last" />
+      <remove_value name="$jumpPath" />
 
       <set_command command="command.movetozone" param="$homeLocation" />
       <set_command_action commandaction="commandaction.flying" />
@@ -1540,16 +1587,26 @@
           interaction="showonmap" object="this.assignedcontrolled" />
       </do_if>
 
-      <get_safe_pos result="$destinationAtHome" zone="$homeLocation" radius="this.assignedcontrolled.size" min="1km" max="35km" />
+      <do_if value="@$desiredParkingPosition != null and @$desiredParkingPosition.{2} != null">
+        <set_value name="$destinationAtHome" exact="@$desiredParkingPosition.{2}" />
+      </do_if>
+      <do_else>
+        <get_safe_pos result="$destinationAtHome" zone="$homeLocation" radius="this.assignedcontrolled.size" min="1km" max="35km" />
+      </do_else>
 
       <move_to object="this.assignedcontrolled" destination="$homeLocation" travel="true" forceposition="false" finishonapproach="true"
         commandaction="false">
         <position value="$destinationAtHome" min="5km" max="6km" />
       </move_to>
 
+      <remove_value name="$homeLocation" />
+      <remove_value name="$destinationAtHome" />
+
       <wait min="5ms" max="15ms" profile="flat" />
 
       <resume label="targetSearching" />
+
+      <label name="cleanup" />
     </actions>
   </attention>
 </aiscript>

@@ -23,6 +23,7 @@
       <t id="161">Avoid boosters usage</t>
       <t id="171">Leave target with hull percentage</t>
       <t id="181">Park at sector core</t>
+      <t id="182">Park exactly there</t>
       <t id="191">Delay between scans, seconds</t>
       <t id="201">Attack distance: percentage of radar range</t>
       <t id="901">Record to logbook</t>
