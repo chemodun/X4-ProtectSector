@@ -13,10 +13,10 @@
           value="if $homeSector.isclass.sector then $homeSector else $homeSector.sector" comment="Added patch to set default value" />
       </param>
       <param name="attackStations" type="bool" default="false" text="{1972092401, 111}" />
-      <param name="attackShipsXL" type="bool" default="false" text="{1972092401, 121}" />
-      <param name="attackShipsL" type="bool" default="false" text="{1972092401, 122}" />
-      <param name="attackShipsM" type="bool" default="true" text="{1972092401, 123}" />
-      <param name="attackShipsS" type="bool" default="true" text="{1972092401, 124}" />
+      <param name="attackShipsXL" type="bool" default="this.ship.isclass.ship_xl" text="{1972092401, 121}" />
+      <param name="attackShipsL" type="bool" default="this.ship.isclass.ship_l and this.ship.isclass.ship_xl" text="{1972092401, 122}" />
+      <param name="attackShipsM" type="bool" default="this.ship.isclass.ship_m and this.ship.isclass.ship_l" text="{1972092401, 123}" />
+      <param name="attackShipsS" type="bool" default="this.ship.isclass.ship_s and this.ship.isclass.ship_m" text="{1972092401, 124}" />
       <param name="attackShipsOutOfStationsDistance" type="length" default="0km" text="{1972092401, 129}"
         comment="Minimal acceptable distance to the enemy station">
         <input_param name="min" value="0km" />
@@ -70,7 +70,7 @@
           comment="Added patch to set default value" />
       </param>
       <param name="recordActionsToLogBook" type="bool" default="true" text="{1972092401, 901}" />
-      <param name="isStartedByPlayer" type="internal" default="true" text="Started by Player"></param>
+      <param name="isStartedByPlayer" type="internal" default="true" text="Started by Player" />
       <param name="debugchance" type="bool" default="0" advanced="true" text="{1041, 10086}" comment="Print debug output">
         <input_param name="truevalue" value="100" />
         <editable />
@@ -449,6 +449,50 @@
         ]"
       output="true" append="true" />
 
+    <set_value name="$textTitle" exact="{1972092401, 1000}" />
+    <set_value name="$textShip" exact="{1972092401, 1001}" />
+    <set_value name="$textStation" exact="{1972092401, 1002}" />
+    <set_value name="$textHomeSector" exact="{1972092401, 1003}.[$homeSector.knownname]" />
+
+    <do_if value="this.assignedcontrolled.aipilot.$targetInfo?">
+      <set_value name="$targetInfo" exact="this.assignedcontrolled.aipilot.$targetInfo" />
+      <set_value name="$target" exact="@$targetInfo.$target" />
+      <set_value name="$isStartedByPlayer" exact="false" />
+      <debug_to_file directory="'protectsector'" name="'debug_'  + this.assignedcontrolled.idcode + '_' + this.assignedcontrolled"
+        text="'[%s at %s, %s] - Station after attack : %s {%s}, iswreck: %s, targetInfo: %s'
+              .[
+                this.assignedcontrolled.debugname,
+                this.assignedcontrolled.sector.knownname,
+                this.assignedcontrolled.fleet.name,
+                $target.debugname,
+                $target.class,
+                $target.iswreck,
+                $targetInfo
+              ]"
+        output="true" append="true" />
+
+
+      <do_if value="$target.iswreck">
+
+        <apply_experience entity="this" experience="'protect_sector'" chance="60" />
+        <apply_experience object="this.assignedcontrolled" role="entityrole.service" experience="'protect_sector'" chance="30" />
+
+        <do_if value="$recordActionsToLogBook">
+          <set_value name="$textUnit" exact="{1972092401, 1011}.[this.assignedcontrolled.name, this.assignedcontrolled.idcode]" />
+          <do_if
+            value="@this.assignedcontrolled.subordinates.count gt 0 and @this.assignedcontrolled.toplevelcommander == this.assignedcontrolled">
+            <set_value name="$textUnit" exact="{1972092401, 1012}.[this.assignedcontrolled.fleet.name, $textUnit]" />
+          </do_if>
+          <set_value name="$textEnemy" exact="{1972092401, 1013}.[$textStation, $targetInfo.$name, $targetInfo.$idcode]" />
+          <set_value name="$textDestroyedBy" exact="{1972092401, 1015}.[@$target.lastattacker.name, @$target.lastattacker.idcode]" />
+          <write_to_logbook category="general" title="$textTitle"
+            text="{1972092401, 1041}.[$textUnit, $textEnemy, $textHomeSector, $textDestroyedBy]" interaction="showonmap"
+            object="this.assignedcontrolled" />
+        </do_if>
+      </do_if>
+      <remove_value name="this.assignedcontrolled.aipilot.$targetInfo" />
+    </do_if>
+
     <set_value name="$target" exact="null" />
     <set_value name="$targetOnResponse" exact="null" />
 
@@ -500,11 +544,6 @@
     <do_elseif value="@$desiredParkingPosition != null and @$desiredParkingPosition.{2} != null">
       <set_value name="$parkingPosition" exact="@$desiredParkingPosition.{2}" />
     </do_elseif>
-
-    <set_value name="$textTitle" exact="{1972092401, 1000}" />
-    <set_value name="$textShip" exact="{1972092401, 1001}" />
-    <set_value name="$textStation" exact="{1972092401, 1002}" />
-    <set_value name="$textHomeSector" exact="{1972092401, 1003}.[$homeSector.knownname]" />
 
     <set_value name="$textUnit" exact="{1972092401, 1011}.[this.assignedcontrolled.name, this.assignedcontrolled.idcode]" />
     <do_if
@@ -607,22 +646,11 @@
       <!-- SEARCH ******************************************************************************* -->
       <label name="targetSearching" />
 
-      <set_value name="$target" exact="null" />
-
       <do_if value="this.assignedcontrolled.sector != $homeSector">
         <resume label="flightToHomeSector" />
       </do_if>
 
-      <do_if value="this.assignedcontrolled.order" comment="Safety check in case the script is called from non-order script">
-        <!-- Required for all infinite orders, no effect in case of finite timeout -->
-        <set_order_syncpoint_reached order="this.assignedcontrolled.order" />
-      </do_if>
-
-      <set_command command="command.patrol" />
-
-      <set_command_action commandaction="commandaction.scanningto" param="$homeSector" />
-
-      <wait min="1s" max="2s" />
+      <set_value name="$target" exact="null" />
 
       <do_if value="not $targets? or $targets == null">
         <create_group groupname="$targets" />
@@ -634,7 +662,16 @@
       </do_if>
       <clear_table table="$targetInfo" />
 
-      <set_value name="$target" exact="null" />
+      <do_if value="this.assignedcontrolled.order" comment="Safety check in case the script is called from non-order script">
+        <!-- Required for all infinite orders, no effect in case of finite timeout -->
+        <set_order_syncpoint_reached order="this.assignedcontrolled.order" />
+      </do_if>
+
+      <set_command command="command.patrol" />
+
+      <set_command_action commandaction="commandaction.scanningto" param="$homeSector" />
+
+      <wait min="1s" max="2s" />
 
 
       <!-- SEARCHING  SHIP ************************************************************************ -->
@@ -909,6 +946,7 @@
           <add_to_group groupname="$targets" object="$target" />
           <set_value name="$targetInfo"
             exact="table[
+            $target = $target,
             $name = $target.name,
             $idcode = $target.idcode,
             $class = $target.class,
@@ -1150,6 +1188,7 @@
           <add_to_group groupname="$targets" object="$target" />
           <set_value name="$targetInfo"
             exact="table[
+            $target = $target,
             $name = $target.name,
             $idcode = $target.idcode,
             $class = $target.class,
@@ -1197,46 +1236,14 @@
               interaction="showonmap" object="this.assignedcontrolled" />
           </do_if>
 
-          <wait min="300ms" max="500ms" />
-          <run_script name="'order.fight.tactical'">
+          <set_value name="this.assignedcontrolled.aipilot.$targetInfo" exact="$targetInfo" />
+          <create_order id="'TacticalOrder'" object="this.assignedcontrolled" immediate="true">
             <param name="selectedtarget" value="$target" />
+            <param name="aggressiveness" value="5" />
             <param name="debugchance" value="100" />
-          </run_script>
+          </create_order>
+          <resume label="cleanup" />
 
-          <apply_experience entity="this" experience="'protect_sector'" chance="60" />
-          <apply_experience object="this.assignedcontrolled" role="entityrole.service" experience="'protect_sector'" chance="30" />
-
-          <debug_to_file directory="'protectsector'" name="'debug_'  + this.assignedcontrolled.idcode + '_' + this.assignedcontrolled"
-            text="'[%s at %s, %s] - Station after attack : %s {%s}, iswreck: %s, targets: %s, targetInfo: %s'
-              .[
-                this.assignedcontrolled.debugname,
-                this.assignedcontrolled.sector.knownname,
-                this.assignedcontrolled.fleet.name,
-                $target.debugname,
-                $target.class,
-                $target.iswreck,
-                $targets,
-                $targetInfo
-              ]"
-            output="true" append="true" />
-
-
-          <do_if value="$targetInfo.$stationIsUnderConstruction and $target.iswreck">
-            <do_if value="$recordActionsToLogBook">
-              <set_value name="$textUnit" exact="{1972092401, 1011}.[this.assignedcontrolled.name, this.assignedcontrolled.idcode]" />
-              <do_if
-                value="@this.assignedcontrolled.subordinates.count gt 0 and @this.assignedcontrolled.toplevelcommander == this.assignedcontrolled">
-                <set_value name="$textUnit" exact="{1972092401, 1012}.[this.assignedcontrolled.fleet.name, $textUnit]" />
-              </do_if>
-              <set_value name="$textEnemy" exact="{1972092401, 1013}.[$textStation, $targetInfo.$name, $targetInfo.$idcode]" />
-              <set_value name="$textDestroyedBy" exact="{1972092401, 1015}.[@$target.lastattacker.name, @$target.lastattacker.idcode]" />
-              <write_to_logbook category="general" title="$textTitle"
-                text="{1972092401, 1041}.[$textUnit, $textEnemy, $textHomeSector, $textDestroyedBy]" interaction="showonmap"
-                object="this.assignedcontrolled" />
-            </do_if>
-          </do_if>
-
-          <resume label="targetSearching" />
         </do_if>
       </do_if>
 
