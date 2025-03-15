@@ -1,0 +1,6 @@
+﻿<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<diff>
+  <replace sel="/aiscript/order[@id='TacticalOrder']/location[@object='$selectedtarget.toplevelcommander']/@condition">@$selectedtarget.toplevelcommander and $selectedtarget.canbeattacked</replace>
+  <replace sel="/aiscript/patch[@sinceversion='5']/following-sibling::attention[@min='unknown']/do_if[@value='$fleetcommander.toplevelcommander']/@value">@$fleetcommander.toplevelcommander</replace>
+  <replace sel="/aiscript/attention[@min='unknown']/actions/do_if[@value='$fleetcommander.toplevelcommander']/@value">@$fleetcommander.toplevelcommander</replace>
+</diff>
