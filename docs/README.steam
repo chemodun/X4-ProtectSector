@@ -81,6 +81,8 @@ It has slightly different behavior for stations and ships:
 
 If enabled, the ship will attack only hostile targets. It will use the appropriate command to filter the targets.
 
+[h2]By negative relation[/h2]
+
 [h2]Protect our ships and stations in sector[/h2]
 
 [b]Enabled[/b] by default.
@@ -132,6 +134,9 @@ If set to non-zero value, the ship will stop attacking when hull is less than de
 [b]Disabled[/b] by default.
 
 If enabled, the ship will try to park at the sector core, when it is not targets to fight against.
+
+[h2]Park exactly there[/h2]
+
 
 [h2]Delay between scans, seconds[/h2]
 
