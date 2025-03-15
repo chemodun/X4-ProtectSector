@@ -2,6 +2,16 @@
 
 [size=130][u][1.07] - 2025-03-15[/u][/size]
 
+[size=125][u]Added[/u][/size]
+[list]
+[*] [b]By negative relation[/b] to set the relation to possible targets more precisely.
+[*] [b]Park exactly there[/b] to set the exact position where the ship should park when it is not targets to fight against. Useful for big sectors.
+[/list]
+[size=125][u]Improved[/u][/size]
+[list]
+[*] Idle flying when any parking is not set.
+[*] Attack of the stations via [b]Tactical attack[/b] in now visible, as it is run not as a script, but as an order.
+[/list]
 [size=130][u][1.06] - 2025-03-01[/u][/size]
 
 [size=125][u]Fixed[/u][/size]
