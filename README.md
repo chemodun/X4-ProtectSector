@@ -83,6 +83,14 @@ If enabled, the ship will attack only hostile targets. It will use the appropria
 
 ### By negative relation
 
+This is a slider to define the relation to the `Player`. Take in account - relation is shown as `positive` value, due to limitation of the game engine.
+So, if you want to attack the ships with relation `-10` and lower - you have to set the value to `10`.
+Default value is `25`, i.e. attack the ships with relation `-25` and lower.
+
+Please take in account -  when previous parameter is enabled, you can set this one in between 25 and 30 (-25 and -30 relation).
+If the `Attack only hostile targets` is disabled - the value can be set in between 0 and 30 (0 and -30 relation).
+**Use it carefully.**
+
 ### Protect our ships and stations in sector
 
 `Enabled` by default.
@@ -136,6 +144,14 @@ If set to non-zero value, the ship will stop attacking when hull is less than de
 If enabled, the ship will try to park at the sector core, when it is not targets to fight against.
 
 ### Park exactly there
+
+It's `optional` parameter, it means - it can be skipped to set.
+Moreover, if `Park at sector core` is enabled - this parameter will not only be ignored, its value will be cleared. So, if you want to park exactly there - disable the `Park at sector core` option.
+To set the value of this parameter - you have to select the exact position on the galaxy map inside the appropriate sector.
+
+#### Important Notice
+
+If the sector, selected in this parameter, is not the same as the `Home Sector` - the `Home Sector` will be changed to the selected one.
 
 ### Delay between scans, seconds
 

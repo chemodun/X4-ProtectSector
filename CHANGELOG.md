@@ -2,6 +2,16 @@
 
 ## [1.07] - 2025-03-15
 
+### Added
+
+- `By negative relation` to set the relation to possible targets more precisely.
+- `Park exactly there` to set the exact position where the ship should park when it is not targets to fight against. Useful for big sectors.
+
+### Improved
+
+- Idle flying when any parking is not set.
+- Attack of the stations via `Tactical attack` in now visible, as it is run not as a script, but as an order.
+
 ## [1.06] - 2025-03-01
 
 ### Fixed
