@@ -24,7 +24,7 @@ jobs:
       - name: Define file masks
         id: define-file-masks
         run: |
-          echo "file_masks='*.md$'" >> $GITHUB_ENV
+          echo "file_masks='.*\.md$'" >> $GITHUB_ENV
 
       - name: Get changed files
         id: changed-markdown-files
