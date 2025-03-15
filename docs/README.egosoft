@@ -137,7 +137,6 @@ If enabled, the ship will try to park at the sector core, when it is not targets
 
 [size=125][u]Park exactly there[/u][/size]
 
-
 [size=125][u]Delay between scans, seconds[/u][/size]
 
 Default value is [b]4 seconds[/b].
