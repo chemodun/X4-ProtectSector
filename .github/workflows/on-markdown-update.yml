@@ -27,7 +27,7 @@ jobs:
         with:
           # File names or patterns to match, separated by spaces
           # Use .*\.md to match all markdown files
-          files: .*\.md
+          files: README.md CHANGELOG.md
 
       - name: Install python3
         if: steps.changed-markdown-files.outputs.any_changed == 'true'
