@@ -1031,7 +1031,7 @@
           </run_script>
         </do_if>
 
-        <set_value name="$idleDelay" min="3min" max="5min" />
+        <set_value name="$idleDelay" min="10min" max="15min" />
 
         <resume label="goingIdle" />
 
