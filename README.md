@@ -135,6 +135,8 @@ If set to non-zero value, the ship will stop attacking when hull is less than de
 
 If enabled, the ship will try to park at the sector core, when it is not targets to fight against.
 
+### Park exactly there
+
 ### Delay between scans, seconds
 
 Default value is `4 seconds`.
