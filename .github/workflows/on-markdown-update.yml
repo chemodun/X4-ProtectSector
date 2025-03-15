@@ -29,6 +29,12 @@ jobs:
           # Use .*\.md to match all markdown files
           files: README.md CHANGELOG.md
 
+      - name: Check results
+        run: |
+          echo "Any changed: ${{ steps.changed-markdown-files.outputs.any_changed }}"
+          echo "All changed files: ${{ steps.changed-markdown-files.outputs.all_changed_files }}"
+          echo "Deleted files: ${{ steps.changed-markdown-files.outputs.deleted_files }}"
+
       - name: Install python3
         if: steps.changed-markdown-files.outputs.any_changed == 'true'
         run: sudo apt-get update && sudo apt-get install -y python3
