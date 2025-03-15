@@ -81,6 +81,8 @@ It has slightly different behavior for stations and ships:
 
 If enabled, the ship will attack only hostile targets. It will use the appropriate command to filter the targets.
 
+### By negative relation
+
 ### Protect our ships and stations in sector
 
 `Enabled` by default.
