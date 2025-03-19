@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="iso-8859-1"?>
 <aiscript name="order.fight.protect.sector" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-  xsi:noNamespaceSchemaLocation="aiscripts.xsd" version="107">
+  xsi:noNamespaceSchemaLocation="aiscripts.xsd" version="108">
   <order id="ProtectSector" name="{1972092401, 1}" description="{1972092401, 2}" category="combat" infinite="true">
     <params>
       <param name="homeSector"
@@ -44,7 +44,7 @@
           comment="Added patch to set default value" />
       </param>
       <param name="shieldsPreserveOnFlight" type="bool" default="false" text="{1972092401, 161}">
-        <patch sinceversion="107" value="if player.gameversion ge 750 then false else $shieldsPreserveOnFlight"
+        <patch sinceversion="108" value="if player.gameversion ge 750 then false else $shieldsPreserveOnFlight"
           comment="From 7.50 has no dependency on shields" />
       </param>
       <param name="breakOnDestructionPercentage" type="number" default="0" text="{1972092401, 171}">
@@ -79,7 +79,7 @@
     <skill min="40" />
     <requires>
       <match shiptype="shiptype.lasertower" negate="true" />
-      <match primarypurpose="purpose.fight" />
+      <match class="class.spacesuit" negate="true" />
     </requires>
     <location object="$homeSector" condition="$homeSector.zone.exists" />
     <location object="@$desiredParkingPosition.{1}" position="@$desiredParkingPosition.{2}"
@@ -171,6 +171,31 @@
           -0.794328,
           -1.0
         ]" />
+      </actions>
+      <actions name="ApplyExperience">
+        <do_if value="$targetInfo?">
+          <apply_experience entity="this" experience="'protect_sector'" chance="if $targetInfo.$isShip then 80 else 100"
+            factor="if $targetInfo.$isShip then 1 else 0.5" />
+          <apply_experience object="this.assignedcontrolled" role="entityrole.service" experience="'protect_sector'"
+            chance="if $targetInfo.$isShip then 60 else 100" factor="if $targetInfo.$isShip then 1 else 0.4" />
+          <do_for_each name="$subordinate" in="this.assignedcontrolled.subordinates">
+            <do_if value="$subordinate.subordinates.count == 0">
+              <do_if value="@$targetDestroyedBy == $subordinate">
+                <apply_experience entity="$subordinate.aipilot" experience="'protect_sector'"
+                  chance="if $targetInfo.$isShip then 80 else 100" factor="if $targetInfo.$isShip then 1 else 0.5" />
+                <apply_experience object="$subordinate" role="entityrole.service" experience="'protect_sector'"
+                  chance="if $targetInfo.$isShip then 60 else 100" factor="if $targetInfo.$isShip then 1 else 0.4" />
+              </do_if>
+              <do_else>
+                <apply_experience entity="$subordinate.aipilot" experience="'protect_sector'"
+                  chance="if $targetInfo.$isShip then 80 else 100" factor="if $targetInfo.$isShip then 1 else 0.5" />
+                <apply_experience object="$subordinate" role="entityrole.service" experience="'protect_sector'"
+                  chance="if $targetInfo.$isShip then 60 else 100" factor="if $targetInfo.$isShip then 1 else 0.4" />
+              </do_else>
+            </do_if>
+          </do_for_each>
+        </do_if>
+        <remove_value name="$targetDestroyedBy" />
       </actions>
     </library>
     <handler ref="AttackHandler" />
@@ -372,8 +397,8 @@
             </do_if>
             <do_if
               value="@event.param == this.assignedcontrolled or @this.assignedcontrolled.subordinates.count > 0 and @this.assignedcontrolled.subordinates.indexof.{event.param} gt 0">
-              <apply_experience entity="this" experience="'protect_sector'" chance="80" />
-              <apply_experience object="this.assignedcontrolled" role="entityrole.service" experience="'protect_sector'" chance="60" />
+              <set_value name="$targetDestroyedBy" exact="event.param" />
+              <include_interrupt_actions ref="ApplyExperience" />
             </do_if>
             <abort_called_scripts resume="targetSearching" />
           </do_else>
@@ -406,7 +431,7 @@
     </handler>
   </interrupts>
   <init>
-    <set_value name="$scriptVersion" exact="107" />
+    <set_value name="$scriptVersion" exact="108" />
 
     <set_value name="$shieldsPreserveOnFlight" exact="if player.gameversion ge 750 then false else $shieldsPreserveOnFlight" />
 
@@ -474,8 +499,7 @@
 
       <do_if value="$target.iswreck">
 
-        <apply_experience entity="this" experience="'protect_sector'" chance="60" />
-        <apply_experience object="this.assignedcontrolled" role="entityrole.service" experience="'protect_sector'" chance="30" />
+        <include_interrupt_actions ref="ApplyExperience" />
 
         <do_if value="$recordActionsToLogBook">
           <set_value name="$textUnit" exact="{1972092401, 1011}.[this.assignedcontrolled.name, this.assignedcontrolled.idcode]" />
@@ -586,7 +610,6 @@
     <set_value name="$approachingIterationsCount" exact="0" />
 
     <set_value name="$isStartedByPlayer" exact="false" />
-
 
     <do_if value="not $debugChance? or $debugChance == null">
       <set_value name="$debugChance" exact="100" />
@@ -1558,10 +1581,6 @@
           <do_if value="$target.exists and not $target.iswreck and $pursueFleeingTarget and $target.sector == $homeSector">
             <resume label="targetApproaching" />
           </do_if>
-          <do_else>
-            <apply_experience entity="this" experience="'protect_sector'" chance="60" />
-            <apply_experience object="this.assignedcontrolled" role="entityrole.service" experience="'protect_sector'" chance="30" />
-          </do_else>
         </do_if>
         <do_else>
           <resume label="targetApproaching" />
@@ -1585,7 +1604,16 @@
 
       <do_if value="$jumpPath.count lt 2">
         <debug_to_file directory="'protectsector'" name="'debug_'  + this.assignedcontrolled.idcode + '_' + this.assignedcontrolled"
-          text="'ERROR: we are not at the target sector, but no jump path found from %s %s to %s %s. aborting.'.[this.sector.knownname, this.sector, $targetsector.knownname, $targetsector]"
+          text="'[%s at %s, %s] - ERROR: we are not at the target sector, but no jump path found from %s %s to %s %s. aborting.'.
+          [
+            this.assignedcontrolled.debugname,
+            this.assignedcontrolled.sector.knownname,
+            this.assignedcontrolled.fleet.name,
+            this.sector.knownname,
+            this.sector,
+            $homeSector.knownname,
+            $homeSector
+          ]"
           output="true" append="true" />
         <do_all exact="$jumpPath.count" counter="$pathIndex">
           <debug_to_file directory="'protectsector'" name="'debug_'  + this.assignedcontrolled.idcode + '_' + this.assignedcontrolled"
@@ -1632,4 +1660,15 @@
       <label name="cleanup" />
     </actions>
   </attention>
+  <on_abort killed="true">
+    <debug_to_file directory="'protectsector'" name="'debug_'  + this.assignedcontrolled.idcode + '_' + this.assignedcontrolled"
+      text="'[%s at %s, %s] - Killed. Aborted. Commander: %s'.
+          [
+            @this.assignedcontrolled.debugname,
+            @this.assignedcontrolled.sector.knownname,
+            @this.assignedcontrolled.fleet.name,
+            @this.assignedcontrolled.fleet.commander.debugname,
+          ]"
+      output="true" append="true" />
+  </on_abort>
 </aiscript>
