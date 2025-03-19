@@ -179,7 +179,17 @@
           <apply_experience object="this.assignedcontrolled" role="entityrole.service" experience="'protect_sector'"
             chance="if $targetInfo.$isShip then 60 else 100" factor="if $targetInfo.$isShip then 1 else 0.4" />
           <do_for_each name="$subordinate" in="this.assignedcontrolled.subordinates">
-            <do_if value="$subordinate.subordinates.count == 0">
+            <set_value name="$acceptableForExperience" exact="$subordinate.subordinates.count == 0" />
+            <do_if value="$acceptableForExperience" negate="true">
+              <set_value name="$acceptableForExperience" exact="true" />
+              <do_for_each name="$order" in="$subordinate.orders">
+                <do_if value="$order.id == 'Assist'">
+                  <set_value name="$acceptableForExperience" exact="false" />
+                  <break />
+                </do_if>
+              </do_for_each>
+            </do_if>
+            <do_if value="$acceptableForExperience">
               <do_if value="@$targetDestroyedBy == $subordinate">
                 <apply_experience entity="$subordinate.aipilot" experience="'protect_sector'"
                   chance="if $targetInfo.$isShip then 80 else 100" factor="if $targetInfo.$isShip then 1 else 0.5" />
@@ -191,6 +201,12 @@
                   chance="if $targetInfo.$isShip then 80 else 100" factor="if $targetInfo.$isShip then 1 else 0.5" />
                 <apply_experience object="$subordinate" role="entityrole.service" experience="'protect_sector'"
                   chance="if $targetInfo.$isShip then 60 else 100" factor="if $targetInfo.$isShip then 1 else 0.4" />
+                <do_for_each name="$subSubordinate" in="$subordinate.allsubordinates">
+                  <apply_experience entity="$subSubordinate.aipilot" experience="'protect_sector'"
+                    chance="if $targetInfo.$isShip then 80 else 100" factor="if $targetInfo.$isShip then 0.7 else 0.4" />
+                  <apply_experience object="$subSubordinate" role="entityrole.service" experience="'protect_sector'"
+                    chance="if $targetInfo.$isShip then 60 else 100" factor="if $targetInfo.$isShip then 0.6 else 0.3" />
+                </do_for_each>
               </do_else>
             </do_if>
           </do_for_each>
