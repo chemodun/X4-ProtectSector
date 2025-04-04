@@ -157,23 +157,31 @@
                     <!-- Clamp the dot product to valid range for acos -->
                     <set_value name="$dotProduct" exact="[$dotProduct, -1].max" />
                     <set_value name="$dotProduct" exact="[$dotProduct, 1].min" />
-                    <set_value name="$angle" exact="acos($dotProduct)" />
-                    <set_value name="$angleInDegrees" exact="$angle / 1deg" />
-                    <set_value name="$divisionResult" exact="$angleInDegrees / 90" />
-                    <set_value name="$remainder" exact="$angleInDegrees % 90" />
+                    <set_value name="$angle" exact="acos($dotProduct) * 57.2957795f" />
+                    <debug_text
+                        text="'AttackStationInSector [%s]: Angle between ship and target: %s. Dot Product: %s.'.[this.assignedcontrolled.debugname, $angle, $dotProduct]"
+                        chance="$debugChance" />
+                    <set_value name="$divisionResult" exact="$angle / 90" />
+                    <set_value name="$remainder" exact="$angle % 90" />
                     <set_value name="$numWaypoints"
-                        exact="if $remainder > 0 then (($angleInDegrees - $remainder) / 90) + 1 else $divisionResult" />
-                    <set_value name="$numWaypoints" exact="[$numWaypoints, $maxWaypoints].min" />
+                        exact="if $remainder > 0 then ((divisionResult - $remainder) + 1 else $divisionResult" />
+                    <debug_text
+                        text="'AttackStationInSector [%s]: Angle: %s. Division Result: %s. Remainder: %s. Number of waypoints: %s (%s).'.
+                        [this.assignedcontrolled.debugname, $angle, $divisionResult, $remainder, $numWaypoints, $numWaypoints * 1i]"
+                        chance="$debugChance" />
+                    <set_value name="$numWaypoints" exact="[$numWaypoints * 1i, $maxWaypoints].min" />
 
                     <debug_text
-                        text="'AttackStationInSector [%s]: Using %s waypoints for %.1f degree angle'.[this.assignedcontrolled.debugname, $numWaypoints, $angle/1deg]"
+                        text="'AttackStationInSector [%s]: Using %s waypoints for %s (%s rad) degree angle'.[this.assignedcontrolled.debugname, $numWaypoints, $angle, acos($dotProduct)]"
                         chance="$debugChance" />
 
                     <!-- Generate intermediate waypoints -->
                     <do_all exact="$numWaypoints" counter="$i">
                         <set_value name="$progress" exact="($i + 1) / ($numWaypoints + 1)" />
                         <set_value name="$waypointAngle" exact="sin($progress * pi)" />
-
+                        <debug_text
+                            text="'AttackStationInSector [%s]: Waypoint %s: %s'.[this.assignedcontrolled.debugname, $i, $waypointAngle]"
+                            chance="$debugChance" />
                         <!-- Interpolate between directions with perpendicular component -->
                         <set_value name="$interpolatedX"
                             exact="$shipDirX * (1-$progress) + $targetDirX * $progress + $crossX * $waypointAngle" />
@@ -304,8 +312,8 @@
                 <set_value name="$safetyIndicator" exact="-1" />
                 <do_if value="not @$isFleeing">
                     <do_if
-                        value="this.assignedcontrolled.isclass.ship_xl and this.assignedcontrolled.shieldpercentage le 61  or
-                                this.assignedcontrolled.isclass.ship_l and this.assignedcontrolled.shieldpercentage le 81 or
+                        value="@this.assignedcontrolled.isclass.ship_xl and this.assignedcontrolled.shieldpercentage le 61  or
+                                @this.assignedcontrolled.isclass.ship_l and this.assignedcontrolled.shieldpercentage le 81 or
                                 this.assignedcontrolled.hullpercentage le 95 ">
                         <debug_text
                             text="'AttackStationInSector [%s]: Too dangerous. Going out.'.
@@ -791,7 +799,7 @@
                         forceposition="false" forcerotation="true" boost="false" travel="false">
                         <position object="this.assignedcontrolled" />
                         <rotation value="$rotationOnTarget" />
-                        <interrupt_after_time time="if this.assignedcontrolled.isclass.{class.ship_xl} then 10s else 5s" />
+                        <interrupt_after_time time="if this.assignedcontrolled.isclass.ship_xl then 10s else 5s" />
                     </move_to>
                 </do_if>
                 <debug_text
@@ -813,47 +821,15 @@
                 append="true" multiple="true" recursive="true" sortdescending="false">
                 <match module="true" />
                 <match state="componentstate.wreck" negate="true" />
-                <match_is_in_view_of object="this.assignedcontrolled" horizontal="270deg" vertical="270deg" />
             </find_object_component>
             <debug_text
-                text="'AttackStationInSector [%s]: Recheck - 270. Target %s has %s components. Distance to: %s, Size/2: %s.'.
+                text="'AttackStationInSector [%s]: Recheck - All. Target %s has %s components. Distance to: %s, Size/2: %s.'.
                 [this.assignedcontrolled.debugname, $primaryTarget.debugname, $components.count, $primaryTarget.distanceto.{this.assignedcontrolled}, $primaryTargetRadius]"
                 chance="$debugChance" />
-            <do_if value="$components.count == 0">
-                <remove_value name="$components" />
-                <find_object_component name="$components"
-                    object="$primaryTarget" checkoperational="false" integrated="false"
-                    indestructible="false" invulnerable="false" sortbydistanceto="this.assignedcontrolled" excluded="$list_objectstoignore"
-                    append="true" multiple="true" recursive="true" sortdescending="false">
-                    <match module="true" />
-                    <match state="componentstate.wreck" negate="true" />
-                    <match_is_in_view_of object="this.assignedcontrolled" horizontal="360deg" vertical="360deg" />
-                </find_object_component>
-                <debug_text
-                    text="'AttackStationInSector [%s]: Recheck - 360. Target %s has %s components. Distance to: %s, Size/2: %s.'.
-                [this.assignedcontrolled.debugname, $primaryTarget.debugname, $components.count, $primaryTarget.distanceto.{this.assignedcontrolled}, $primaryTargetRadius]"
-                    chance="$debugChance" />
-            </do_if>
-            <do_if value="$components.count == 0">
-                <remove_value name="$components" />
-                <find_object_component name="$components"
-                    object="$primaryTarget" checkoperational="false" integrated="false"
-                    indestructible="false" invulnerable="false" sortbydistanceto="this.assignedcontrolled" excluded="$list_objectstoignore"
-                    append="true" multiple="true" recursive="true" sortdescending="false">
-                    <match module="true" />
-                    <match state="componentstate.wreck" negate="true" />
-                </find_object_component>
-                <debug_text
-                    text="'AttackStationInSector [%s]: Recheck - All. Target %s has %s components. Distance to: %s, Size/2: %s.'.
-                [this.assignedcontrolled.debugname, $primaryTarget.debugname, $components.count, $primaryTarget.distanceto.{this.assignedcontrolled}, $primaryTargetRadius]"
-                    chance="$debugChance" />
-            </do_if>
             <debug_text
-                text="'AttackStationInSector [%s]: Target %s has %s components. First: %s. Distance to: %s. Current: %s. Compare: Less: %s. Delta: %s. Radius: %s. Relative Pos: %s.'.
+                text="'AttackStationInSector [%s]: Target %s has %s components. First: %s. Distance to: %s. Current: %s. Radius: %s. Relative Pos: %s.'.
                 [this.assignedcontrolled.debugname, $primaryTarget.debugname, $components.count, @$components.{1}.debugname,
                 @this.assignedcontrolled.bboxdistanceto.{@$components.{1}}, this.assignedcontrolled.bboxdistanceto.{$target},
-                @this.assignedcontrolled.bboxdistanceto.{@$components.{1}} lt this.assignedcontrolled.bboxdistanceto.{$target},
-                @this.assignedcontrolled.bboxdistanceto.{@$components.{1}} - this.assignedcontrolled.bboxdistanceto.{$target},
                 $components.{1}.size/2m,
                 @this.assignedcontrolled.relativeposition.{@$components.{1}}]"
                 chance="$debugChance" />
@@ -906,25 +882,13 @@
                 chance="$debugChance" />
             <create_position name="$positionForAttack" object="$target" x="$positionForAttackX" y="$positionForAttackY"
                 z="$positionForAttackZ" space="$targetSector" />
-            <get_safe_pos result="$positionForAttackSafe" value="$positionForAttack"
-                radius="this.assignedcontrolled.size"
-                sector="$targetSector"
-                allowyaxis="true"
-                includefiringrange="true" />
-            <!-- <get_safe_pos result="$positionForAttack" object="$target" min="$thresholdMinimal" max="$thresholdMaximal"
-                    directionobject="$target"
-                    direction="quadrant.front"
-                    angle="30deg"
-                    ignored="this.assignedcontrolled"
-                    sector="$targetSector"
-                    includefiringrange="true" /> -->
             <create_orientation name="$rotationOnTarget" orientation="look_at" refobject="$target" useaimtarget="true">
                 <position object="this.assignedcontrolled" />
             </create_orientation>
             <debug_text
-                text="'AttackStationInSector [%s]: Attack position: %s ($s). Rotation: %s. Distance to the Pos: From Target: %s (%s). From Primary Target: %s. From us: %s'.
-                        [this.assignedcontrolled.debugname, $positionForAttack, $positionForAttackSafe, $rotationOnTarget,
-                        $target.distanceto.{[$targetSector, $positionForAttack]} - $targetRadius, $target.distanceto.{[$targetSector, $positionForAttackSafe]} - $targetRadius,
+                text="'AttackStationInSector [%s]: Attack position: %s. Rotation: %s. Distance to the Pos: From Target: %s. From Primary Target: %s. From us: %s'.
+                        [this.assignedcontrolled.debugname, $positionForAttack, $rotationOnTarget,
+                        $target.distanceto.{[$targetSector, $positionForAttack]} - $targetRadius,
                         $primaryTarget.distanceto.{[$targetSector, $positionForAttack]} - $primaryTargetRadius,
                         this.assignedcontrolled.distanceto.{[$targetSector, $positionForAttack]}]"
                 chance="$debugChance" />
@@ -963,10 +927,9 @@
                 </do_if>
                 <include_interrupt_actions ref="AssignSubordinatesToAttackStation" />
                 <debug_text
-                    text="'AttackStationInSector [%s]: Target %s has %s components. First: %s. Distance to: %s (%s). Current: %s. Compare: Less: %s. Delta: %s. Radius: %s. Relative Pos: %s.'.
+                    text="'AttackStationInSector [%s]: Target %s has %s components. First: %s. Distance to: %s. Current: %s. Compare: Less: %s. Delta: %s. Radius: %s. Relative Pos: %s.'.
                     [this.assignedcontrolled.debugname, $primaryTarget.debugname, $components.count, $components.{1}.debugname,
-                    this.assignedcontrolled.bboxdistanceto.{$components.{1}}, $components.{1}.bboxdistanceto.{[$targetSector, $positionForAttackSafe]},
-                    this.assignedcontrolled.bboxdistanceto.{$target},
+                    this.assignedcontrolled.bboxdistanceto.{$components.{1}}, this.assignedcontrolled.bboxdistanceto.{$target},
                     this.assignedcontrolled.bboxdistanceto.{$components.{1}} lt this.assignedcontrolled.bboxdistanceto.{$target},
                     this.assignedcontrolled.bboxdistanceto.{$components.{1}} - this.assignedcontrolled.bboxdistanceto.{$target},
                     $components.{1}.size/2m,
@@ -1102,7 +1065,7 @@
                             forceposition="false" forcerotation="true" boost="false" travel="false">
                             <position object="this.assignedcontrolled" />
                             <rotation value="$rotationOnTarget" />
-                            <interrupt_after_time time="if this.assignedcontrolled.isclass.{class.ship_xl} then 10s else 5s" />
+                            <interrupt_after_time time="if this.assignedcontrolled.isclass.ship_xl then 10s else 5s" />
                         </move_to>
                     </do_if>
                     <include_interrupt_actions ref="RefreshTargetsRelatedData" />
@@ -1163,7 +1126,7 @@
                         value="$positionForAttackStepBackRelative"
                         space="$targetSector" />
                     <remove_value name="$positionForAttackStepBackRelative" />
-                    <do_if value="this.assignedcontrolled.isclass.class_xl">
+                    <do_if value="this.assignedcontrolled.isclass.ship_xl">
                         <create_orientation name="$rotationOnTarget" orientation="look_at" refobject="$target" useaimtarget="true">
                             <position object="this.assignedcontrolled" />
                         </create_orientation>
@@ -1186,7 +1149,7 @@
                             forceposition="false" forcerotation="true" boost="false" travel="false">
                             <position object="this.assignedcontrolled" />
                             <rotation value="$rotationOnTarget" />
-                            <interrupt_after_time time="if this.assignedcontrolled.isclass.{class.ship_xl} then 10s else 5s" />
+                            <interrupt_after_time time="if this.assignedcontrolled.isclass.ship_xl then 10s else 5s" />
                         </move_to>
                     </do_if>
                     <set_value name="$safetyIndicator" exact="0" />
@@ -1207,7 +1170,7 @@
                             forceposition="false" forcerotation="true" boost="false" travel="false">
                             <position object="this.assignedcontrolled" />
                             <rotation value="$rotationOnTarget" />
-                            <interrupt_after_time time="if this.assignedcontrolled.isclass.{class.ship_xl} then 10s else 5s" />
+                            <interrupt_after_time time="if this.assignedcontrolled.isclass.ship_xl then 10s else 5s" />
                         </move_to>
                     </do_if>
                     <do_if value="$safetyIndicator ge 0">
