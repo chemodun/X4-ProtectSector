@@ -6,12 +6,13 @@
       <t id="2">Protect Sector against hostile ships</t>
       <t id="101">Home sector</t>
       <t id="111">Attack stations</t>
+      <t id="112"> - use "Tactical Attack"</t>
+      <t id="113"> - use experimental "Attack Station". If selected - previous one will be ignored!</t>
       <t id="121">Attack XL ships</t>
       <t id="122">Attack L ships</t>
       <t id="123">Attack M ships</t>
       <t id="124">Attack S ships</t>
-      <t id="129">Attack farther from stations - if hostile ship will be closer then selected value to hostile station - it will not be
-        attacked</t>
+      <t id="129">Attack farther from stations - if hostile ship will be closer then selected value to hostile station - it will not be attacked</t>
       <t id="131">Attack only visible targets</t>
       <t id="132">Attack only hostile targets</t>
       <t id="133">Pursue fleeing targets</t>
@@ -19,7 +20,7 @@
       <t id="135"> - except military ships</t>
       <t id="141">Share target with other - if set, will give possibility to attack one target by different Sector Protectors</t>
       <t id="151">Own max. relation </t>
-      <t id="152"> by exact "-" reputation. I.e. ships with reputation/race relation between selected value (with "-") and -30 will be assumed as hostile</t>
+      <t id="152"> - by exact "-" reputation. I.e. ships with reputation/race relation between selected value (with "-") and -30 will be assumed as hostile</t>
       <t id="161">Avoid boosters usage</t>
       <t id="171">Leave target with hull percentage</t>
       <t id="181">Park at sector core</t>
@@ -45,6 +46,8 @@
       <t id="1042">%s: %s in %s is abandoned</t>
       <t id="1043">%s: %s is left %s</t>
       <t id="1044">%s: %s in %s is too fast</t>
+      <t id="10001">Attack Station</t>
+      <t id="10011">An experimental order to attack only stations. Available only for L and XL ships</t>
     </page>
   </add>
 </diff>

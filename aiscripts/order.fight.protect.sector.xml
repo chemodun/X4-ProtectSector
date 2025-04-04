@@ -13,6 +13,12 @@
           value="if $homeSector.isclass.sector then $homeSector else $homeSector.sector" comment="Added patch to set default value" />
       </param>
       <param name="attackStations" type="bool" default="false" text="{1972092401, 111}" />
+      <param name="attackStationsTactical" type="bool" default="true" text="{1972092401, 112}">
+        <patch sinceversion="108" early="true" setvariable="true" value="true" comment="Give possibility to choice the attack order" />
+      </param>
+      <param name="attackStationsInternal" type="bool" default="false" text="{1972092401, 113}">
+        <patch sinceversion="108" early="true" setvariable="true" value="false" comment="Give possibility to choice the attack order" />
+      </param>
       <param name="attackShipsXL" type="bool" default="this.ship.isclass.ship_xl" text="{1972092401, 121}" />
       <param name="attackShipsL" type="bool" default="this.ship.isclass.ship_l and this.ship.isclass.ship_xl" text="{1972092401, 122}" />
       <param name="attackShipsM" type="bool" default="this.ship.isclass.ship_m and this.ship.isclass.ship_l" text="{1972092401, 123}" />
@@ -1276,11 +1282,37 @@
           </do_if>
 
           <set_value name="this.assignedcontrolled.aipilot.$targetInfo" exact="$targetInfo" />
-          <create_order id="'TacticalOrder'" object="this.assignedcontrolled" immediate="true">
-            <param name="selectedtarget" value="$target" />
-            <param name="aggressiveness" value="5" />
-            <param name="debugchance" value="100" />
-          </create_order>
+          <do_if value="@$attackStationsInternal">
+            <create_order id="'AttackStationInSector'" object="this.assignedcontrolled" immediate="true">
+              <param name="primaryTarget" value="$target" />
+              <param name="debugChance" value="100" />
+            </create_order>
+          </do_if>
+          <do_else>
+            <do_if value="not @$attackStationsTactical">
+              <create_order id="'Attack'" object="this.assignedcontrolled" immediate="true">
+                <param name="primarytarget" value="$target" />
+                <param name="pursuetargets" value="true" />
+                <param name="allowothertargets" value="false" />
+                <param name="checkrelation" value="false" />
+                <param name="disable" value="false" />
+                <param name="maintaindistance" value="false" />
+                <param name="targetclasses" value="[class.station]" />
+                <param name="squad_attack" value="true" />
+                <param name="allowboost" value="true" />
+                <param name="forceprimarytarget" value="true" />
+                <param name="debugchance" value="100" />
+              </create_order>
+            </do_if>
+            <do_else>
+              <create_order id="'TacticalOrder'" object="this.assignedcontrolled" immediate="true">
+                <param name="selectedtarget" value="$target" />
+                <param name="aggressiveness" value="5" />
+                <param name="debugchance" value="100" />
+              </create_order>
+            </do_else>
+          </do_else>
+
           <resume label="cleanup" />
 
         </do_if>

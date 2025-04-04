@@ -7,6 +7,8 @@
         <create_order id="$orderdef.$id" object="this.assignedcontrolled" default="true">
           <param name="homeSector" value="$orderdef.$homeSector" />
           <param name="attackStations" value="$orderdef.$attackStations" />
+          <param name="attackStationsTactical" value="$orderdef.$attackStationsTactical" />
+          <param name="attackStationsInternal" value="$orderdef.$attackStationsInternal" />
           <param name="attackShipsXL" value="$orderdef.$attackShipsXL" />
           <param name="attackShipsL" value="$orderdef.$attackShipsL" />
           <param name="attackShipsM" value="$orderdef.$attackShipsM" />
@@ -31,6 +33,8 @@
       <do_else>
         <set_value name="$orderdef.$homeSector" exact="$order.$homeSector" />
         <set_value name="$orderdef.$attackStations" exact="$order.$attackStations" />
+        <set_value name="$orderdef.$attackStationsTactical" exact="$order.$attackStationsTactical" />
+        <set_value name="$orderdef.$attackStationsInternal" exact="$order.$attackStationsInternal" />
         <set_value name="$orderdef.$attackShipsXL" exact="$order.$attackShipsXL" />
         <set_value name="$orderdef.$attackShipsL" exact="$order.$attackShipsL" />
         <set_value name="$orderdef.$attackShipsM" exact="$order.$attackShipsM" />
@@ -52,6 +56,8 @@
         <run_script name="$scriptname">
           <param name="homeSector" value="$orderdef.$homeSector" />
           <param name="attackStations" value="$orderdef.$attackStations" />
+          <param name="attackStationsTactical" value="$orderdef.$attackStationsTactical" />
+          <param name="attackStationsInternal" value="$orderdef.$attackStationsInternal" />
           <param name="attackShipsXL" value="$orderdef.$attackShipsXL" />
           <param name="attackShipsL" value="$orderdef.$attackShipsL" />
           <param name="attackShipsM" value="$orderdef.$attackShipsM" />
