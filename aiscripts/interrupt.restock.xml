@@ -1,0 +1,19 @@
+﻿<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<diff>
+  <add sel="/aiscript/interrupts/library/actions[@name='ResupplyCheck']/do_if[@value='not $cleanup_interrupt?']/do_if[@value='$repair or $resupply_ammo or $resupply_units or $restock_subordinates']/do_if[@value='not $cleanup_interrupt?']/do_all[@exact='3']/do_if[@value='@$pass_interrupt lt 3 and @$urgent']" pos="after">
+    <do_if value="(@$resupplystations_interrupt.count le 0) and not @$onlyuseresupplierships and this.isplayerowned and @$playerOwnedWorkaround">
+      <find_station name="$resupplystations_player" canequipclass="this.assignedcontrolled.class" canbuildclass="$buildclass_interrupt" canbuildships="$buildclass_interrupt != null" canbuildfor="this.owner" hascontrolentity="controlpost.shiptrader" space="player.galaxy" owner="faction.player" multiple="true" append="true" sortbydistanceto="this.assignedcontrolled" sortdescending="true" />
+      <find_station name="$resupplystations_interrupt" canequipclass="this.assignedcontrolled.class" canbuildclass="$buildclass_interrupt" canbuildships="$buildclass_interrupt != null" canbuildfor="this.owner" hascontrolentity="controlpost.shiptrader" space="player.galaxy" knownto="faction.player" multiple="true" append="true" sortbydistanceto="this.assignedcontrolled" sortdescending="true">
+        <match_relation_to object="this.assignedcontrolled" relation="enemy" comparison="not" />
+      </find_station>
+      <do_if value="($resupplystations_player.count gt 0 and $resupplystations_interrupt.count gt 0 and (this.assignedcontrolled.gatedistance.{$resupplystations_player.last} lt this.assignedcontrolled.gatedistance.{$resupplystations_interrupt.last} * 2)) or ($resupplystations_interrupt.count == 0)">
+        <set_value name="$resupplystations_interrupt" exact="$resupplystations_player" />
+        <debug_text text="'%1 (%2) found %3 player owned resupply station(s) in the galaxy via workaround.'.[this.ship.knownname, this.ship, $resupplystations_interrupt.count]" chance="$debugchance_interrupt" />
+      </do_if>
+      <do_else>
+        <debug_text text="'%1 (%2) found %3 resupply station(s) in the galaxy via workaround.'.[this.ship.knownname, this.ship, $resupplystations_interrupt.count]" chance="$debugchance_interrupt" />
+      </do_else>
+      <remove_value name="$resupplystations_player" />
+    </do_if>
+  </add>
+</diff>

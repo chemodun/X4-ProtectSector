@@ -1,0 +1,6 @@
+﻿<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<diff>
+  <add sel="/aiscript/order[@id='Resupply']/params">
+    <param name="playerOwnedWorkaround" type="internal" default="false" comment="Workaround to make it working on player owned ships" />
+  </add>
+</diff>
