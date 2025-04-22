@@ -786,9 +786,9 @@
                 <!-- <resume label="finish" /> -->
             </do_if>
 
-            <set_value name="$list_objectstoignore" exact="[]" />
+            <set_value name="$excludedComponents" exact="[]" />
             <do_if value="@$subTargetToExclude != null">
-                <append_to_list name="$list_objectstoignore" exact="$subTargetToExclude" />
+                <append_to_list name="$excludedComponents" exact="$subTargetToExclude" />
                 <debug_text
                     text="'AttackStationInSector [%s]: Excluding %s from target list for this turn.'.
                     [this.assignedcontrolled.debugname, $subTargetToExclude.debugname]"
@@ -809,7 +809,7 @@
                 object="$primaryTarget" checkoperational="false" integrated="false"
                 indestructible="false" invulnerable="false"
                 sortbyvalue="loop.element.distanceto.{$primaryTarget} * (if loop.element.relativeposition.{$primaryTarget}.y lt 0 then -1 else 1)"
-                excluded="$list_objectstoignore" append="true" multiple="true" recursive="true" sortdescending="true">
+                excluded="$excludedComponents" append="true" multiple="true" recursive="true" sortdescending="true">
                 <match module="true" />
                 <match state="componentstate.wreck" negate="true" />
             </find_object_component>
@@ -819,8 +819,8 @@
                 [this.assignedcontrolled.debugname, $primaryTarget.debugname, $components.count, $primaryTarget.distanceto.{this.assignedcontrolled}, $primaryTargetRadius]"
                 chance="$debugChance" />
             <do_if value="$components.count == 0">
-                <do_if value="($list_objectstoignore.count gt 0) and not $primaryTarget.iswreck">
-                    <clear_list list="$list_objectstoignore" />
+                <do_if value="($excludedComponents.count gt 0) and not $primaryTarget.iswreck">
+                    <clear_list list="$excludedComponents" />
                     <resume label="recheckComponents" />
                 </do_if>
                 <resume label="finish" />
@@ -1047,6 +1047,7 @@
             <set_value name="$isAttackingPosition" exact="false" />
             <label name="SafePathMove" />
             <remove_value name="$positionForAttackInitial" />
+            <set_value name="$safetyIndicator" exact="1" />
             <do_for_each name="$pathWaypoint" in="$waypoints" counter="$i">
                 <include_interrupt_actions ref="AssignSubordinatesToAttackStation" />
                 <include_interrupt_actions ref="RefreshTargetsRelatedData" />
@@ -1299,6 +1300,9 @@
                                 $positionPrimaryTargetInSector, ]"
                         chance="$debugChance"
                     />
+                    <do_if value="$isAttackingPosition">
+                        <set_value name="$safetyIndicator" exact="1" />
+                    </do_if>
                     <do_if value="$i == 1">
                         <create_orientation name="$rotationOnTarget" orientation="look_at" refposition="$positionToMove">
                             <position object="this.assignedcontrolled" space="$targetSector" />
@@ -1362,7 +1366,7 @@
                         name="$components"
                         object="$primaryTarget" checkoperational="false" integrated="false"
                         indestructible="false" invulnerable="false" sortbydistanceto="this.assignedcontrolled"
-                        excluded="$list_objectstoignore"
+                        excluded="$excludedComponents"
                         append="true" multiple="true" recursive="true" sortdescending="false">
                         <match module="true" />
                         <match state="componentstate.wreck" negate="true" />
@@ -1526,8 +1530,13 @@
                         <remove_value name="$positionToSideStep" />
                         <remove_value name="$blockedPosition" />
                         <remove_value name="$pathCrossesUnSafeRadius" />
-
-                        <resume label="SafePathMove" />
+                        <do_if value="$safetyIndicator gt 0">
+                            <resume label="SafePathMove" />
+                        </do_if>
+                        <do_else>
+                            <set_value name="$excludedComponents" exact="[$target]" />
+                            <resume label="acquireTarget" />
+                        </do_else>
                         <break />
                     </do_if>
                     <remove_value name="$pathCrossesUnSafeRadius" />
@@ -1541,7 +1550,6 @@
                     <resume label="SafePathMove" />
                 </do_if>
             </do_for_each>
-            <set_value name="$safetyIndicator" exact="1" />
             <remove_value name="$previousPositionForAttackRelative" />
             <set_value name="$targetIsReallyAttacked" exact="0" />
             <create_list name="$countOfAttacks" />
@@ -1550,7 +1558,7 @@
                 <find_object_component name="$components"
                     object="$primaryTarget" checkoperational="false" integrated="false"
                     indestructible="false" invulnerable="false" sortbydistanceto="this.assignedcontrolled"
-                    excluded="$list_objectstoignore"
+                    excluded="$excludedComponents"
                     append="true" multiple="true" recursive="true" sortdescending="false">
                     <match module="true" />
                     <match state="componentstate.wreck" negate="true" />
@@ -1666,7 +1674,13 @@
                             exact="@$weaponComponents.{1}.bboxdistanceto.[$targetSector, $positionForAttack] - this.assignedcontrolled.size" />
                         <do_if
                             value="(@$weaponComponents.{1}.maxfirerange * 1.05) ge $targetWeaponDistance">
-                            <set_value name="$safetyIndicator" exact="0" />
+                            <do_if
+                                value="(@$weaponComponents.{1}.maxfirerange * 1.05) ge @$weaponComponents.{1}.bboxdistanceto..{this.assignedcontrolled}">
+                                <set_value name="$safetyIndicator" exact="-1" />
+                            </do_if>
+                            <do_else>
+                                <set_value name="$safetyIndicator" exact="0" />
+                            </do_else>
                         </do_if>
                         <debug_text
                             text="'AttackStationInSector [%s]: Primary Target %s has %s weapon components. First: %s. Distance to: %s. Fire Range: %s. Safety Indicator: %s.'.
@@ -1866,9 +1880,12 @@
                             text="'AttackStationInSector [%s]: Target is attacked count: %s. By Primary: %s.'.
                             [this.assignedcontrolled.debugname, $targetIsReallyAttacked, $targetIsReallyAttackedByPrimaryWeapon]"
                             chance="$debugChance" />
-                        <append_to_list name="$countOfAttacks" exact="$targetIsReallyAttacked" />
+                        <append_to_list name="$countOfAttacks" exact="$targetIsReallyAttackedByPrimaryWeapon" />
+                        <!-- <append_to_list name="$countOfAttacks" exact="$targetIsReallyAttacked" /> -->
                         <do_if
-                            value="(this.attention ge attention.visible) and (($targetIsReallyAttacked lt 5 and $countOfAttacks.count == 1) or ($countOfAttacks.count gt 1 and $countOfAttacks.average lt 8))">
+                            value="(this.attention ge attention.visible) and (($targetIsReallyAttackedByPrimaryWeapon lt 2 and $countOfAttacks.count == 1) or ($countOfAttacks.count gt 1 and $countOfAttacks.average lt 6))">
+                            <!-- value="(this.attention ge attention.visible) and (($targetIsReallyAttacked lt 5 and $countOfAttacks.count
+                            == 1) or ($countOfAttacks.count gt 1 and $countOfAttacks.average lt 8))"> -->
                             <debug_text
                                 text="'AttackStationInSector [%s]: AttackFailed. Target %s is not really attacked (%s, average %s in %s). Safety Indicator: %s. Attack Strength: %s. Going to acquire new target!'.
                                 [this.assignedcontrolled.debugname, $target.debugname, $targetIsReallyAttacked,
@@ -1908,7 +1925,7 @@
             <remove_value name="$components" />
             <find_object_component name="$components"
                 object="$primaryTarget" checkoperational="false" integrated="false"
-                indestructible="false" invulnerable="false" sortbydistanceto="this.assignedcontrolled" excluded="$list_objectstoignore"
+                indestructible="false" invulnerable="false" sortbydistanceto="this.assignedcontrolled" excluded="$excludedComponents"
                 append="true" multiple="true" recursive="true" sortdescending="false">
                 <match module="true" />
                 <match state="componentstate.wreck" negate="true" />
