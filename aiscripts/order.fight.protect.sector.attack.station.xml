@@ -1675,7 +1675,7 @@
                         <do_if
                             value="(@$weaponComponents.{1}.maxfirerange * 1.05) ge $targetWeaponDistance">
                             <do_if
-                                value="(@$weaponComponents.{1}.maxfirerange * 1.05) ge @$weaponComponents.{1}.bboxdistanceto..{this.assignedcontrolled}">
+                                value="(@$weaponComponents.{1}.maxfirerange * 1.05) ge @$weaponComponents.{1}.bboxdistanceto.{this.assignedcontrolled}">
                                 <set_value name="$safetyIndicator" exact="-1" />
                             </do_if>
                             <do_else>
