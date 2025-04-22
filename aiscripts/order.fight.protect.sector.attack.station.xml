@@ -174,21 +174,6 @@
                         exact="(-$nextPositionB - sqrt($nextPositionDiscriminant)) / (2 * $nextPositionA)" />
                     <set_value name="$pathCrossesUnSafeRadius"
                         exact="($intersectionPointOne ge 0 and $intersectionPointOne le 1) or ($intersectionPointTwo ge 0 and $intersectionPointTwo le 1)" />
-                    <do_if value="$pathCrossesUnSafeRadius">
-                        <set_value name="$currentPositionDistanceToObject"
-                            exact="sqrt($currentPositionRelativeToObject.x^2 + $currentPositionRelativeToObject.y^2 + $currentPositionRelativeToObject.z^2)" />
-                        <set_value name="$nextPositionDistanceToObject"
-                            exact="sqrt($nextPositionRelativeToObject.x^2 + $nextPositionRelativeToObject.y^2 + $nextPositionRelativeToObject.z^2)" />
-                        <do_if
-                            value="$currentPositionDistanceToObject le $safeRadiusAroundObject and $nextPositionDistanceToObject gt $safeRadiusAroundObject">
-                            <set_value name="$pathCrossesUnSafeRadius" exact="false" />
-                            <debug_text
-                                text="'AttackStationInSector [%s]: PathCheck: Path crosses unsafe radius, but is safe: %s. Current Distance: %s. Next Distance: %s. Safe Radius: %s.'.
-                                [this.assignedcontrolled.debugname, $pathCrossesUnSafeRadius,
-                                $currentPositionDistanceToObject, $nextPositionDistanceToObject, $safeRadiusAroundObject]"
-                                chance="$debugChance" />
-                        </do_if>
-                    </do_if>
                     <remove_value name="$intersectionPointOne" />
                     <remove_value name="$intersectionPointTwo" />
                 </do_if>
@@ -221,10 +206,14 @@
                     chance="$debugChance" />
             </actions>
             <actions name="PrepareFleeingPath">
-                <set_value name="$fleeOutFirstDistance" exact="4km" />
+                <set_value name="$fleeOutFirstDistance" exact="$safeDistanceToPrimary * 1.2" />
                 <do_if value="this.assignedcontrolled.boost.available">
-                    <set_value name="$fleeOutFirstDistance"
+                    <set_value name="$fleeOutFirstDistanceBurst"
                         exact="((this.assignedcontrolled.boost.remainingduration)f * (this.assignedcontrolled.boost.maxspeed)f) * 0.8m" />
+                    <do_if value="$fleeOutFirstDistanceBurst gt $fleeOutFirstDistance">
+                        <set_value name="$fleeOutFirstDistance" exact="$fleeOutFirstDistanceBurst" />
+                    </do_if>
+                    <remove_value name="$fleeOutFirstDistanceBurst" />
                 </do_if>
                 <do_if value="@$positionRelativeToPrimaryTarget == null">
                     <include_interrupt_actions ref="RefreshTargetsRelatedData" />
@@ -336,7 +325,7 @@
                 <!-- 6. Create new position from our current position plus perpendicular offset -->
                 <create_position name="$positionSideStep"
                     x="$positionToSideStep.x + $offsetX"
-                    y="if ($positionToSideStep.y + $offsetY) le 0 then ([10, 30].random * $sideStepDistance / 100) else ($positionToSideStep.y + $offsetY)"
+                    y="if ($positionToSideStep.y + $offsetY) le 0 then ($randomAngleTenThirty.random * $sideStepDistance / 100) else ($positionToSideStep.y + $offsetY)"
                     z="$positionToSideStep.z + $offsetZ" />
                 <debug_text
                     text="'AttackStationInSector [%s]: SideStepPosition: Created preliminary side-step position: Original: %s, New: %s. Offsets: %s, %s, %s'.
@@ -385,6 +374,23 @@
                 <remove_value name="$currentRadius" />
                 <remove_value name="$newRadius" />
                 <remove_value name="$radiusRatio" />
+            </actions>
+            <actions name="GetRandom">
+                <create_list name="$randomList" />
+                <set_value name="$r" exact="$getRandomStart" />
+                <do_if value="@$getRandomStep == null">
+                    <set_value name="$getRandomStep" exact="($getRandomEnd - $getRandomStart) / 10" />
+                </do_if>
+                <do_while value="$r le $getRandomEnd">
+                    <append_to_list name="$randomList" exact="$r" />
+                    <set_value name="$r" operation="add" exact="$getRandomStep" />
+                </do_while>
+                <set_value name="$getRandomResult" exact="$randomList.random" />
+                <remove_value name="$randomList" />
+                <remove_value name="$r" />
+                <remove_value name="$getRandomStart" />
+                <remove_value name="$getRandomEnd" />
+                <remove_value name="$getRandomStep" />
             </actions>
         </library>
         <handler>
@@ -509,11 +515,14 @@
             <conditions>
                 <event_object_attacked_object object="this.assignedcontrolled" />
                 <check_value value="event.param == @$primaryTarget" />
-                <debug_text
+                <!-- <debug_text
                     text="'AttackStationInSector [%s]: TargetIsAttacked: Method: %s. Component: %s. Weapon: %s, %s, %s, %s, %s'.
-                    [this.assignedcontrolled.debugname, @event.param2, @event.param3.{1}.debugname, @event.param3.{2}.debugname, @event.param3.{2}.class, @event.param3.{2}.realclass, @event.param3.{2}.macro, @event.param3.{2}.grouptag]"
-                />
+                    [this.assignedcontrolled.debugname, @event.param2, @event.param3.{1}.debugname, @event.param3.{2}.debugname, @event.param3.{2}.class,
+                @event.param3.{2}.realclass, @event.param3.{2}.macro, @event.param3.{2}.grouptag]"
+                /> -->
                 <set_value name="$targetIsReallyAttacked" operation="add" />
+                <check_value value="@event.param3.{2} != null and @event.param3.{2}.grouptag == null" />
+                <set_value name="$targetIsReallyAttackedByPrimaryWeapon" operation="add" />
             </conditions>
         </handler>
         <handler>
@@ -575,6 +584,26 @@
     <init>
         <set_value name="$target" exact="null" />
         <set_value name="$updateTime" exact="if this.assignedcontrolled.isclass.ship_xl then 60s else 30s" />
+        <set_value name="$targetIsReallyAttacked" exact="0" />
+        <set_value name="$targetIsReallyAttackedByPrimaryWeapon" exact="0" />
+        <create_list name="$randomFullCircle" />
+        <set_value name="$r" exact="-180" />
+        <do_while value="$r le 180">
+            <append_to_list name="$randomFullCircle" exact="$r" />
+            <set_value name="$r" operation="add" exact="10" />
+        </do_while>
+        <create_list name="$randomAngleThirtySeventy" />
+        <set_value name="$r" exact="30" />
+        <do_while value="$r le 70">
+            <append_to_list name="$randomAngleThirtySeventy" exact="$r" />
+            <set_value name="$r" operation="add" exact="5" />
+        </do_while>
+        <create_list name="$randomAngleTenThirty" />
+        <set_value name="$r" exact="10" />
+        <do_while value="$r le 30">
+            <append_to_list name="$randomAngleTenThirty" exact="$r" />
+            <set_value name="$r" operation="add" exact="2" />
+        </do_while>
     </init>
     <attention min="unknown">
         <actions>
@@ -797,7 +826,12 @@
                 <resume label="finish" />
             </do_if>
             <!-- <shuffle_list list="$components" /> -->
-            <set_value name="$target" exact="@$components.{[1, [$components.count, 5].min].random}" />
+            <set_value name="$getRandomStart" exact="1" />
+            <set_value name="$getRandomEnd" exact="[$components.count, 5].min" />
+            <set_value name="$getRandomStep" exact="1" />
+            <include_interrupt_actions ref="GetRandom" />
+            <set_value name="$target" exact="@$components.{$getRandomResult}" />
+            <remove_value name="$getRandomResult" />
             <include_interrupt_actions ref="RefreshTargetsRelatedData" />
             <set_value name="$targetToPrimaryDistance" exact="$target.distanceto.{$primaryTarget}" />
             <debug_text
@@ -806,28 +840,42 @@
                 $positionTargetRelativeToPrimaryTarget, $positionRelativeToPrimaryTarget, $targetToPrimaryDistance]"
                 chance="$debugChance" />
             <do_if value="$targetToPrimaryDistance le 0">
-                <create_position name="$interimPositionRelativeToPrimaryTarget"
-                    x="$positionRelativeToPrimaryTarget.x * ([130, 230].random / 100m) * (if [0, 100].random le 50 then 1 else -1)"
-                    y="$safeDistanceToPrimary * (1m + [140, 290].random / 100m)"
-                    z="$positionRelativeToPrimaryTarget.y * ([130, 230].random / 100m) * (if [0, 100].random le 50 then 1 else -1)" />
-                <debug_text
-                    text="'AttackStationInSector [%s]: Target %s in a center of Primary target %s. Relative Interim position: %s.'.
-                        [this.assignedcontrolled.debugname, $target.debugname, $primaryTarget.debugname, $interimPositionRelativeToPrimaryTarget]"
-                    chance="$debugChance" />
+                <set_value name="$interimX"
+                    exact="$positionRelativeToPrimaryTarget.x" />
+                <set_value name="$interimZ"
+                    exact="$positionRelativeToPrimaryTarget.z" />
             </do_if>
             <do_else>
-                <set_value name="$targetToPrimaryRelativeRatio" exact="$safeDistanceToPrimary / $targetToPrimaryDistance" />
-                <create_position name="$interimPositionRelativeToPrimaryTarget"
-                    x="$positionTargetRelativeToPrimaryTarget.x * $targetToPrimaryRelativeRatio * (if [0, 100].random le 50 then (1m + [10, 60].random / 100m) else (-1 * [40, 110].random / 100m))"
-                    y="[[abs($positionTargetRelativeToPrimaryTarget.y), $safeDistanceToPrimary / 2].max, $safeDistanceToPrimary].min * (1m + [140, 290].random / 100m)"
-                    z="$positionTargetRelativeToPrimaryTarget.z * $targetToPrimaryRelativeRatio * (if [0, 100].random le 50 then (1m + [10, 60].random / 100m) else (-1 * [40, 110].random / 100m))" />
-                <debug_text
-                    text="'AttackStationInSector [%s]: Target %s not in a center of Primary target %s. Distance to Primary: %s. Ratio: %s. Relative Interim position: %s.'.
-                        [this.assignedcontrolled.debugname, $target.debugname, $primaryTarget.debugname, $targetToPrimaryDistance,
-                        $targetToPrimaryRelativeRatio, $interimPositionRelativeToPrimaryTarget]"
-                    chance="$debugChance" />
-                <remove_value name="$targetToPrimaryRelativeRatio" />
+                <set_value name="$interimX"
+                    exact="$positionTargetRelativeToPrimaryTarget.x" />
+                <set_value name="$interimZ"
+                    exact="$positionTargetRelativeToPrimaryTarget.z" />
             </do_else>
+            <set_value name="$interimRandomAngleGrad" exact="$randomFullCircle.random" />
+            <set_value name="$interimRandomAngle" exact="($interimRandomAngleGrad * 0.0174533)rad" />
+            <set_value name="$interimRandomAngleSin" exact="sin($interimRandomAngle)" />
+            <set_value name="$interimRandomAngleCos " exact="cos($interimRandomAngle)" />
+            <set_value name="$interimX"
+                exact="$interimX * $interimRandomAngleCos - $interimZ * $interimRandomAngleSin" />
+            <set_value name="$interimZ"
+                exact="$interimX * $interimRandomAngleSin + $interimZ * $interimRandomAngleCos" />
+            <set_value name="$interimRandomAngleVertical" exact="$randomAngleThirtySeventy.random" />
+            <create_position name="$interimPositionRelativeToPrimaryTarget"
+                x="$interimX"
+                y="sqrt($interimX^2 + $interimZ^2) * tan($interimRandomAngleVertical * 0.0174533)"
+                z="$interimZ" />
+            <debug_text
+                text="'AttackStationInSector [%s]: Target %s - module of Primary target %s. Distance to Primary: %s. Relative Interim position: %s. Angles: H: %s. V: %s.'.
+                    [this.assignedcontrolled.debugname, $target.debugname, $primaryTarget.debugname, $targetToPrimaryDistance,
+                    $interimPositionRelativeToPrimaryTarget, $interimRandomAngleGrad, $interimRandomAngleVertical]"
+                chance="$debugChance" />
+            <remove_value name="$interimX" />
+            <remove_value name="$interimZ" />
+            <remove_value name="$interimRandomAngle" />
+            <remove_value name="$interimRandomAngleGrad" />
+            <remove_value name="$interimRandomAngleVertical" />
+            <remove_value name="$interimRandomAngleSin" />
+            <remove_value name="$interimRandomAngleCos" />
             <set_value name="$interimPositionRelativeToPrimaryTargetDistance"
                 exact="sqrt($interimPositionRelativeToPrimaryTarget.x^2 + $interimPositionRelativeToPrimaryTarget.y^2 + $interimPositionRelativeToPrimaryTarget.z^2)" />
             <set_value name="$interimPositionRelativeToPrimaryTargetDistanceRatio"
@@ -1109,7 +1157,7 @@
 
                             <do_if value="@$positionSignalToCheck">
                                 <set_value name="$blockedPosition" exact="$positionToMoveIsBlockedBy.{2}" />
-                                <do_if value="@$lastBlockedBy == $positionToMoveIsBlockedBy.{1}">
+                                <do_if value="@$lastBlockedBy == $positionToMoveIsBlockedBy.{1} and @$sideStepDistance != null">
                                     <set_value name="$sideStepDistance" exact="$sideStepDistance * 1.1" />
                                 </do_if>
                                 <do_else>
@@ -1178,9 +1226,8 @@
                 <do_if value="$positionIsSafe">
                     <find_object name="$nearStations" class="[class.station]" space="$targetSector"
                         recursive="true" multiple="true" ishostileto="this.trueowner" known="true"
-                        sortbydistanceto="this.assignedcontrolled" sortdescending="false"
+                        sortbydistanceto="this.assignedcontrolled" sortdescending="false" excluded="[$primaryTarget]"
                     />
-                    <!-- excluded="[$primaryTarget]" -->
                     <set_value name="$checkStationsOnDistance" exact="this.distanceto.{[$targetSector, $positionToMove]} * 3" />
                     <debug_text
                         text="'AttackStationInSector [%s]: SafePathMove: To check is path to waypoint is safe going to check stations on distance: %s. In total: %s.'.
@@ -1221,7 +1268,7 @@
                         chance="$debugChance" />
                     <wait exact="200ms" />
                     <remove_value name="$positionToCheck" />
-                    <do_if value="$i == 1 or $isAttackingPosition">
+                    <do_if value="($i == 1 or $isAttackingPosition) and not (@$isFleeing == true)">
                         <debug_text
                             text="'AttackStationInSector [%s]: SafePathMove: First or Attacking %s waypoint %s is not safe. Going to acquire new target.'.
                                     [this.assignedcontrolled.debugname, $isAttackingPosition, $pathWaypoint]"
@@ -1355,7 +1402,16 @@
                         text="'AttackStationInSector [%s]: SafePathMove: SubTarget %s has an effective combat range of %sm, our: %s.'.
                         [this.assignedcontrolled.debugname, $target.debugname, $targetEffectiveRange, $maxEffectiveCombatRange]"
                         chance="$debugChance" />
-                    <set_value name="$desiredDistance" exact="[$targetEffectiveRange * 1.2, $maxEffectiveCombatRange * 0.95].random" />
+                    <do_if value="$targetEffectiveRange * 1.2 lt $maxEffectiveCombatRange * 0.95">
+                        <set_value name="$getRandomStart" exact="$targetEffectiveRange * 1.2" />
+                        <set_value name="$getRandomEnd" exact="$maxEffectiveCombatRange * 0.95" />
+                        <include_interrupt_actions ref="GetRandom" />
+                        <set_value name="$desiredDistance" exact="$getRandomResult" />
+                        <remove_value name="$getRandomResult" />
+                    </do_if>
+                    <do_else>
+                        <set_value name="$desiredDistance" exact="$maxEffectiveCombatRange * 0.98" />
+                    </do_else>
                     <set_value name="$currentRatio" exact="$desiredDistance / this.assignedcontrolled.distanceto.{$target}" />
                     <debug_text
                         text="'AttackStationInSector [%s]: SafePathMove: Test Positions: Positions: Ship: %s. Primary: %s. Target: %s, To Primary: Ship: %s, Target: %s. To Target: Ship: %s. Primary: %s. Distance: Ship: To Primary: %s. To Target: %s. Target to Primary: %s (%s).'.
@@ -1488,7 +1544,7 @@
             <set_value name="$safetyIndicator" exact="1" />
             <remove_value name="$previousPositionForAttackRelative" />
             <set_value name="$targetIsReallyAttacked" exact="0" />
-            <create_list name="$strengthOfAttacks" />
+            <create_list name="$countOfAttacks" />
             <do_while value="not @$target.iswreck">
                 <remove_value name="$components" />
                 <find_object_component name="$components"
@@ -1518,7 +1574,7 @@
                 <do_if
                     value="($target != @$components.{1}) and ((this.assignedcontrolled.bboxdistanceto.{$components.{1}} lt this.assignedcontrolled.bboxdistanceto.{$target}) or ($components.indexof.{$target} ge 0))">
                     <set_value name="$target" exact="@$components.{1}" />
-                    <create_list name="$strengthOfAttacks" />
+                    <create_list name="$countOfAttacks" />
                     <debug_text
                         text="'AttackStationInSector [%s]: New SubTarget %s'.
                         [this.assignedcontrolled.debugname, $target.debugname]"
@@ -1597,7 +1653,7 @@
                     </do_else>
                     <find_object_component name="$weaponComponents" object="$primaryTarget" class="[class.weapon]"
                         surfaceelement="true" integrated="false" indestructible="false" invulnerable="false"
-                        sortbyvalue="loop.element.maxfirerange * 1.05 - loop.element.bboxdistanceto.[$targetSector, $positionForAttack] + $thisRadius"
+                        sortbyvalue="loop.element.maxfirerange * 1.05 - loop.element.bboxdistanceto.[$targetSector, $positionForAttack] + this.assignedcontrolled.size"
                         append="true" multiple="true" recursive="true" sortdescending="true">
                         <match state="componentstate.wreck" negate="true" />
                         <match_parent>
@@ -1607,7 +1663,7 @@
                     </find_object_component>
                     <do_if value="$weaponComponents.count gt 0">
                         <set_value name="$targetWeaponDistance"
-                            exact="@$weaponComponents.{1}.bboxdistanceto.[$targetSector, $positionForAttack] - $thisRadius" />
+                            exact="@$weaponComponents.{1}.bboxdistanceto.[$targetSector, $positionForAttack] - this.assignedcontrolled.size" />
                         <do_if
                             value="(@$weaponComponents.{1}.maxfirerange * 1.05) ge $targetWeaponDistance">
                             <set_value name="$safetyIndicator" exact="0" />
@@ -1782,6 +1838,7 @@
                         <resume label="problemWithTarget" />
                     </do_if>
                     <set_value name="$targetIsReallyAttacked" exact="0" />
+                    <set_value name="$targetIsReallyAttackedByPrimaryWeapon" exact="0" />
                     <do_all exact="5">
                         <set_value name="$rotationGetOn" exact="$target" />
                         <include_interrupt_actions ref="IsNotAcceptableRotation" />
@@ -1806,21 +1863,21 @@
                         <set_command_action commandaction="commandaction.attackingto" param="$primaryTarget" />
                         <wait exact="$updateTime" />
                         <debug_text
-                            text="'AttackStationInSector [%s]: Target is attacked count: %s.'.
-                            [this.assignedcontrolled.debugname, $targetIsReallyAttacked]"
+                            text="'AttackStationInSector [%s]: Target is attacked count: %s. By Primary: %s.'.
+                            [this.assignedcontrolled.debugname, $targetIsReallyAttacked, $targetIsReallyAttackedByPrimaryWeapon]"
                             chance="$debugChance" />
-                        <append_to_list name="$strengthOfAttacks" exact="$targetIsReallyAttacked" />
+                        <append_to_list name="$countOfAttacks" exact="$targetIsReallyAttacked" />
                         <do_if
-                            value="($targetIsReallyAttacked lt 5 and $strengthOfAttacks.count == 1) or ($strengthOfAttacks.count gt 1 and $strengthOfAttacks.average lt 8)">
+                            value="(this.attention ge attention.visible) and (($targetIsReallyAttacked lt 5 and $countOfAttacks.count == 1) or ($countOfAttacks.count gt 1 and $countOfAttacks.average lt 8))">
                             <debug_text
                                 text="'AttackStationInSector [%s]: AttackFailed. Target %s is not really attacked (%s, average %s in %s). Safety Indicator: %s. Attack Strength: %s. Going to acquire new target!'.
                                 [this.assignedcontrolled.debugname, $target.debugname, $targetIsReallyAttacked,
-                                @$strengthOfAttacks.average, @$strengthOfAttacks.count, $safetyIndicator, $possibleAttackStrength]"
+                                @$countOfAttacks.average, @$countOfAttacks.count, $safetyIndicator, $possibleAttackStrength]"
                                 chance="$debugChance" />
                             <remove_value name="$positionForAttack" />
                             <remove_value name="$positionToMove" />
                             <remove_value name="$targetIsReallyAttacked" />
-                            <remove_value name="$strengthOfAttacks" />
+                            <remove_value name="$countOfAttacks" />
                             <resume label="acquireTarget" />
                         </do_if>
                     </do_if>
