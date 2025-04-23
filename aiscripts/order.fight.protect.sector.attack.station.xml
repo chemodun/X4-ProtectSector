@@ -81,7 +81,7 @@
                     @this.assignedcontrolled.subordinates.count, @this.$escortgroup.count]"
                     chance="$debugChance" />
                 <do_if
-                    value="not @$primaryTarget.iswreck and @this.assignedcontrolled.subordinates.count gt 0 and @this.$escortgroup.count">
+                    value="not (@$isFleeing == true) and not @$primaryTarget.iswreck and @this.assignedcontrolled.subordinates.count gt 0 and @this.$escortgroup.count">
                     <do_for_each name="$subordinate" in="this.$escortgroup" reverse="true">
                         <debug_text
                             text="'AttackStationInSector [%s]: Subordinate %s. Class: %s. Type: %s. Assignment: %s. Group Dock Override: %s. Hull: %s.'.
@@ -1305,7 +1305,7 @@
                     </do_else>
                 </do_if>
                 <remove_value name="$positionToCheck" />
-                <do_if value="$positionIsSafe and not (@$isFleeing == true)">
+                <do_if value="$positionIsSafe or (@$isFleeing == true)">
                     <set_value name="$moveUsingTravelMode"
                         exact="this.assignedcontrolled.distanceto.{[$targetSector, $positionToMove]} gt 20km" />
                     <debug_text
