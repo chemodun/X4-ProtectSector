@@ -32,6 +32,9 @@
                     <set_value name="$currentDistanceToPrimary" exact="this.assignedcontrolled.bboxdistanceto.{$primaryTarget}" />
                     <set_value name="$safeDistanceToPrimary"
                         exact="($maxEffectiveTargetCombatRange + $primaryTargetRadius + $thisRadius) * 1.1" />
+                    <do_if value="this.assignedcontrolled.attention ge attention.visible">
+                        <set_value name="$safeDistanceToPrimary" exact="$safeDistanceToPrimary * 2" />
+                    </do_if>
                     <set_value name="$positionRelativeToPrimaryTarget" exact="this.assignedcontrolled.relativeposition.{$primaryTarget}" />
                     <set_value name="$positionInSector" exact="this.assignedcontrolled.relativeposition.{$targetSector}" />
                 </do_if>
@@ -211,6 +214,7 @@
                     chance="$debugChance" />
             </actions>
             <actions name="PrepareFleeingPath">
+                <include_interrupt_actions ref="RefreshTargetsRelatedData" />
                 <set_value name="$fleeOutFirstDistance" exact="$safeDistanceToPrimary * 1.2" />
                 <create_list name="$waypoints" />
                 <do_if value="this.assignedcontrolled.distanceto.{$primaryTarget} lt ($fleeOutFirstDistance * 2)">
@@ -241,6 +245,7 @@
                 <append_to_list name="$waypoints" exact="$positionMoveOut" />
                 <remove_value name="$positionMoveOut" />
                 <set_value name="$isAttackingPosition" exact="false" />
+                <abort_called_scripts resume="SafePathMove" />
             </actions>
             <actions name="CheckDronesAttack">
                 <do_if value="@$primaryTarget != null and @$primaryTarget.zone != null">
@@ -473,38 +478,20 @@
                     chance="$debugChance" />
                 <do_if
                     value="@event.param.pilot.race == race.drone and @event.param.toplevelcommander == $primaryTarget and this.assignedcontrolled.isclass.ship_l">
-                    <include_interrupt_actions ref="CheckDronesAttack" />
-                    <do_if value="@$dronesAttack == true">
-                        <do_if value="@$positionForAttackInitial != null">
-                            <create_list name="$waypoints" />
-                            <append_to_list name="$waypoints" exact="$positionForAttackInitial" />
-                            <set_value name="$isAttackingPosition" exact="true" />
-                            <remove_value name="$dronesAttack" />
-                            <abort_called_scripts resume="SafePathMove" />
-                        </do_if>
-                        <do_else>
-                            <set_value name="$processFleeing" exact="true" />
-                        </do_else>
-                    </do_if>
-                    <do_else>
-                        <remove_value name="$dronesAttack" />
-                    </do_else>
+                    <set_value name="$attacker" exact="$primaryTarget" />
+                    <include_interrupt_actions ref="AvoidDronesAttack" />
                 </do_if>
                 <do_if
                     value="(this.assignedcontrolled.isclass.ship_xl and this.assignedcontrolled.shieldpercentage le 61) or
                                 (this.assignedcontrolled.isclass.ship_l and this.assignedcontrolled.shieldpercentage le 95) or
-                                this.assignedcontrolled.hullpercentage le 99 or
-                                @$processFleeing == true">
+                                this.assignedcontrolled.hullpercentage le 99">
                     <set_value name="$attacker" exact="event.param" />
-                    <remove_value name="$processFleeing" />
                     <debug_text
                         text="'AttackStationInSector [%s]: UnderAttack: By %s.Attacker Top Commander: %s. Too dangerous. Going out.'.
                                         [this.assignedcontrolled.debugname, @$attacker.debugname, @$attacker.toplevelcommander.debugname]"
                         chance="$debugChance" />
                     <include_interrupt_actions ref="PrepareFleeing" />
                     <include_interrupt_actions ref="PrepareFleeingPath" />
-                    <include_interrupt_actions ref="RefreshTargetsRelatedData" />
-                    <abort_called_scripts resume="SafePathMove" />
                 </do_if>
                 <do_elseif
                     value="this.assignedcontrolled.isclass.ship_xl and this.assignedcontrolled.shieldpercentage le 81">
@@ -589,7 +576,6 @@
                 </do_else>
                 <set_value name="$attacker" exact="$primaryTarget" />
                 <include_interrupt_actions ref="PrepareFleeingPath" />
-                <abort_called_scripts resume="SafePathMove" />
             </actions>
         </handler>
         <handler ref="DisengageHandler" />
@@ -661,9 +647,6 @@
             <set_drone_armed object="this.assignedcontrolled" category="unitcategory.defence" armed="false" />
 
             <include_interrupt_actions ref="AvoidDronesAttack" />
-            <do_if value="@$isFleeing == true">
-                <resume label="SafePathMove" />
-            </do_if>
 
             <remove_value name="$positionForAttackInitial" />
             <set_command command="command.attackobject" param="$primaryTarget" />
@@ -1040,9 +1023,6 @@
                         chance="$debugChance" />
                     <wait exact="50ms" />
                     <include_interrupt_actions ref="AvoidDronesAttack" />
-                    <do_if value="@$isFleeing == true">
-                        <resume label="SafePathMove" />
-                    </do_if>
                 </do_all>
             </do_if>
             <do_else>
@@ -1470,20 +1450,12 @@
                 <do_elseif value="$isAttackingPosition">
                     <break />
                 </do_elseif>
-                <do_if value="@$isFleeing == true" negate="true">
-                    <include_interrupt_actions ref="AvoidDronesAttack" />
-                    <do_if value="@$isFleeing == true">
-                        <resume label="SafePathMove" />
-                    </do_if>
-                </do_if>
+                <include_interrupt_actions ref="AvoidDronesAttack" />
             </do_for_each>
             <do_if value="@$isFleeing == true">
                 <resume label="fleeOut" />
             </do_if>
             <include_interrupt_actions ref="AvoidDronesAttack" />
-            <do_if value="@$isFleeing == true">
-                <resume label="SafePathMove" />
-            </do_if>
             <set_command command="command.attackobject" param="$primaryTarget" />
             <set_command_action commandaction="commandaction.calculating" />
             <remove_value name="$waypoints" />
@@ -1565,9 +1537,6 @@
                 </do_else>
                 <wait exact="10ms" />
                 <include_interrupt_actions ref="AvoidDronesAttack" />
-                <do_if value="@$isFleeing == true">
-                    <resume label="SafePathMove" />
-                </do_if>
             </do_for_each>
             <remove_value name="$previousPositionForAttackRelative" />
             <set_value name="$targetIsReallyAttacked" exact="0" />
@@ -1922,9 +1891,6 @@
                     </do_else>
                 </do_elseif>
                 <include_interrupt_actions ref="AvoidDronesAttack" />
-                <do_if value="@$isFleeing == true">
-                    <resume label="SafePathMove" />
-                </do_if>
             </do_while>
             <label name="targetDestroyed" />
             <remove_value name="$positionForAttackInitial" />
@@ -1937,9 +1903,6 @@
             <apply_experience object="this.assignedcontrolled" role="entityrole.service" experience="'protect_sector'" chance="60" />
             <label name="problemWithTarget" />
             <include_interrupt_actions ref="AvoidDronesAttack" />
-            <do_if value="@$isFleeing == true">
-                <resume label="SafePathMove" />
-            </do_if>
             <!-- To Update -->
             <remove_value name="$components" />
             <find_object_component name="$components"
