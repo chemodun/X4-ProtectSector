@@ -249,8 +249,10 @@
             </actions>
             <actions name="CheckDronesAttack">
                 <do_if value="@$primaryTarget != null and @$primaryTarget.zone != null">
-                    <find_ship name="$enemyDrones" space="this.assignedcontrolled.zone" trueowner="$primaryTarget.trueowner"
-                        class="[class.ship_xs, class.ship_s]" multiple="true" recursive="true">
+                    <find_ship name="$enemyDrones" trueowner="$primaryTarget.trueowner"
+                        class="[class.ship_xs, class.ship_s]" multiple="true" recursive="true"
+                        space="if @$avoidDronesNearStation == true then @$primaryTarget.zone else this.assignedcontrolled.zone"
+                    >
                         <match_pilot race="race.drone" />
                     </find_ship>
                     <do_if value="$enemyDrones.count gt 0">
@@ -261,6 +263,7 @@
                     </do_if>
                     <set_value name="$dronesAttack" exact="$enemyDrones.count ge 20 and this.assignedcontrolled.isclass.ship_l" />
                     <remove_value name="$enemyDrones" />
+                    <remove_value name="$avoidDronesNearStation" />
                 </do_if>
             </actions>
             <actions name="AvoidDronesAttack">
@@ -551,6 +554,18 @@
                     (this.assignedcontrolled.size + event.param2.{2}) * 1.5]" />
                 <signal_objects object="event.param3" param="'StationAttackPosIsBlocked'"
                     param2="[$positionToMove, this.assignedcontrolled.size]" param3="this.assignedcontrolled" />
+            </actions>
+        </handler>
+        <handler>
+            <conditions>
+                <event_object_launched_distressdrone object="$primaryTarget" check="false" />
+            </conditions>
+            <actions>
+                <debug_text
+                    text="'AttackStationInSector [%s]: Distress drone %s launched by: %s.'.
+                    [this.assignedcontrolled.debugname, @event.param.debugname, @$primaryTarget.debugname]" />
+                <set_value name="$avoidDronesNearStation" exact="true" />
+                <include_interrupt_actions ref="AvoidDronesAttack" />
             </actions>
         </handler>
         <handler>
@@ -2023,9 +2038,10 @@
                 </do_if>
             </do_while>
             <set_drone_armed object="this.assignedcontrolled" category="unitcategory.defence" armed="false" />
+            <wait exact="$updateTime / 2" />
             <!-- <do_if value="this.assignedcontrolled.availableunits.{unitcategory.defence}.count">
             </do_if> -->
-            <debug_text
+            <!-- <debug_text
                 text="'AttackStationInSector [%s]: DronesAttack: Count of drones: %s (%s). Subordinates Count: %s.'.
                 [this.assignedcontrolled.debugname, @this.assignedcontrolled.units.{unitcategory.defence}.count,
                 @this.assignedcontrolled.availableunits.{unitcategory.defence}.count, @this.assignedcontrolled.subordinates.count]"
@@ -2060,7 +2076,7 @@
                     <break />
                 </do_if>
                 <wait exact="$updateTime / 2" />
-            </do_all>
+            </do_all> -->
             <remove_value name="$dronesAttack" />
             <remove_value name="$isFleeing" />
             <do_if value="this.assignedcontrolled.hullpercentage gt 99">
