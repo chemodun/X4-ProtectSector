@@ -2037,8 +2037,11 @@
                     <break />
                 </do_if>
             </do_while>
-            <set_drone_armed object="this.assignedcontrolled" category="unitcategory.defence" armed="false" />
-            <wait exact="$updateTime / 2" />
+            <do_if
+                value="@this.assignedcontrolled.units.{unitcategory.defence}.count gt @this.assignedcontrolled.availableunits.{unitcategory.defence}.count">
+                <set_drone_armed object="this.assignedcontrolled" category="unitcategory.defence" armed="false" />
+                <wait exact="$updateTime / 2" />
+            </do_if>
             <!-- <do_if value="this.assignedcontrolled.availableunits.{unitcategory.defence}.count">
             </do_if> -->
             <!-- <debug_text
