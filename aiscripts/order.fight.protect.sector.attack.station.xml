@@ -245,7 +245,6 @@
                 <append_to_list name="$waypoints" exact="$positionMoveOut" />
                 <remove_value name="$positionMoveOut" />
                 <set_value name="$isAttackingPosition" exact="false" />
-                <abort_called_scripts resume="SafePathMove" />
             </actions>
             <actions name="CheckDronesAttack">
                 <do_if value="@$primaryTarget != null and @$primaryTarget.zone != null">
@@ -483,6 +482,9 @@
                     value="@event.param.pilot.race == race.drone and @event.param.toplevelcommander == $primaryTarget and this.assignedcontrolled.isclass.ship_l">
                     <set_value name="$attacker" exact="$primaryTarget" />
                     <include_interrupt_actions ref="AvoidDronesAttack" />
+                    <do_if value="@$isFleeing == true">
+                        <abort_called_scripts resume="SafePathMove" />
+                    </do_if>
                 </do_if>
                 <do_if
                     value="(this.assignedcontrolled.isclass.ship_xl and this.assignedcontrolled.shieldpercentage le 61) or
@@ -495,6 +497,7 @@
                         chance="$debugChance" />
                     <include_interrupt_actions ref="PrepareFleeing" />
                     <include_interrupt_actions ref="PrepareFleeingPath" />
+                    <abort_called_scripts resume="SafePathMove" />
                 </do_if>
                 <do_elseif
                     value="this.assignedcontrolled.isclass.ship_xl and this.assignedcontrolled.shieldpercentage le 81">
@@ -558,14 +561,21 @@
         </handler>
         <handler>
             <conditions>
-                <event_object_launched_distressdrone object="$primaryTarget" check="false" />
+                <check_any>
+                    <event_object_launched_distressdrone object="$primaryTarget" check="false" />
+                    <event_object_defencedronemode_changed object="$primaryTarget" check="false" />
+                    <event_object_defencedrones_armed object="$primaryTarget" check="false" />
+                </check_any>
             </conditions>
             <actions>
                 <debug_text
-                    text="'AttackStationInSector [%s]: Distress drone %s launched by: %s.'.
-                    [this.assignedcontrolled.debugname, @event.param.debugname, @$primaryTarget.debugname]" />
+                    text="'AttackStationInSector [%s]: DronesAttack: Event: %s. From: %s. Param: %s (%s).'.
+                    [this.assignedcontrolled.debugname, @event.name, @$primaryTarget.debugname, @event.param, @event.param.debugname]" />
                 <set_value name="$avoidDronesNearStation" exact="true" />
                 <include_interrupt_actions ref="AvoidDronesAttack" />
+                <do_if value="@$isFleeing == true">
+                    <abort_called_scripts resume="SafePathMove" />
+                </do_if>
             </actions>
         </handler>
         <handler>
@@ -583,14 +593,12 @@
                     text="'AttackStationInSector [%s]: DronesAttack: Position to Flee: %s. Out from: %s. Sent by: %s.'.
                     [this.assignedcontrolled.debugname, @event.param2.{2}, @event.param2.{1}.debugname, @event.param3.debugname]" />
                 <do_if value="@$positionMoveOutCommon == null">
-                    <set_value name="$positionMoveOut" exact="@event.param2.{2}" />
-                </do_if>
-                <do_else>
-                    <set_value name="$positionMoveOut" exact="$positionMoveOutCommon" />
                     <set_value name="$positionMoveOutCommon" exact="@event.param2.{2}" />
-                </do_else>
+                </do_if>
+                <set_value name="$positionMoveOut" exact="$positionMoveOutCommon" />
                 <set_value name="$attacker" exact="$primaryTarget" />
                 <include_interrupt_actions ref="PrepareFleeingPath" />
+                <abort_called_scripts resume="SafePathMove" />
             </actions>
         </handler>
         <handler ref="DisengageHandler" />
@@ -662,6 +670,9 @@
             <set_drone_armed object="this.assignedcontrolled" category="unitcategory.defence" armed="false" />
 
             <include_interrupt_actions ref="AvoidDronesAttack" />
+            <do_if value="@$isFleeing == true">
+                <resume label="SafePathMove" />
+            </do_if>
 
             <remove_value name="$positionForAttackInitial" />
             <set_command command="command.attackobject" param="$primaryTarget" />
@@ -1038,6 +1049,9 @@
                         chance="$debugChance" />
                     <wait exact="50ms" />
                     <include_interrupt_actions ref="AvoidDronesAttack" />
+                    <do_if value="@$isFleeing == true">
+                        <resume label="SafePathMove" />
+                    </do_if>
                 </do_all>
             </do_if>
             <do_else>
@@ -1465,12 +1479,20 @@
                 <do_elseif value="$isAttackingPosition">
                     <break />
                 </do_elseif>
-                <include_interrupt_actions ref="AvoidDronesAttack" />
+                <do_if value="@$isFleeing == true" negate="true">
+                    <include_interrupt_actions ref="AvoidDronesAttack" />
+                    <do_if value="@$isFleeing == true">
+                        <resume label="SafePathMove" />
+                    </do_if>
+                </do_if>
             </do_for_each>
             <do_if value="@$isFleeing == true">
                 <resume label="fleeOut" />
             </do_if>
             <include_interrupt_actions ref="AvoidDronesAttack" />
+            <do_if value="@$isFleeing == true">
+                <resume label="SafePathMove" />
+            </do_if>
             <set_command command="command.attackobject" param="$primaryTarget" />
             <set_command_action commandaction="commandaction.calculating" />
             <remove_value name="$waypoints" />
@@ -1552,6 +1574,9 @@
                 </do_else>
                 <wait exact="10ms" />
                 <include_interrupt_actions ref="AvoidDronesAttack" />
+                <do_if value="@$isFleeing == true">
+                    <resume label="SafePathMove" />
+                </do_if>
             </do_for_each>
             <remove_value name="$previousPositionForAttackRelative" />
             <set_value name="$targetIsReallyAttacked" exact="0" />
@@ -1906,6 +1931,9 @@
                     </do_else>
                 </do_elseif>
                 <include_interrupt_actions ref="AvoidDronesAttack" />
+                <do_if value="@$isFleeing == true">
+                    <resume label="SafePathMove" />
+                </do_if>
             </do_while>
             <label name="targetDestroyed" />
             <remove_value name="$positionForAttackInitial" />
@@ -1918,6 +1946,9 @@
             <apply_experience object="this.assignedcontrolled" role="entityrole.service" experience="'protect_sector'" chance="60" />
             <label name="problemWithTarget" />
             <include_interrupt_actions ref="AvoidDronesAttack" />
+            <do_if value="@$isFleeing == true">
+                <resume label="SafePathMove" />
+            </do_if>
             <!-- To Update -->
             <remove_value name="$components" />
             <find_object_component name="$components"
@@ -2029,7 +2060,7 @@
                         chance="$debugChance" />
                     <wait exact="$updateTime" />
                 </do_if>
-                <do_if value="this.assignedcontrolled.hullpercentage gt 99">
+                <do_if value="this.assignedcontrolled.hullpercentage lt 99">
                     <debug_text
                         text="'AttackStationInSector [%s]: DronesAttack: Hull is broken: %s. Going to repair.'.
                         [this.assignedcontrolled.debugname, this.assignedcontrolled.hullpercentage]"
