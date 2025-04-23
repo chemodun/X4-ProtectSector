@@ -410,19 +410,7 @@
         </library>
         <handler>
             <conditions>
-                <event_object_destroyed object="$target" check="false" />
-            </conditions>
-            <actions>
-                <debug_text
-                    text="'AttackStationInSector [%s]: Sub target %s of %s is destroyed. Going to select next.' .
-                        [this.assignedcontrolled.debugname, @$target.debugname, @$primaryTarget.debugname]"
-                    chance="$debugChance" />
-                <abort_called_scripts resume="targetDestroyed" />
-            </actions>
-        </handler>
-        <handler>
-            <conditions>
-                <event_object_destroyed object="$primaryTarget" check="false" />
+                <event_object_destroyed object="$primaryTarget" />
             </conditions>
             <actions>
                 <debug_text
@@ -528,25 +516,13 @@
         </handler>
         <handler>
             <conditions>
-                <event_object_destroyed object="this.assignedcontrolled" />
-            </conditions>
-            <actions>
-                <debug_text
-                    text="'AttackStationInSector [%s]: This controlled object is destroyed by %s on distance: %s.'.
-                    [this.assignedcontrolled.debugname, @event.param.debugname, @event.param.bboxdistanceto.{this.assignedcontrolled}]"
-                    chance="$debugChance" />
-                <abort_called_scripts resume="finish" />
-            </actions>
-        </handler>
-        <handler>
-            <conditions>
                 <!-- param2 = [[$ref, $pos], $radius] param3 = asker -->
                 <event_object_signalled object="this.assignedcontrolled.sector" param="'StationAttackIsPosBlocked'" check="false" />
                 <check_value value="@event.param2.{1} != null and @event.param2.{2} != null and @event.param3 != null" />
                 <check_value value="@event.param3 != this.assignedcontrolled" />
                 <check_value value="$positionToMove?" />
                 <check_value
-                    value="$positionToMove.distanceto.{event.param2.{1}} lt (this.assignedcontrolled.size + event.param2.{2}) * 1.5 " />
+                    value="$positionToMove.distanceto.{event.param2.{1}} lt (this.assignedcontrolled.size + event.param2.{2}) * 2.5 " />
                 <remove_value name="event.param3.pilot.$StationAttackListeningForAnswer" />
             </conditions>
             <actions>
@@ -554,28 +530,9 @@
                     text="'AttackStationInSector [%s]: PositionIsBlocked: CheckPosition: Blocked: Position: %s for %s: blocked by: %s. Distance: %s. VS: %s.'.
                     [this.assignedcontrolled.debugname, event.param2.{1}, @event.param3.debugname, $positionToMove,
                     @$positionToMove.distanceto.{event.param2.{1}},
-                    (this.assignedcontrolled.size + event.param2.{2}) * 1.5]" />
+                    (this.assignedcontrolled.size + event.param2.{2}) * 2.5]" />
                 <signal_objects object="event.param3" param="'StationAttackPosIsBlocked'"
                     param2="[$positionToMove, this.assignedcontrolled.size]" param3="this.assignedcontrolled" />
-            </actions>
-        </handler>
-        <handler>
-            <conditions>
-                <check_any>
-                    <event_object_launched_distressdrone object="$primaryTarget" check="false" />
-                    <event_object_defencedronemode_changed object="$primaryTarget" check="false" />
-                    <event_object_defencedrones_armed object="$primaryTarget" check="false" />
-                </check_any>
-            </conditions>
-            <actions>
-                <debug_text
-                    text="'AttackStationInSector [%s]: DronesAttack: Event: %s. From: %s. Param: %s (%s).'.
-                    [this.assignedcontrolled.debugname, @event.name, @$primaryTarget.debugname, @event.param, @event.param.debugname]" />
-                <set_value name="$avoidDronesNearStation" exact="true" />
-                <include_interrupt_actions ref="AvoidDronesAttack" />
-                <do_if value="@$isFleeing == true">
-                    <abort_called_scripts resume="SafePathMove" />
-                </do_if>
             </actions>
         </handler>
         <handler>
@@ -1188,7 +1145,7 @@
                                 </do_if>
                                 <do_else>
                                     <set_value name="$blockingRadius" exact="$positionToMoveIsBlockedBy.{3}" />
-                                    <set_value name="$sideStepDistance" exact="($blockingRadius + $ourRadius) * 2.2" />
+                                    <set_value name="$sideStepDistance" exact="($blockingRadius + $ourRadius) * 4" />
                                     <set_value name="$lastBlockedBy" exact="$positionToMoveIsBlockedBy.{1}" />
                                 </do_else>
                             </do_if>
@@ -2073,44 +2030,6 @@
                 <set_drone_armed object="this.assignedcontrolled" category="unitcategory.defence" armed="false" />
                 <wait exact="$updateTime / 2" />
             </do_if>
-            <!-- <do_if value="this.assignedcontrolled.availableunits.{unitcategory.defence}.count">
-            </do_if> -->
-            <!-- <debug_text
-                text="'AttackStationInSector [%s]: DronesAttack: Count of drones: %s (%s). Subordinates Count: %s.'.
-                [this.assignedcontrolled.debugname, @this.assignedcontrolled.units.{unitcategory.defence}.count,
-                @this.assignedcontrolled.availableunits.{unitcategory.defence}.count, @this.assignedcontrolled.subordinates.count]"
-                chance="$debugChance" />
-            <set_value name="$subordinatedDronesInSpace" exact="false" />
-            <do_all exact="3">
-                <do_for_each name="$subordinate" in="this.assignedcontrolled.subordinates">
-                    <do_if value="$subordinate.pilot.race == race.drone">
-                        <do_if value="@$subordinate.defaultorder.id != 'DockAndWait'">
-                            <debug_text
-                                text="'AttackStationInSector [%s]: DronesAttack: Docking drone: %s. OrdersCount: %s. Default: %s.'.
-                                    [this.assignedcontrolled.debugname, $subordinate.debugname, @$subordinate.orders.count, @$subordinate.defaultorder.id]"
-                                chance="$debugChance" />
-                            <create_order id="'DockAndWait'" object="$subordinate" default="true">
-                                <param name="destination" value="this.assignedcontrolled" />
-                                <param name="dockfollowers" value="true" />
-                                <param name="debugchance" value="$debugChance" />
-                            </create_order>
-                            <cancel_all_orders object="$subordinate" />
-                        </do_if>
-                        <do_if value="@$subordinate.orders.count gt 0">
-                            <debug_text
-                                text="'AttackStationInSector [%s]: DronesAttack: Canceling orders for drone: %s. OrdersCount: %s.'.
-                                    [this.assignedcontrolled.debugname, $subordinate.debugname, @$subordinate.orders.count]"
-                                chance="$debugChance" />
-                            <cancel_all_orders object="$subordinate" />
-                            <set_value name="$subordinatedDronesInSpace" exact="true" />
-                        </do_if>
-                    </do_if>
-                </do_for_each>
-                <do_if value="@this.assignedcontrolled.subordinates.count == 0 or $subordinatedDronesInSpace == false">
-                    <break />
-                </do_if>
-                <wait exact="$updateTime / 2" />
-            </do_all> -->
             <remove_value name="$dronesAttack" />
             <remove_value name="$isFleeing" />
             <do_if value="this.assignedcontrolled.hullpercentage gt 99">
