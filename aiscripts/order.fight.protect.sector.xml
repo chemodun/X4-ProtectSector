@@ -293,16 +293,16 @@
             <check_all>
               <check_value value="@$protectOnlyNonMilitaryShips" />
               <check_any>
-                <check_value value="event.object.primarypurpose != purpose.fight" />
-                <check_value value="event.object.isclass.station" />
+                <check_value value="@event.object.primarypurpose != purpose.fight" />
+                <check_value value="@event.object.isclass.station" />
               </check_any>
             </check_all>
           </check_any>
-          <check_value value="event.param.trueowner.hasrelation.enemy.{this.trueowner}" />
-          <check_value value="event.param.race == race.drone" negate="true" />
-          <check_value value="event.object.sector == this.assignedcontrolled.sector and $homeSector == this.assignedcontrolled.sector" />
-          <check_value value="event.object.isclass.ship or event.object.isclass.station" />
-          <check_value value="event.object != this.assignedcontrolled" />
+          <check_value value="@event.param.trueowner.hasrelation.enemy.{this.trueowner}" />
+          <check_value value="@event.param.pilot.race == race.drone" negate="true" />
+          <check_value value="@event.object.sector == this.assignedcontrolled.sector and $homeSector == this.assignedcontrolled.sector" />
+          <check_value value="@event.object.isclass.ship or event.object.isclass.station" />
+          <check_value value="@event.object != this.assignedcontrolled" />
           <check_value value="@event.object.order.id != 'ProtectSector'" />
           <check_value value="@event.object.toplevelcommander != 'ProtectSector'" />
           <check_value value="@event.object.assignedcontrolled.defaultorder.id != 'ProtectSector'" />
