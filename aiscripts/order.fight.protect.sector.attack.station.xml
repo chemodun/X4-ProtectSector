@@ -996,7 +996,8 @@
             <create_list name="$waypoints" />
             <do_if value="$pathCrossesUnSafeRadius">
                 <!-- Set safe distance (slightly larger than danger radius) -->
-                <set_value name="$safePathSafeDistance" exact="$safeDistanceToPrimary * 1.2" />
+                <set_value name="$safePathSafeDistance"
+                    exact="$safeDistanceToPrimary * (if this.assignedcontrolled.isclass.ship_l then 1.2 else 1.5)" />
                 <debug_text
                     text="'AttackStationInSector [%s]: SafePath: Path crosses unsafe radius. Generating safe path with distance: %s'.
                             [this.assignedcontrolled.debugname, $safePathSafeDistance]"
@@ -1424,19 +1425,26 @@
                     <set_value name="$distanceToMove" exact="this.assignedcontrolled.distanceto.{[$targetSector, $positionToMove]}" />
                     <do_all exact="50">
                         <set_value name="$distanceToMove" exact="this.assignedcontrolled.distanceto.{[$targetSector, $positionToMove]}" />
-                        <!-- <do_if value="$distanceToMove le $thisRadius">
+                        <do_if value="$distanceToMove le this.assignedcontrolled.size / 10">
                             <break />
-                        </do_if> -->
+                        </do_if>
                         <set_value name="$moveUsingTravelMode"
                             exact="this.assignedcontrolled.travel.available and (player.age - @$isUnderAttack) gt 3s and ($distanceToMove gt 10km or this.assignedcontrolled.boost.maxspeed gt 0 and (this.assignedcontrolled.travel.maxspeed / this.assignedcontrolled.boost.maxspeed gt 3.5) and $distanceToMove gt 3km )" />
                         <do_if value="$moveUsingTravelMode">
+                            <estimate_travel_time start="this.assignedcontrolled" target="$targetSector" ship="this.assignedcontrolled"
+                                uselocalhighways="false" result="$movingTimeEstimated" resultdistance="$movingDistanceEstimated ">
+                                <targetposition value="$positionToMove" />
+                            </estimate_travel_time>
                             <set_value name="$movingTime"
                                 exact="this.assignedcontrolled.travel.chargetime + (($distanceToMove)f / (this.assignedcontrolled.travel.maxspeed)f)s * (if $distanceToMove le 20km then 6s else (if $distanceToMove gt 50km then 3s else 4s)) + $updateTime " />
                             <debug_text
-                                text="'AttackStationInSector [%s]: SafePathMove: Moving via Travel: Distance: %s. Time: %s. MaxSpeed: %s. ChargeTime: %s.'.
+                                text="'AttackStationInSector [%s]: SafePathMove: Moving via Travel: Distance: %s. Time: %s. MaxSpeed: %s. ChargeTime: %s. Estimated: Time: %s. Distance: %s.'.
                                     [this.assignedcontrolled.debugname, $distanceToMove, $movingTime,
-                                    this.assignedcontrolled.travel.maxspeed, this.assignedcontrolled.travel.chargetime]"
+                                    this.assignedcontrolled.travel.maxspeed, this.assignedcontrolled.travel.chargetime,
+                                    $movingTimeEstimated, $movingDistanceEstimated]"
                                 chance="$debugChance" />
+                            <remove_value name="$movingTimeEstimated" />
+                            <remove_value name="$movingDistanceEstimated" />
                         </do_if>
                         <do_elseif value="this.assignedcontrolled.boost.available">
                             <set_value name="$movingTime" exact="(($distanceToMove)f / (this.assignedcontrolled.boost.maxspeed)f)s" />
@@ -1453,11 +1461,35 @@
                         <do_else>
                             <set_value name="$movingTime" exact="$updateTime" />
                         </do_else>
-                        <move_to destination="$targetSector" object="this.assignedcontrolled" boost="true" travel="$moveUsingTravelMode"
+                        <do_if value="$moveUsingTravelMode">
+                            <signal_objects object="this.assignedcontrolled" param="'TravelModeCheckDistance'"
+                                param2="this.assignedcontrolled.relativeposition.{$targetSector}"
+                                param3="this.assignedcontrolled.travel.chargetime * 10"
+                                delay="this.assignedcontrolled.travel.chargetime * 10" />
+                        </do_if>
+                        <move_to destination="$targetSector" object="this.assignedcontrolled" boost="true"
+                            travel="$moveUsingTravelMode"
                             forceposition="true">
                             <position value="$positionToMove" />
                             <interrupt_after_time time="$movingTime" />
+                            <interrupt>
+                                <conditions>
+                                    <event_object_signalled object="this.assignedcontrolled" param="'TravelModeCheckDistance'" />
+                                    <check_value value="@event.param2 != null" />
+                                    <debug_text
+                                        text="'AttackStationInSector [%s]: SafePathMove: TravelModeCheckDistance: Distance from starting point %s after %s. Traveling: %s. Charging: %s. Coasting: %s. MovingTime: %s.'.
+                                            [this.assignedcontrolled.debugname, this.assignedcontrolled.distanceto.{[$targetSector, @event.param2]}, @event.param3,
+                                            this.assignedcontrolled.travel.active, this.assignedcontrolled.travel.charging, this.assignedcontrolled.travel.iscoasting,
+                                            $movingTime]" />
+                                    <check_value
+                                        value="this.assignedcontrolled.distanceto.{[$targetSector, event.param2]} le this.assignedcontrolled.size * 5" />
+                                </conditions>
+                            </interrupt>
                         </move_to>
+                        <debug_text
+                            text="'AttackStationInSector [%s]: SafePathMove: Moving step finished.'.
+                            [this.assignedcontrolled.debugname]"
+                            chance="$debugChance" />
                         <do_if value="@$isFleeing == true" negate="true">
                             <include_interrupt_actions ref="AvoidDronesAttack" />
                             <do_if value="@$isFleeing == true">
@@ -1817,7 +1849,7 @@
                     </do_else>
                     <find_object_component name="$weaponComponents" object="$primaryTarget" class="[class.weapon]"
                         surfaceelement="true" integrated="false" indestructible="false" invulnerable="false"
-                        sortbyvalue="loop.element.maxfirerange * 1.05 - loop.element.bboxdistanceto.[$targetSector, $positionForAttack] + this.assignedcontrolled.size"
+                        sortbyvalue="loop.element.maxfirerange * 1.05 - loop.element.bboxdistanceto.[$targetSector, $positionForAttack]"
                         append="true" multiple="true" recursive="true" sortdescending="true">
                         <match state="componentstate.wreck" negate="true" />
                         <match_parent>
@@ -1827,7 +1859,7 @@
                     </find_object_component>
                     <do_if value="$weaponComponents.count gt 0">
                         <set_value name="$targetWeaponDistance"
-                            exact="@$weaponComponents.{1}.bboxdistanceto.[$targetSector, $positionForAttack] - this.assignedcontrolled.size" />
+                            exact="@$weaponComponents.{1}.bboxdistanceto.[$targetSector, $positionForAttack] - $thisRadius" />
                         <do_if
                             value="(@$weaponComponents.{1}.maxfirerange * 1.05) ge $targetWeaponDistance">
                             <do_if
@@ -1965,7 +1997,7 @@
                         </create_orientation>
                         <move_to destination="$targetSector" object="this.assignedcontrolled"
                             forceposition="true" forcerotation="true" reverse="true"
-                            boost="this.assignedcontrolled.distanceto.{[$targetSector, $positionForAttackStepBack]} gt 3km" travel="false">
+                            boost="this.assignedcontrolled.distanceto.{[$targetSector, $positionForAttackStepBack]} gt 1km" travel="false">
                             <position value="$positionForAttackStepBack" />
                             <rotation value="$rotationOnTarget" />
                         </move_to>
@@ -1973,7 +2005,7 @@
                     <do_else>
                         <move_to destination="$targetSector" object="this.assignedcontrolled"
                             forceposition="true" forcerotation="true" reverse="true"
-                            boost="this.assignedcontrolled.distanceto.{[$targetSector, $positionForAttackStepBack]} gt 3km" travel="false">
+                            boost="this.assignedcontrolled.distanceto.{[$targetSector, $positionForAttackStepBack]} gt 1km" travel="false">
                             <position value="$positionForAttackStepBack" />
                         </move_to>
                     </do_else>
@@ -2094,7 +2126,8 @@
                 [this.assignedcontrolled.debugname, $primaryTarget.debugname, $components.count, @$components.{1},
                 @this.assignedcontrolled.bboxdistanceto.{@$components.{1}}]"
                 chance="$debugChance" />
-            <do_if value="$components.count gt 0 and this.assignedcontrolled.bboxdistanceto.{@$components.{1}} le @$maxEffectiveCombatRange">
+            <do_if
+                value="$components.count gt 0 and this.assignedcontrolled.bboxdistanceto.{@$components.{1}} le @$maxEffectiveCombatRange">
                 <set_value name="$positionRelativeToNewTarget" exact="this.assignedcontrolled.relativeposition.{$components.{1}}" />
                 <set_value name="$positionRelativeFromOldToNewTarget" exact="$target.relativeposition.{$components.{1}}" />
                 <!-- 1. Calculate magnitudes of both position vectors -->
