@@ -758,6 +758,7 @@
               <find_ship name="$ships" space="this.assignedcontrolled.sector" class="$classesForAttack" recursive="true" multiple="true"
                 isinliveview="true" ishostileto="this.owner" sortbydistanceto="this.assignedcontrolled">
                 <match trueowner="faction.player" negate="true" />
+                <match race="race.drone" negate="true" />
               </find_ship>
             </do_if>
             <do_else>
@@ -772,6 +773,7 @@
               <find_ship name="$ships" space="this.assignedcontrolled.sector" class="$classesForAttack" recursive="true" multiple="true"
                 isinliveview="true" sortbydistanceto="this.assignedcontrolled">
                 <match trueowner="faction.player" negate="true" />
+                <match race="race.drone" negate="true" />
               </find_ship>
             </do_else>
           </do_if>
@@ -788,6 +790,7 @@
               <find_ship name="$ships" space="this.assignedcontrolled.sector" class="$classesForAttack" recursive="true" multiple="true"
                 ishostileto="this.owner" sortbydistanceto="this.assignedcontrolled">
                 <match trueowner="faction.player" negate="true" />
+                <match race="race.drone" negate="true" />
               </find_ship>
             </do_if>
             <do_else>
@@ -802,6 +805,7 @@
               <find_ship name="$ships" space="this.assignedcontrolled.sector" class="$classesForAttack" recursive="true" multiple="true"
                 sortbydistanceto="this.assignedcontrolled">
                 <match trueowner="faction.player" negate="true" />
+                <match race="race.drone" negate="true" />
               </find_ship>
             </do_else>
           </do_else>
