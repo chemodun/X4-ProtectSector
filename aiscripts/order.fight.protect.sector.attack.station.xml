@@ -1424,11 +1424,11 @@
                     <set_value name="$distanceToMove" exact="this.assignedcontrolled.distanceto.{[$targetSector, $positionToMove]}" />
                     <do_all exact="50">
                         <set_value name="$distanceToMove" exact="this.assignedcontrolled.distanceto.{[$targetSector, $positionToMove]}" />
-                        <do_if value="$distanceToMove le $thisRadius">
+                        <!-- <do_if value="$distanceToMove le $thisRadius">
                             <break />
-                        </do_if>
+                        </do_if> -->
                         <set_value name="$moveUsingTravelMode"
-                            exact="$distanceToMove gt 10km and this.assignedcontrolled.travel.available and (player.age - @$isUnderAttack) gt 3s" />
+                            exact="this.assignedcontrolled.travel.available and (player.age - @$isUnderAttack) gt 3s and ($distanceToMove gt 10km or this.assignedcontrolled.boost.maxspeed gt 0 and (this.assignedcontrolled.travel.maxspeed / this.assignedcontrolled.boost.maxspeed gt 3.5) and $distanceToMove gt 3km )" />
                         <do_if value="$moveUsingTravelMode">
                             <set_value name="$movingTime"
                                 exact="this.assignedcontrolled.travel.chargetime + (($distanceToMove)f / (this.assignedcontrolled.travel.maxspeed)f)s * (if $distanceToMove le 20km then 6s else (if $distanceToMove gt 50km then 3s else 4s)) + $updateTime " />
@@ -1886,7 +1886,7 @@
                             </move_to>
                         </do_if>
                         <do_if
-                            value="this.assignedcontrolled.attention ge attention.visible and $targetIsReallyAttackedByPrimaryWeapon ge 3">
+                            value="this.assignedcontrolled.attention ge attention.visible and this.assignedcontrolled.isclass.ship_l and $targetIsReallyAttackedByPrimaryWeapon ge 3">
                             <set_value name="$safetyIndicator" exact="0" />
                             <debug_text
                                 text="'AttackStationInSector [%s]: Moved for Attack. Visible is On. Target is really attacked: %s. Safety Indicator: %s.'.
