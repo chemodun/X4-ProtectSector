@@ -77,7 +77,7 @@
       </param>
       <param name="recordActionsToLogBook" type="bool" default="true" text="{1972092401, 901}" />
       <param name="isStartedByPlayer" type="internal" default="true" text="Started by Player" />
-      <param name="debugchance" type="bool" default="0" advanced="true" text="{1041, 10086}" comment="Print debug output">
+      <param name="debugChance" type="bool" default="0" advanced="true" text="{1041, 10086}" comment="Print debug output">
         <input_param name="truevalue" value="100" />
         <editable />
       </param>
@@ -108,7 +108,7 @@
                 @this.assignedcontrolled.fleet.name,
                 @this.assignedcontrolled.fleetunits.count
               ]"
-            chance="@$debugchance" />
+            chance="@$debugChance" />
           <create_group groupname="$subordinates" />
         </do_if>
         <do_if value="@$subordinatesToBeUpdatedAfter" negate="true">
@@ -119,7 +119,7 @@
                 @this.assignedcontrolled.sector.knownname,
                 @this.assignedcontrolled.fleet.name
               ]"
-            chance="@$debugchance" />
+            chance="@$debugChance" />
           <set_value name="$subordinatesToBeUpdatedAfter" exact="player.age - 1" />
         </do_if>
         <do_if value="player.gameversion ge 750 and $subordinatesToBeUpdatedAfter lt player.age">
@@ -130,7 +130,7 @@
               @this.assignedcontrolled.sector.knownname,
               @this.assignedcontrolled.fleet.name
             ]"
-            chance="@$debugchance" />
+            chance="@$debugChance" />
           <clear_group group="$subordinates" />
           <do_if value="not this.assignedcontrolled.commander">
             <add_to_group groupname="$subordinates" list="this.assignedcontrolled.allsubordinates" />
@@ -219,6 +219,20 @@
         </do_if>
         <remove_value name="$targetDestroyedBy" />
       </actions>
+      <actions name="ResupplyChecksInit">
+        <create_list name="$randomizeInitialResupply" />
+        <do_all exact="10" counter="$r">
+          <append_to_list name="$randomizeInitialResupply" exact="$r + 2" />
+        </do_all>
+        <set_value name="$resupplyCheck" exact="player.age + $randomizeInitialResupply.random * 5min" />
+        <remove_value name="$randomizeInitialResupply" />
+      </actions>
+      <actions name="ResupplyWorkaroundRefresh">
+        <do_for_each name="$subordinate" in="this.$escortgroup">
+          <set_value name="$subordinate.pilot.$playerOwnedWorkaroundForRestock" exact="true" />
+        </do_for_each>
+        <set_value name="this.assignedcontrolled.pilot.$playerOwnedWorkaroundForRestock" exact="true" />
+      </actions>
     </library>
     <handler ref="AttackHandler" />
     <handler ref="MissileLockHandler" />
@@ -233,14 +247,14 @@
           <event_game_loaded />
           <debug_text
             text="'%s [%s at %s, %s] - Game loaded with script version %s'.
-          [
-            player.age,
-            this.assignedcontrolled.debugname,
-            this.assignedcontrolled.sector.knownname,
-            this.assignedcontrolled.fleet.name,
-            @$scriptVersion
-          ]"
-            debugchance="100" />
+            [
+              player.age,
+              this.assignedcontrolled.debugname,
+              this.assignedcontrolled.sector.knownname,
+              this.assignedcontrolled.fleet.name,
+              @$scriptVersion
+            ]"
+            debugchance="$debugChance" />
           <check_any>
             <check_value value="@$scriptVersion lt 101" />
           </check_any>
@@ -446,11 +460,65 @@
               @this.assignedcontrolled.fleet.name,
               @this.assignedcontrolled.fleetunits.count
             ]"
-          chance="@$debugchance" />
+          chance="@$debugChance" />
         <!-- prepare group of subordinates to request fleet reinstate -->
         <include_interrupt_actions ref="SubordinatesRefresh" />
         <signal_objects object="player.entity" param="'reconstitute_fleet'" param2="this.assignedcontrolled"
           param3="this.assignedcontrolled.fleetunits" />
+      </actions>
+    </handler>
+    <handler consume="false">
+      <conditions>
+        <event_object_subordinate_removed object="this.assignedcontrolled" />
+      </conditions>
+      <actions>
+        <debug_to_file directory="'protectsector'" name="'debug_'  + this.assignedcontrolled.idcode + '_' + this.assignedcontrolled"
+          text="'[%s at %s, %s] - SubordinateRemovedHandler: subordinate %s was removed.'.
+            [
+              @this.assignedcontrolled.debugname,
+              @this.assignedcontrolled.sector.knownname,
+              @this.assignedcontrolled.fleet.name,
+              @event.param.debugname
+            ]"
+          output="true" append="true" />
+        <set_value name="$subordinate" exact="event.param" />
+        <do_if value="@$subordinate.pilot.$escortgroup != null">
+          <do_for_each name="$escortShip" in="$subordinate.pilot.$escortgroup">
+            <remove_value name="$escortShip.pilot.$playerOwnedWorkaroundForRestock" />
+          </do_for_each>
+        </do_if>
+        <do_for_each name="$escortShip" in="$subordinate.subordinates">
+          <remove_value name="$escortShip.pilot.$playerOwnedWorkaroundForRestock" />
+        </do_for_each>
+        <remove_value name="$subordinate.pilot.$playerOwnedWorkaroundForRestock" />
+        <remove_value name="$subordinate" />
+      </actions>
+    </handler>
+    <handler consume="false">
+      <conditions>
+        <event_object_subordinate_added object="this.assignedcontrolled" />
+      </conditions>
+      <actions>
+        <debug_to_file directory="'protectsector'" name="'debug_'  + this.assignedcontrolled.idcode + '_' + this.assignedcontrolled"
+          text="'[%s at %s, %s] - SubordinateAddedHandler: subordinate %s is added.'.
+          [
+            @this.assignedcontrolled.debugname,
+            @this.assignedcontrolled.sector.knownname,
+            @this.assignedcontrolled.fleet.name,
+            @event.param.debugname
+          ]"
+          output="true" append="true" />
+        <set_value name="$subordinate" exact="event.param" />
+        <do_if value="@$subordinate.pilot.$escortgroup != null">
+          <do_for_each name="$escortShip" in="$subordinate.pilot.$escortgroup">
+            <set_value name="$escortShip.pilot.$playerOwnedWorkaroundForRestock" exact="true" />
+          </do_for_each>
+        </do_if>
+        <do_for_each name="$escortShip" in="$subordinate.subordinates">
+          <set_value name="$escortShip.pilot.$playerOwnedWorkaroundForRestock" exact="true" />
+        </do_for_each>
+        <set_value name="$subordinate.pilot.$playerOwnedWorkaroundForRestock" exact="true" />
+        <remove_value name="$subordinate" />
       </actions>
     </handler>
   </interrupts>
@@ -466,7 +534,7 @@
     <include_interrupt_actions ref="RelationsConversionList" />
 
     <debug_to_file directory="'protectsector'" name="'debug_'  + this.assignedcontrolled.idcode + '_' + this.assignedcontrolled"
-      text="'[%s at %s, %s]  - Version: %s.\nHome Sector: %s\nAttack Stations: %s\nAttack Ships XL: %s\nAttack Ships L: %s\nAttack Ships M: %s\nAttack Ships S: %s\nAttack Ships Out Of Stations Distance: %s\nAttack Visible Only: %s\nAttack Hostile Only: %s\nRelation Threshold: %s\nProtect Player Ships In Sector: %s\nProtect Only Non Military Ships: %s\nPursue Fleeing Target: %s\nShare Targets Between Fleets: %s\nShields Preserve On Flight: %s\nBreak On Destruction Percentage: %s\nPark In Center Of Sector: %s\nDesired Parking Position: %s at %s\nRecord Actions To Log Book: %s\nDelay Between Scans: %s, in seconds: %s\nDebug chance: %s'
+      text="'[%s at %s, %s] - Version: %s.\nHome Sector: %s\nAttack Stations: %s\nAttack Ships XL: %s\nAttack Ships L: %s\nAttack Ships M: %s\nAttack Ships S: %s\nAttack Ships Out Of Stations Distance: %s\nAttack Visible Only: %s\nAttack Hostile Only: %s\nRelation Threshold: %s\nProtect Player Ships In Sector: %s\nProtect Only Non Military Ships: %s\nPursue Fleeing Target: %s\nShare Targets Between Fleets: %s\nShields Preserve On Flight: %s\nBreak On Destruction Percentage: %s\nPark In Center Of Sector: %s\nDesired Parking Position: %s at %s\nRecord Actions To Log Book: %s\nDelay Between Scans: %s, in seconds: %s\nDebug chance: %s'
         .[
           this.assignedcontrolled.debugname,
           this.assignedcontrolled.sector.knownname,
@@ -494,7 +562,7 @@
           $recordActionsToLogBook,
           $delayBetweenScans,
           $delayBetweenScansInSeconds,
-          $debugchance,
+          $debugChance,
         ]"
       output="true" append="true" />
 
@@ -565,7 +633,7 @@
     <set_value name="$relationsThresholdInternal" exact="$relationsConversionList.{$relationsThreshold}" />
 
     <debug_to_file directory="'protectsector'" name="'debug_'  + this.assignedcontrolled.idcode + '_' + this.assignedcontrolled"
-      text="'[%s at %s, %s]  - Started (by player: %s) with %s subordinates and %s as top commander. Relation Threshold: %s (%s). Debug chance: %s'
+      text="'[%s at %s, %s] - Started (by player: %s) with %s subordinates and %s as top commander. Relation Threshold: %s (%s). Debug chance: %s'
         .[
           this.assignedcontrolled.debugname,
           this.assignedcontrolled.sector.knownname,
@@ -575,7 +643,7 @@
           @this.assignedcontrolled.toplevelcommander,
           $relationsThresholdInternal,
           $relationsThreshold,
-          $debugchance
+          $debugChance
         ]"
       output="true" append="true" />
 
@@ -644,22 +712,25 @@
     <include_interrupt_actions ref="SubordinatesRefresh" />
 
     <set_value name="$positionIdleTime" exact="player.age" />
+
+    <include_interrupt_actions ref="ResupplyChecksInit" />
   </init>
   <patch sinceversion="104">
     <set_value name="$idleDelay" exact="$delayBetweenScansInSeconds" />
     <debug_to_file directory="'protectsector'" name="'debug_'  + this.assignedcontrolled.idcode + '_' + this.assignedcontrolled"
-      text="'[%s at %s, %s]  - Patched for version 104. Idle delay: %s. Debug chance: %s'
+      text="'[%s at %s, %s] - Patched for version 104. Idle delay: %s. Debug chance: %s'
         .[
           this.assignedcontrolled.debugname,
           this.assignedcontrolled.sector.knownname,
           this.assignedcontrolled.fleet.name,
           $idleDelay,
-          $debugchance
+          $debugChance
         ]"
       output="true" append="true" />
   </patch>
   <patch sinceversion="106">
     <include_interrupt_actions ref="SubordinatesRefresh" />
+    <set_value name="$scriptVersion" exact="106" />
   </patch>
   <patch sinceversion="107">
     <include_interrupt_actions ref="RelationsConversionList" />
@@ -678,6 +749,12 @@
       <set_value name="$parkedAtPosition" exact="false" />
     </do_else>
     <set_value name="$positionIdleTime" exact="player.age" />
+    <set_value name="$scriptVersion" exact="107" />
+  </patch>
+  <patch sinceversion="108">
+    <include_interrupt_actions ref="ResupplyChecksInit" />
+    <include_interrupt_actions ref="ResupplyWorkaroundRefresh" />
+    <set_value name="$scriptVersion" exact="108" />
   </patch>
   <attention min="unknown">
     <actions>
@@ -1307,14 +1384,14 @@
                 <param name="squad_attack" value="true" />
                 <param name="allowboost" value="true" />
                 <param name="forceprimarytarget" value="true" />
-                <param name="debugchance" value="100" />
+                <param name="debugchance" value="$debugChance" />
               </create_order>
             </do_if>
             <do_else>
               <create_order id="'TacticalOrder'" object="this.assignedcontrolled" immediate="true">
                 <param name="selectedtarget" value="$target" />
                 <param name="aggressiveness" value="5" />
-                <param name="debugchance" value="100" />
+                <param name="debugchance" value="$debugChance" />
               </create_order>
             </do_else>
           </do_else>
@@ -1331,6 +1408,21 @@
 
       <do_if value="$idleDelay?" negate="true">
         <resume label="targetSearching" />
+      </do_if>
+
+      <do_if value="player.age gt @$resupplyCheck">
+        <include_interrupt_actions ref="ResupplyWorkaroundRefresh" />
+        <debug_to_file directory="'protectsector'" name="'debug_'  + this.assignedcontrolled.idcode + '_' + this.assignedcontrolled"
+          text="'[%s at %s, %s] - Resupply check'
+            .[
+              this.assignedcontrolled.debugname,
+              this.assignedcontrolled.sector.knownname,
+              this.assignedcontrolled.fleet.name
+            ]"
+          output="true" append="true" />
+        <signal_objects object="this.assignedcontrolled" param="'resupply'" param2="[this.assignedcontrolled.hullpercentage lt 100]"
+          param3="$debugChance" />
+        <set_value name="$resupplyCheck" exact="player.age + 30min" />
       </do_if>
 
       <do_if value="(@$parkingPosition != null) and (not @$parkedAtPosition)">
@@ -1394,7 +1486,7 @@
         <param name="Max" value="[30s, $idleDelay].max" />
         <param name="anchorpos_sector" value="$positionIdle" />
         <param name="MaxDistance" value="if @$parkingPosition != null then 10km else 100km" />
-        <param name="debugchance" value="100" />
+        <param name="debugchance" value="$debugChance" />
       </run_script>
 
       <set_value name="$idleDelay" exact="$delayBetweenScansInSeconds" />
@@ -1610,7 +1702,7 @@
             <param name="targetclasses" value="$classesAcceptableForAttack" />
             <param name="allowboost" value="not $shieldsPreserveOnFlight" />
             <param name="forceprimarytarget" value="true" />
-            <param name="debugchance" value="100" />
+            <param name="debugchance" value="$debugChance" />
           </run_script>
 
           <set_value name="$targetDistanceTo" exact="this.assignedcontrolled.distanceto.{$target}" />
@@ -1714,14 +1806,19 @@
       <label name="cleanup" />
     </actions>
   </attention>
-  <on_abort killed="true">
+  <on_abort>
+    <do_for_each name="$subordinate" in="this.$escortgroup">
+      <remove_value name="$subordinate.pilot.$playerOwnedWorkaroundForRestock" />
+    </do_for_each>
+    <remove_value name="this.assignedcontrolled.pilot.$playerOwnedWorkaroundForRestock" />
     <debug_to_file directory="'protectsector'" name="'debug_'  + this.assignedcontrolled.idcode + '_' + this.assignedcontrolled"
-      text="'[%s at %s, %s] - Killed. Aborted. Commander: %s'.
+      text="'[%s at %s, %s] - Aborted. Commander: %s. Killed: %s.'.
           [
             @this.assignedcontrolled.debugname,
             @this.assignedcontrolled.sector.knownname,
             @this.assignedcontrolled.fleet.name,
             @this.assignedcontrolled.fleet.commander.debugname,
+            @event.name == 'event_object_destroyed'
           ]"
       output="true" append="true" />
   </on_abort>

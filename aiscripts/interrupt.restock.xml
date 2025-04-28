@@ -1,7 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <diff>
   <add sel="/aiscript/interrupts/library/actions[@name='ResupplyCheck']/do_if[@value='not $cleanup_interrupt?']/do_if[@value='$repair or $resupply_ammo or $resupply_units or $restock_subordinates']/do_if[@value='not $cleanup_interrupt?']/do_all[@exact='3']/do_if[@value='@$pass_interrupt lt 3 and @$urgent']" pos="after">
-    <do_if value="(@$resupplystations_interrupt.count le 0) and not @$onlyuseresupplierships and this.isplayerowned and @$playerOwnedWorkaround">
+    <do_if value="(@$resupplystations_interrupt.count le 0) and not @$onlyuseresupplierships and this.isplayerowned and @this.assignedcontrolled.pilot.$playerOwnedWorkaroundForRestock">
       <find_station name="$resupplystations_player" canequipclass="this.assignedcontrolled.class" canbuildclass="$buildclass_interrupt" canbuildships="$buildclass_interrupt != null" canbuildfor="this.owner" hascontrolentity="controlpost.shiptrader" space="player.galaxy" owner="faction.player" multiple="true" append="true" sortbydistanceto="this.assignedcontrolled" sortdescending="true" />
       <find_station name="$resupplystations_interrupt" canequipclass="this.assignedcontrolled.class" canbuildclass="$buildclass_interrupt" canbuildships="$buildclass_interrupt != null" canbuildfor="this.owner" hascontrolentity="controlpost.shiptrader" space="player.galaxy" knownto="faction.player" multiple="true" append="true" sortbydistanceto="this.assignedcontrolled" sortdescending="true">
         <match_relation_to object="this.assignedcontrolled" relation="enemy" comparison="not" />
