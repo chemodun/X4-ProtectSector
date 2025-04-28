@@ -6,6 +6,10 @@
             <param name="primaryTarget" required="true" type="object" text="{1041, 10126}" comment="Target. The object to fight with">
                 <input_param name="class" value="[class.station]" />
             </param>
+            <param name="temporaryFormationLeader" default="null" type="object" text="{1041, 10024}"
+                comment="Leader of the  temporary formation">
+                <input_param name="class" value="[class.ship_l]" />
+            </param>
             <param name="debugChance" type="bool" default="0" advanced="true" text="{1041, 10086}" comment="Print debug output">
                 <input_param name="truevalue" value="100" />
             </param>
@@ -46,37 +50,6 @@
                     <set_value name="$positionRelativeToTarget" exact="this.assignedcontrolled.relativeposition.{$target}" />
                 </do_if>
             </actions>
-            <actions name="CheckIfPositionIsSafe">
-                <set_value name="$positionIsSafe" exact="true" />
-                <find_object name="$hostileStations" class="[class.station]" space="$targetSector" excluded="[$primaryTarget]"
-                    recursive="true" multiple="true" ishostileto="this.trueowner" known="true"
-                    sortbyvalue="(loop.element.size / 2) + loop.element.maxcombatrange.all - loop.element.bboxdistanceto.{[$targetSector, $positionToCheck]}"
-                    sortdescending="true"
-                />
-                <debug_text
-                    text="'AttackStationInSector [%s]: CheckPosition: Found hostile stations: %s'.
-                        [this.assignedcontrolled.debugname, $hostileStations.count]"
-                    chance="$debugChance" />
-                <do_if value="$hostileStations.count gt 0">
-                    <debug_text
-                        text="'AttackStationInSector [%s]: CheckPosition: Found hostile stations [1]: %s. Distance: %s. Size: %s. Fire Range: %s.'.
-                            [this.assignedcontrolled.debugname, $hostileStations.{1}.debugname, $hostileStations.{1}.bboxdistanceto.{[$targetSector, $positionToCheck]},
-                            $hostileStations.{1}.size, $hostileStations.{1}.maxcombatrange.all]"
-                        chance="$debugChance" />
-                    <do_if
-                        value="$hostileStations.{1}.maxcombatrange.all gt $hostileStations.{1}.bboxdistanceto.{[$targetSector, $positionToCheck]}">
-                        <debug_text
-                            text="'AttackStationInSector [%s]: CheckPosition: %s is not safe, hostile station %s is too close: %s, with size %s: and combat range: %s'.
-                            [this.assignedcontrolled.debugname, $positionToCheck, $hostileStations.{1},
-                            $hostileStations.{1}.bboxdistanceto.{[$targetSector, $positionToCheck]}, $hostileStations.{1}.size,
-                            $hostileStations.{1}.maxcombatrange.all]"
-                            chance="$debugChance" />
-                        <set_value name="$positionIsSafe" exact="false" />
-                    </do_if>
-                </do_if>
-                <remove_value name="$hostileStations" />
-                <remove_value name="$positionToCheck" />
-            </actions>
             <actions name="AssignSubordinatesToAttackStation">
                 <debug_text
                     text="'AttackStationInSector [%s]: Assigning subordinates to attack %s.  Count: Subordinates: %s. Escort: %s.'.
@@ -96,12 +69,13 @@
                                 text="'AttackStationInSector [%s]: Subordinate %s is below 60 percentage of hull.'.
                                 [this.assignedcontrolled.debugname, @$subordinate.debugname]"
                                 chance="$debugChance" />
+                            <set_value name="$subordinate.pilot.$playerOwnedWorkaroundForRestock" exact="true" />
                             <create_order id="'Resupply'" object="$subordinate" immediate="true">
                                 <param name="internalorder" value="true" />
                                 <param name="debugchance" value="$debugChance" />
                                 <param name="onlyuseresupplierships" value="false" />
                                 <param name="urgent" value="true" />
-                                <param name="playerOwnedWorkaround" value="true" />
+                                <!-- <param name="playerOwnedWorkaround" value="true" /> -->
                             </create_order>
                             <remove_from_group group="this.$escortgroup" object="$subordinate" />
                         </do_if>
@@ -119,6 +93,7 @@
                                 <do_if value="@$subordinate.order != 'AttackStationInSector'">
                                     <create_order object="$subordinate" id="'AttackStationInSector'" immediate="true">
                                         <param name="primaryTarget" value="$primaryTarget" />
+                                        <param name="temporaryFormationLeader" value="$temporaryFormationLeader" />
                                         <param name="debugChance" value="$debugChance" />
                                     </create_order>
                                 </do_if>
@@ -198,10 +173,10 @@
             <actions name="PrepareFleeing">
                 <set_value name="$isFleeing" exact="true" />
                 <set_value name="$positionRelativeToPrimaryTarget" exact="this.assignedcontrolled.relativeposition.{$primaryTarget}" />
-                <do_if value="@$positionMoveOutCommon == null or @$isFleeingShort == true">
+                <do_if value="@$positionMoveOutCommon == null or @$isGoOutRadius == true">
                     <create_position name="$positionMoveOut"
                         x="$positionRelativeToPrimaryTarget.x * 2"
-                        y="$positionRelativeToPrimaryTarget.y / abs($positionRelativeToPrimaryTarget.y) * $safeDistanceToPrimary *(if @$isFleeingShort == true then 1.5m else 2.5m)"
+                        y="$positionRelativeToPrimaryTarget.y / abs($positionRelativeToPrimaryTarget.y) * $safeDistanceToPrimary *(if @$isGoOutRadius == true then 1.5m else 2.5m)"
                         z="$positionRelativeToPrimaryTarget.z * 2" space="$positionRelativeToPrimaryTarget" />
                 </do_if>
                 <do_else>
@@ -209,13 +184,13 @@
                 </do_else>
                 <debug_text
                     text="'AttackStationInSector [%s]: %s: Moving out to %s from Current: %s (in Sector : %s).'.
-                        [this.assignedcontrolled.debugname, if @$isFleeingShort == true then 'SafePathMove: Unsafe step' else 'UnderAttack',
+                        [this.assignedcontrolled.debugname, if @$isGoOutRadius == true then 'SafePathMove: Unsafe step' else 'UnderAttack',
                         $positionMoveOut, $positionRelativeToPrimaryTarget, @this.assignedcontrolled.relativeposition.{$targetSector}]"
                     chance="$debugChance" />
             </actions>
             <actions name="PrepareFleeingPath">
                 <include_interrupt_actions ref="RefreshTargetsRelatedData" />
-                <set_value name="$fleeOutFirstDistance" exact="$safeDistanceToPrimary * 1.2" />
+                <set_value name="$fleeOutFirstDistance" exact="$safeDistanceToPrimary * $safeDistanceCoefficient" />
                 <create_list name="$waypoints" />
                 <do_if value="this.assignedcontrolled.distanceto.{$primaryTarget} lt ($fleeOutFirstDistance * 2)">
                     <do_if value="this.assignedcontrolled.boost.available">
@@ -242,7 +217,7 @@
                     <append_to_list name="$waypoints" exact="$positionPointTemporary" />
                 </do_if>
                 <do_if
-                    value="(@$fleeingFormationLeader == null or @$fleeingFormationLeader == this.assignedcontrolled or @$isFleeingShort == true) and (@$positionPointTemporary == null or $positionMoveOut.y gt $positionPointTemporary.y)">
+                    value="(@$temporaryFormationLeader == null or @$temporaryFormationLeader == this.assignedcontrolled or @$isGoOutRadius == true) and (@$positionPointTemporary == null or $positionMoveOut.y gt $positionPointTemporary.y)">
                     <append_to_list name="$waypoints" exact="$positionMoveOut" />
                     <remove_value name="$positionMoveOut" />
                 </do_if>
@@ -294,7 +269,7 @@
                             text="'AttackStationInSector [%s]: DronesAttack: Drones are attacking. Fleeing out and sending signal.'.
                             [this.assignedcontrolled.debugname]"
                             chance="$debugChance" />
-                        <set_value name="$fleeingFormationLeader" exact="this.assignedcontrolled" />
+                        <set_value name="$temporaryFormationLeader" exact="this.assignedcontrolled" />
                         <break_formation object="this.assignedcontrolled" />
                         <leave_formation object="this.assignedcontrolled" />
                         <signal_objects object="$primaryTarget" param="'StationAttackDronesAttack'"
@@ -486,7 +461,8 @@
                         <check_any>
                             <check_value value="this.assignedcontrolled.hullpercentage le 99" />
                             <check_all>
-                                <check_value value="this.assignedcontrolled.distanceto.{$primaryTarget} ge $safeDistanceToPrimary * 1.2m" />
+                                <check_value
+                                    value="this.assignedcontrolled.distanceto.{$primaryTarget} ge $safeDistanceToPrimary * $safeDistanceCoefficient" />
                                 <set_value name="$rescueRequest" exact="true" />
                             </check_all>
                         </check_any>
@@ -606,7 +582,7 @@
                     <set_value name="$positionMoveOutCommon" exact="@event.param2" />
                 </do_if>
                 <set_value name="$positionMoveOut" exact="$positionMoveOutCommon" />
-                <set_value name="$fleeingFormationLeader" exact="@event.param3" />
+                <set_value name="$temporaryFormationLeader" exact="@event.param3" />
                 <set_value name="$attacker" exact="$primaryTarget" />
                 <include_interrupt_actions ref="PrepareFleeingPath" />
                 <abort_called_scripts resume="SafePathMove" />
@@ -628,13 +604,13 @@
                     [this.assignedcontrolled.debugname, @event.param.debugname]" />
                 <break_formation object="this.assignedcontrolled" />
                 <leave_formation object="this.assignedcontrolled" />
-                <signal_objects object="@$fleeingFormationLeader" param="'FleeingFormationJoin'" param2="this.assignedcontrolled" />
+                <signal_objects object="@$temporaryFormationLeader" param="'FleeingFormationJoin'" param2="this.assignedcontrolled" />
             </actions>
         </handler>
         <handler>
             <conditions>
                 <event_object_signalled object="this.assignedcontrolled" param="'FleeingFormationJoin'" />
-                <check_value value="@$fleeingFormationLeader == this.assignedcontrolled" />
+                <check_value value="@$temporaryFormationLeader == this.assignedcontrolled" />
                 <check_value value="@event.param2 != null" />
             </conditions>
             <actions>
@@ -659,6 +635,19 @@
                 <check_value value="@$enemyDronesShare == true" />
                 <set_value name="$enemyDronesSharedCount" exact="[@$enemyDronesSharedCount, event.param2].max" />
             </conditions>
+        </handler>
+        <handler>
+            <conditions>
+                <event_object_signalled object="this.assignedcontrolled" param="'StationAttackIsFinished'" />
+                <check_value value="@event.param2 != null" />
+                <check_value value="@event.param2 != this.assignedcontrolled" />
+            </conditions>
+            <actions>
+                <debug_text
+                    text="'AttackStationInSector [%s]: Attack finished for %s. Reassigning them (and other).'.
+                    [this.assignedcontrolled.debugname, @event.param2.debugname]" />
+                <include_interrupt_actions ref="AssignSubordinatesToAttackStation" />
+            </actions>
         </handler>
         <handler ref="DisengageHandler" />
         <handler ref="TargetInvalidHandler" />
@@ -687,9 +676,13 @@
             <set_value name="$r" operation="add" exact="2" />
         </do_while>
         <set_value name="$isUnderAttack" exact="player.age - 3s" />
+        <set_value name="$safeDistanceCoefficient" exact="if this.assignedcontrolled.isclass.ship_l then 1.2m else 1.5m" />
+        <set_value name="$attackTimeStamp" exact="0s" />
     </init>
     <attention min="unknown">
         <actions>
+            <break_formation object="this.assignedcontrolled" />
+            <leave_formation object="this.assignedcontrolled" />
             <set_value name="$isCarrier" exact="false" />
             <do_if value="this.assignedcontrolled.type == shiptype.carrier">
                 <do_for_each name="$subordinate" in="this.assignedcontrolled.subordinates">
@@ -722,11 +715,16 @@
             </do_if>
 
             <set_value name="$attackTimeStamp" exact="0s" />
-            <include_interrupt_actions ref="AssignSubordinatesToAttackStation" />
+
+            <do_if value="@$temporaryFormationLeader != null">
+                <set_value name="$dronesAttack" exact="true" />
+                <resume label="fleeOut" />
+            </do_if>
 
             <label name="fight" />
             <label name="acquireTarget" />
 
+            <include_interrupt_actions ref="AssignSubordinatesToAttackStation" />
             <set_drone_armed object="this.assignedcontrolled" category="unitcategory.defence" armed="false" />
             <set_value name="$isAttackingPosition" exact="false" />
 
@@ -965,7 +963,7 @@
             <set_value name="$interimPositionRelativeToPrimaryTargetDistance"
                 exact="sqrt($interimPositionRelativeToPrimaryTarget.x^2 + $interimPositionRelativeToPrimaryTarget.y^2 + $interimPositionRelativeToPrimaryTarget.z^2)" />
             <set_value name="$interimPositionRelativeToPrimaryTargetDistanceRatio"
-                exact="$safeDistanceToPrimary / $interimPositionRelativeToPrimaryTargetDistance" />
+                exact="$safeDistanceToPrimary * $safeDistanceCoefficient / $interimPositionRelativeToPrimaryTargetDistance" />
             <create_position name="$interimPositionRelativeToPrimaryTarget"
                 x="$interimPositionRelativeToPrimaryTarget.x * $interimPositionRelativeToPrimaryTargetDistanceRatio"
                 y="$interimPositionRelativeToPrimaryTarget.y * $interimPositionRelativeToPrimaryTargetDistanceRatio"
@@ -997,7 +995,7 @@
             <do_if value="$pathCrossesUnSafeRadius">
                 <!-- Set safe distance (slightly larger than danger radius) -->
                 <set_value name="$safePathSafeDistance"
-                    exact="$safeDistanceToPrimary * (if this.assignedcontrolled.isclass.ship_l then 1.2 else 1.5)" />
+                    exact="$safeDistanceToPrimary * $safeDistanceCoefficient" />
                 <debug_text
                     text="'AttackStationInSector [%s]: SafePath: Path crosses unsafe radius. Generating safe path with distance: %s'.
                             [this.assignedcontrolled.debugname, $safePathSafeDistance]"
@@ -1142,8 +1140,8 @@
                 <set_command_action commandaction="commandaction.flying" />
                 <remove_value name="$positionToMove" />
                 <debug_text
-                    text="'AttackStationInSector [%s]: SafePathMove: Path waypoint [%s/%s]: %s. Is Fleeing: %s. Is Attacking Position: %s.'.
-                            [this.assignedcontrolled.debugname, $i, $waypoints.count, $pathWaypoint, @$isFleeing, $isAttackingPosition]"
+                    text="'AttackStationInSector [%s]: SafePathMove: Path waypoint [%s/%s]: %s. Is Fleeing: %s. Is Go Out: %s. Is Attacking Position: %s.'.
+                    [this.assignedcontrolled.debugname, $i, $waypoints.count, $pathWaypoint, @$isFleeing, @$isGoOutRadius, $isAttackingPosition]"
                     chance="$debugChance" />
                 <do_if value="$isAttackingPosition">
                     <create_position name="$positionToMovePreliminary" object="$target"
@@ -1173,33 +1171,33 @@
                         $maxEffectiveTargetCombatRange
                         ]"
                     chance="$debugChance" />
-                <do_if value="($maxEffectiveTargetCombatRange * 1.2) ge $waypointDistance">
-                    <set_value name="$waypointDistanceRatio" exact="$maxEffectiveTargetCombatRange * 1.3 / $waypointDistance" />
-                    <do_if value="$isAttackingPosition">
-                        <create_position name="$positionToMovePreliminary" object="$target"
-                            x="$pathWaypoint.x * $waypointDistanceRatio"
-                            y="$pathWaypoint.y * $waypointDistanceRatio"
-                            z="$pathWaypoint.z * $waypointDistanceRatio"
-                            space="$targetSector" />
-                        <!-- Check if the position is already occupied by the other ship -->
-                    </do_if>
-                    <do_else>
-                        <create_position name="$positionToMovePreliminary" object="$primaryTarget"
-                            x="$pathWaypoint.x * $waypointDistanceRatio"
-                            y="$pathWaypoint.y * $waypointDistanceRatio"
-                            z="$pathWaypoint.z * $waypointDistanceRatio"
-                            space="$targetSector" />
-                    </do_else>
-                    <debug_text
-                        text="'AttackStationInSector [%s]: SafePathMove: DistanceCheck Failed. Waypoint [%s/%s]: %s shifted to %sm. New Distance to Primary: %s (%s). Primary Max Range: %s.'.
+                <do_if value="(@$isFleeing or @$isGoOutRadius) and ($i == 1)" negate="true">
+                    <do_if value="($maxEffectiveTargetCombatRange * 1.2) ge $waypointDistance">
+                        <set_value name="$waypointDistanceRatio" exact="$maxEffectiveTargetCombatRange * 1.3 / $waypointDistance" />
+                        <do_if value="$isAttackingPosition">
+                            <create_position name="$positionToMovePreliminary" object="$target"
+                                x="$pathWaypoint.x * $waypointDistanceRatio"
+                                y="$pathWaypoint.y * $waypointDistanceRatio"
+                                z="$pathWaypoint.z * $waypointDistanceRatio"
+                                space="$targetSector" />
+                            <!-- Check if the position is already occupied by the other ship -->
+                        </do_if>
+                        <do_else>
+                            <create_position name="$positionToMovePreliminary" object="$primaryTarget"
+                                x="$pathWaypoint.x * $waypointDistanceRatio"
+                                y="$pathWaypoint.y * $waypointDistanceRatio"
+                                z="$pathWaypoint.z * $waypointDistanceRatio"
+                                space="$targetSector" />
+                        </do_else>
+                        <debug_text
+                            text="'AttackStationInSector [%s]: SafePathMove: DistanceCheck Failed. Waypoint [%s/%s]: %s shifted to %sm. New Distance to Primary: %s (%s). Primary Max Range: %s.'.
                             [this.assignedcontrolled.debugname, $i, $waypoints.count, $pathWaypoint, $positionToMovePreliminary,
                             $primaryTarget.bboxdistanceto.{[$targetSector, $positionToMovePreliminary]},
                             $primaryTarget.distanceto.{[$targetSector, $positionToMovePreliminary]}, $maxEffectiveTargetCombatRange]"
-                        chance="$debugChance" />
-                    <remove_value name="$waypointDistanceRatio" />
-                </do_if>
-                <remove_value name="$waypointDistance" />
-                <do_if value="@$isFleeing == true and $i == 1" negate="true">
+                            chance="$debugChance" />
+                        <remove_value name="$waypointDistanceRatio" />
+                    </do_if>
+                    <remove_value name="$waypointDistance" />
                     <set_value name="$positionToMoveMaxChecks" exact="10" />
                     <set_value name="$positionToMoveToCheck" exact="$positionToMovePreliminary" />
                     <set_value name="$positionSignalToCheck" exact="true" />
@@ -1314,52 +1312,50 @@
                 <do_if value="$isAttackingPosition">
                     <set_value name="$positionForAttack" exact="$positionToMove" />
                 </do_if>
-                <!-- <set_value name="$positionToCheck" exact="$positionToMove" />
-                <include_interrupt_actions ref="CheckIfPositionIsSafe" />
-                <do_if value="$positionIsSafe"> -->
                 <set_value name="$positionIsSafe" exact="true" />
-                <set_value name="$nearStationsToExclude" exact="if @$isAttackingPosition then [$primaryTarget] else []" />
-                <find_object name="$nearStations" class="[class.station]" space="$targetSector"
-                    recursive="true" multiple="true" ishostileto="this.trueowner" known="true"
-                    sortbydistanceto="this.assignedcontrolled" sortdescending="false" excluded="$nearStationsToExclude"
-                />
-                <set_value name="$checkStationsOnDistance" exact="this.distanceto.{[$targetSector, $positionToMove]} * 3" />
-                <debug_text
-                    text="'AttackStationInSector [%s]: SafePathMove: To check is path to waypoint is safe going to check stations on distance: %s. In total: %s.'.
-                                    [this.assignedcontrolled.debugname, $checkStationsOnDistance, $nearStations.count]"
-                    chance="$debugChance" />
-                <do_for_each name="$nearStation" in="$nearStations">
-                    <do_if value="this.assignedcontrolled.distanceto.{$nearStation} gt $checkStationsOnDistance">
-                        <break />
-                    </do_if>
-                    <set_value name="$currentPositionRelativeToObject" exact="this.assignedcontrolled.relativeposition.{$nearStation}" />
-                    <create_position name="$nextPositionRelativeToObject" object="$targetSector"
-                        x="$positionToMove.x"
-                        y="$positionToMove.y"
-                        z="$positionToMove.z"
-                        space="$nearStation" />
-                    <set_value name="$safeRadiusAroundObject"
-                        exact="($nearStation.maxcombatrange.all + ($nearStation.size / 2) + $thisRadius) * 1.1" />
-                    <remove_value name="$pathCrossesUnSafeRadius" />
+                <do_if value="(@$isFleeing or @$isGoOutRadius) and ($i == 1)" negate="true">
+                    <set_value name="$nearStationsToExclude" exact="if @$isAttackingPosition then [$primaryTarget] else []" />
+                    <find_object name="$nearStations" class="[class.station]" space="$targetSector"
+                        recursive="true" multiple="true" ishostileto="this.trueowner" known="true"
+                        sortbydistanceto="this.assignedcontrolled" sortdescending="false" excluded="$nearStationsToExclude"
+                    />
+                    <set_value name="$checkStationsOnDistance" exact="this.distanceto.{[$targetSector, $positionToMove]} * 3" />
                     <debug_text
-                        text="'AttackStationInSector [%s]: SafePathMove: Checking if path to waypoint crosses unsafe radius %s around station: %s.'.
-                            [this.assignedcontrolled.debugname, $safeRadiusAroundObject, $nearStation.debugname]"
+                        text="'AttackStationInSector [%s]: SafePathMove: To check is path to waypoint is safe going to check stations on distance: %s. In total: %s.'.
+                                    [this.assignedcontrolled.debugname, $checkStationsOnDistance, $nearStations.count]"
                         chance="$debugChance" />
-                    <include_interrupt_actions ref="CheckIfPathCrossedUnsafeRadius" />
-                    <do_if value="$pathCrossesUnSafeRadius">
-                        <debug_text
-                            text="'AttackStationInSector [%s]: SafePathMove: Path to waypoint %s is not safe: %s. It crosses UnSafe radius around station: %s'.
-                                            [this.assignedcontrolled.debugname, $pathWaypoint, $pathCrossesUnSafeRadius, $nearStation.debugname]"
-                            chance="$debugChance" />
-                        <wait exact="1s" />
-                        <set_value name="$positionIsSafe" exact="false" />
+                    <do_for_each name="$nearStation" in="$nearStations">
+                        <do_if value="this.assignedcontrolled.distanceto.{$nearStation} gt $checkStationsOnDistance">
+                            <break />
+                        </do_if>
+                        <set_value name="$currentPositionRelativeToObject" exact="this.assignedcontrolled.relativeposition.{$nearStation}" />
+                        <create_position name="$nextPositionRelativeToObject" object="$targetSector"
+                            x="$positionToMove.x"
+                            y="$positionToMove.y"
+                            z="$positionToMove.z"
+                            space="$nearStation" />
+                        <set_value name="$safeRadiusAroundObject"
+                            exact="($nearStation.maxcombatrange.all + ($nearStation.size / 2) + $thisRadius) * 1.1" />
                         <remove_value name="$pathCrossesUnSafeRadius" />
-                        <break />
-                    </do_if>
-                    <remove_value name="$pathCrossesUnSafeRadius" />
-                    <wait exact="10ms" />
-                </do_for_each>
-                <!-- </do_if> -->
+                        <debug_text
+                            text="'AttackStationInSector [%s]: SafePathMove: Checking if path to waypoint crosses unsafe radius %s around station: %s.'.
+                            [this.assignedcontrolled.debugname, $safeRadiusAroundObject, $nearStation.debugname]"
+                            chance="$debugChance" />
+                        <include_interrupt_actions ref="CheckIfPathCrossedUnsafeRadius" />
+                        <do_if value="$pathCrossesUnSafeRadius">
+                            <debug_text
+                                text="'AttackStationInSector [%s]: SafePathMove: Path to waypoint %s is not safe: %s. It crosses UnSafe radius around station: %s'.
+                                            [this.assignedcontrolled.debugname, $pathWaypoint, $pathCrossesUnSafeRadius, $nearStation.debugname]"
+                                chance="$debugChance" />
+                            <wait exact="1s" />
+                            <set_value name="$positionIsSafe" exact="false" />
+                            <remove_value name="$pathCrossesUnSafeRadius" />
+                            <break />
+                        </do_if>
+                        <remove_value name="$pathCrossesUnSafeRadius" />
+                        <wait exact="10ms" />
+                    </do_for_each>
+                </do_if>
                 <do_if value="not $positionIsSafe">
                     <debug_text
                         text="'AttackStationInSector [%s]: SafePathMove: Path waypoint %s is not safe (%s).'.
@@ -1367,19 +1363,19 @@
                         chance="$debugChance" />
                     <wait exact="200ms" />
                     <remove_value name="$positionToCheck" />
-                    <do_if value="($i == 1 or $isAttackingPosition) and not (@$isFleeing == true)">
+                    <do_if value="($i == 1 or $isAttackingPosition) and not (@$isFleeing == true or @$isGoOutRadius == true)">
                         <wait exact="20ms" />
                         <!-- <set_value name="$subTargetToExclude" exact="$target" /> -->
                         <remove_value name="$positionIsSafe" />
                         <remove_value name="$positionToMove" />
                         <remove_value name="$positionForAttack" />
-                        <set_value name="$isFleeing" exact="true" />
-                        <set_value name="$isFleeingShort" exact="true" />
+                        <set_value name="$isGoOutRadius" exact="true" />
                         <include_interrupt_actions ref="PrepareFleeing" />
                         <include_interrupt_actions ref="PrepareFleeingPath" />
+                        <set_value name="$isFleeing" exact="false" />
                         <debug_text
-                            text="'AttackStationInSector [%s]: SafePathMove: First or Attacking %s waypoint %s is not safe. Fleeing out: %s.'.
-                                [this.assignedcontrolled.debugname, $isAttackingPosition, $pathWaypoint,  $waypoints]"
+                            text="'AttackStationInSector [%s]: SafePathMove: First or Attacking %s waypoint %s is not safe. Fleeing out: %s. Go Out: %s'.
+                                [this.assignedcontrolled.debugname, $isAttackingPosition, $pathWaypoint, $waypoints, $isGoOutRadius]"
                             chance="$debugChance" />
                         <resume label="SafePathMove" />
                     </do_if>
@@ -1391,11 +1387,11 @@
                     </do_else>
                 </do_if>
                 <remove_value name="$positionToCheck" />
-                <do_if value="$positionIsSafe or (@$isFleeing == true)">
+                <do_if value="$positionIsSafe">
                     <debug_text
-                        text="'AttackStationInSector [%s]: SafePathMove: Moving to path waypoint [%s/%s]: %s. Distance: %s. Is Attacking: %s. Position to move: %s. Current: %s (%s). Target Position: %s.' .
+                        text="'AttackStationInSector [%s]: SafePathMove: Moving to path waypoint [%s/%s]: %s. Distance: %s. Is Attacking: %s. Is Fleeing: %s. Is Go Out: %s. Position to move: %s. Current: %s (%s). Target Position: %s.' .
                                 [this.assignedcontrolled.debugname, $i, $waypoints.count, $pathWaypoint,
-                                this.assignedcontrolled.distanceto.{[$targetSector, $positionToMove]}, $isAttackingPosition,
+                                this.assignedcontrolled.distanceto.{[$targetSector, $positionToMove]}, $isAttackingPosition, @$isFleeing, @$isGoOutRadius,
                                  $positionToMove, this.assignedcontrolled.relativeposition.{$targetSector}, $positionRelativeToPrimaryTarget,
                                 $positionPrimaryTargetInSector, ]"
                         chance="$debugChance"
@@ -1403,7 +1399,7 @@
                     <do_if value="$isAttackingPosition">
                         <set_value name="$safetyIndicator" exact="1" />
                     </do_if>
-                    <do_if value="@$isFleeing == true and $i == $waypoints.count">
+                    <do_if value="@$isFleeing == true and $i == $waypoints.count and this.assignedcontrolled.isclass.ship_l">
                         <set_drone_armed object="this.assignedcontrolled" category="unitcategory.defence" armed="true" />
                     </do_if>
                     <do_if value="$i == 1">
@@ -1429,63 +1425,78 @@
                             <break />
                         </do_if>
                         <set_value name="$moveUsingTravelMode"
-                            exact="this.assignedcontrolled.travel.available and (player.age - @$isUnderAttack) gt 3s and ($distanceToMove gt 10km or this.assignedcontrolled.boost.maxspeed gt 0 and (this.assignedcontrolled.travel.maxspeed / this.assignedcontrolled.boost.maxspeed gt 3.5) and $distanceToMove gt 3km )" />
+                            exact="this.assignedcontrolled.travel.available and (player.age - @$isUnderAttack) gt 3s and $distanceToMove ge 10km" />
                         <do_if value="$moveUsingTravelMode">
-                            <estimate_travel_time start="this.assignedcontrolled" target="$targetSector" ship="this.assignedcontrolled"
-                                uselocalhighways="false" result="$movingTimeEstimated" resultdistance="$movingDistanceEstimated ">
-                                <targetposition value="$positionToMove" />
-                            </estimate_travel_time>
-                            <set_value name="$movingTime"
-                                exact="this.assignedcontrolled.travel.chargetime + (($distanceToMove)f / (this.assignedcontrolled.travel.maxspeed)f)s * (if $distanceToMove le 20km then 6s else (if $distanceToMove gt 50km then 3s else 4s)) + $updateTime " />
                             <debug_text
-                                text="'AttackStationInSector [%s]: SafePathMove: Moving via Travel: Distance: %s. Time: %s. MaxSpeed: %s. ChargeTime: %s. Estimated: Time: %s. Distance: %s.'.
-                                    [this.assignedcontrolled.debugname, $distanceToMove, $movingTime,
-                                    this.assignedcontrolled.travel.maxspeed, this.assignedcontrolled.travel.chargetime,
-                                    $movingTimeEstimated, $movingDistanceEstimated]"
+                                text="'AttackStationInSector [%s]: SafePathMove: Moving via Travel: Distance: %s. MaxSpeed: %s.'.
+                                    [this.assignedcontrolled.debugname, $distanceToMove, this.assignedcontrolled.travel.maxspeed]"
                                 chance="$debugChance" />
-                            <remove_value name="$movingTimeEstimated" />
-                            <remove_value name="$movingDistanceEstimated" />
+                            <include_interrupt_actions ref="RefreshTargetsRelatedData" />
+                            <set_value name="$travelModeCheckId" exact="player.age" />
+                            <signal_objects object="this.assignedcontrolled" param="'TravelModeCheckDistance'"
+                                param2="$travelModeCheckId"
+                                param3="1"
+                                delay="this.assignedcontrolled.travel.chargetime * 10" />
+                            <signal_objects object="this.assignedcontrolled" param="'TravelModeCheckDistance'"
+                                param2="$travelModeCheckId"
+                                param3="2"
+                                delay="this.assignedcontrolled.travel.chargetime * 20" />
+                            <move_to destination="$targetSector" object="this.assignedcontrolled" boost="true"
+                                travel="true" forceposition="true">
+                                <position value="$positionToMove" />
+                                <interrupt>
+                                    <conditions>
+                                        <event_object_signalled object="this.assignedcontrolled" param="'TravelModeCheckDistance'" />
+                                        <check_value value="@event.param2 == @$travelModeCheckId" />
+                                        <debug_text
+                                            text="'AttackStationInSector [%s]: SafePathMove: TravelModeCheckDistance[%s]: Distance from starting point %s after %s. Traveling: %s. Charging: %s. Coasting: %s.'.
+                                                [this.assignedcontrolled.debugname, @event.param3, this.assignedcontrolled.distanceto.{[$targetSector, $positionInSector]},
+                                                this.assignedcontrolled.travel.chargetime * 10 * @event.param3,
+                                                this.assignedcontrolled.travel.active, this.assignedcontrolled.travel.charging, this.assignedcontrolled.travel.iscoasting]"
+                                        />
+                                        <check_any>
+                                            <check_all>
+                                                <check_value value="@event.param3 == 1" />
+                                                <check_value value="this.assignedcontrolled.travel.active" negate="true" />
+                                                <check_value value="this.assignedcontrolled.travel.charging" negate="true" />
+                                            </check_all>
+                                            <check_all>
+                                                <check_value value="@event.param3 == 2" />
+                                                <check_value value="this.assignedcontrolled.travel.active" negate="true" />
+                                            </check_all>
+                                        </check_any>
+                                    </conditions>
+                                </interrupt>
+                            </move_to>
+                            <remove_value name="$travelModeCheckId" />
                         </do_if>
-                        <do_elseif value="this.assignedcontrolled.boost.available">
-                            <set_value name="$movingTime" exact="(($distanceToMove)f / (this.assignedcontrolled.boost.maxspeed)f)s" />
-                            <do_if value="($movingTime)s gt this.assignedcontrolled.boost.remainingduration">
-                                <set_value name="$movingTime" exact="this.assignedcontrolled.boost.remainingduration" />
-                            </do_if>
-                            <set_value name="$movingTime" exact="$movingTime * 2s + $updateTime" />
-                            <debug_text
-                                text="'AttackStationInSector [%s]: SafePathMove: Moving via Boost: Distance: %s. Time: %s (%s). MaxSpeed: %s.'.
+                        <do_else>
+                            <do_if value="this.assignedcontrolled.boost.available">
+                                <set_value name="$movingTime" exact="(($distanceToMove)f / (this.assignedcontrolled.boost.maxspeed)f)s" />
+                                <do_if value="($movingTime)s gt this.assignedcontrolled.boost.remainingduration">
+                                    <set_value name="$movingTime" exact="this.assignedcontrolled.boost.remainingduration" />
+                                </do_if>
+                                <set_value name="$movingTime" exact="$movingTime * 2s + $updateTime" />
+                                <debug_text
+                                    text="'AttackStationInSector [%s]: SafePathMove: Moving via Boost: Distance: %s. Time: %s (%s). MaxSpeed: %s.'.
                                     [this.assignedcontrolled.debugname, $distanceToMove, $movingTime, this.assignedcontrolled.boost.remainingduration,
                                     this.assignedcontrolled.boost.maxspeed]"
-                                chance="$debugChance" />
-                        </do_elseif>
-                        <do_else>
-                            <set_value name="$movingTime" exact="$updateTime" />
+                                    chance="$debugChance" />
+                            </do_if>
+                            <do_else>
+                                <debug_text
+                                    text="'AttackStationInSector [%s]: SafePathMove: Moving simple: Distance: %s. MaxSpeed: %s.'.
+                                    [this.assignedcontrolled.debugname, $distanceToMove, this.assignedcontrolled.maxspeed]"
+                                    chance="$debugChance" />
+                                <set_value name="$movingTime" exact="$updateTime" />
+                            </do_else>
+                            <move_to destination="$targetSector" object="this.assignedcontrolled" boost="true"
+                                travel="$moveUsingTravelMode"
+                                forceposition="true">
+                                <position value="$positionToMove" />
+                                <interrupt_after_time time="$movingTime" />
+                            </move_to>
                         </do_else>
-                        <do_if value="$moveUsingTravelMode">
-                            <signal_objects object="this.assignedcontrolled" param="'TravelModeCheckDistance'"
-                                param2="this.assignedcontrolled.relativeposition.{$targetSector}"
-                                param3="this.assignedcontrolled.travel.chargetime * 10"
-                                delay="this.assignedcontrolled.travel.chargetime * 10" />
-                        </do_if>
-                        <move_to destination="$targetSector" object="this.assignedcontrolled" boost="true"
-                            travel="$moveUsingTravelMode"
-                            forceposition="true">
-                            <position value="$positionToMove" />
-                            <interrupt_after_time time="$movingTime" />
-                            <interrupt>
-                                <conditions>
-                                    <event_object_signalled object="this.assignedcontrolled" param="'TravelModeCheckDistance'" />
-                                    <check_value value="@event.param2 != null" />
-                                    <debug_text
-                                        text="'AttackStationInSector [%s]: SafePathMove: TravelModeCheckDistance: Distance from starting point %s after %s. Traveling: %s. Charging: %s. Coasting: %s. MovingTime: %s.'.
-                                            [this.assignedcontrolled.debugname, this.assignedcontrolled.distanceto.{[$targetSector, @event.param2]}, @event.param3,
-                                            this.assignedcontrolled.travel.active, this.assignedcontrolled.travel.charging, this.assignedcontrolled.travel.iscoasting,
-                                            $movingTime]" />
-                                    <check_value
-                                        value="this.assignedcontrolled.distanceto.{[$targetSector, event.param2]} le this.assignedcontrolled.size * 5" />
-                                </conditions>
-                            </interrupt>
-                        </move_to>
                         <debug_text
                             text="'AttackStationInSector [%s]: SafePathMove: Moving step finished.'.
                             [this.assignedcontrolled.debugname]"
@@ -1505,7 +1516,8 @@
                             chance="$debugChance" />
                         <resume label="acquireTarget" />
                     </do_if>
-                    <do_if value="($isAttackingPosition or $i == $waypoints.count) and not (@$isFleeing == true)">
+                    <do_if
+                        value="($isAttackingPosition or $i == $waypoints.count) and not (@$isFleeing == true or @$isGoOutRadius == true)">
                         <set_value name="$rotationGetOn" exact="$primaryTarget" />
                         <include_interrupt_actions ref="IsNotAcceptableRotation" />
                         <do_if value="$rotationsIsNotAcceptable">
@@ -1526,17 +1538,17 @@
                 <include_interrupt_actions ref="RefreshTargetsRelatedData" />
                 <debug_text
                     text="'AttackStationInSector [%s]: SafePathMove: Waypoint [%s/%s] processed (or skipped, if not safe). Is it Attacking: %s. Is it Safe: %s. Is Fleeing: %s (%s).'.
-                    [this.assignedcontrolled.debugname, $i, $waypoints.count, $isAttackingPosition, $positionIsSafe, @$isFleeing, @$isFleeing == true]"
+                        [this.assignedcontrolled.debugname, $i, $waypoints.count, $isAttackingPosition, $positionIsSafe, @$isFleeing, @$isFleeing == true]"
                     chance="$debugChance" />
                 <do_if
-                    value="($i == $waypoints.count and not $isAttackingPosition or not $positionIsSafe) and not (@$isFleeing == true)">
+                    value="($i == $waypoints.count and not $isAttackingPosition or not $positionIsSafe) and not (@$isFleeing == true or @$isGoOutRadius == true)">
                     <debug_text
                         text="'AttackStationInSector [%s]: SafePathMove: All initial waypoints processed - %s. Trying to add attacking position.'.
                             [this.assignedcontrolled.debugname, $waypoints.count]"
                         chance="$debugChance" />
                     <set_value name="$isAttackingPosition" exact="true" />
                     <wait exact="10ms" />
-                    <do_if value="$attackTimeStamp le 0s">
+                    <do_if value="@$attackTimeStamp le 0s">
                         <set_value name="$attackTimeStamp" exact="player.age" />
                     </do_if>
                     <debug_text
@@ -1601,17 +1613,17 @@
                     <set_value name="$currentRatio" exact="$desiredDistance / this.assignedcontrolled.distanceto.{$target}" />
                     <debug_text
                         text="'AttackStationInSector [%s]: SafePathMove: Test Positions: Positions: Ship: %s. Primary: %s. Target: %s, To Primary: Ship: %s, Target: %s. To Target: Ship: %s. Primary: %s. Distance: Ship: To Primary: %s. To Target: %s. Target to Primary: %s (%s).'.
-                        [this.assignedcontrolled.debugname,
-                        this.assignedcontrolled.relativeposition.{$targetSector}, $primaryTarget.relativeposition.{$targetSector}, $target.relativeposition.{$targetSector},
-                        this.assignedcontrolled.relativeposition.{$primaryTarget}, $target.relativeposition.{$primaryTarget},
-                        this.assignedcontrolled.relativeposition.{$target}, $primaryTarget.relativeposition.{$target},
-                        this.assignedcontrolled.distanceto.{$primaryTarget}, this.assignedcontrolled.distanceto.{$target},
-                        $target.distanceto.{$primaryTarget}, $primaryTarget.distanceto.{$target}]"
+                            [this.assignedcontrolled.debugname,
+                            this.assignedcontrolled.relativeposition.{$targetSector}, $primaryTarget.relativeposition.{$targetSector}, $target.relativeposition.{$targetSector},
+                            this.assignedcontrolled.relativeposition.{$primaryTarget}, $target.relativeposition.{$primaryTarget},
+                            this.assignedcontrolled.relativeposition.{$target}, $primaryTarget.relativeposition.{$target},
+                            this.assignedcontrolled.distanceto.{$primaryTarget}, this.assignedcontrolled.distanceto.{$target},
+                            $target.distanceto.{$primaryTarget}, $primaryTarget.distanceto.{$target}]"
                         chance="$debugChance" />
                     <debug_text
                         text="'AttackStationInSector [%s]: SafePathMove: Distance to SubTarget: Current: %s. Desired: %s. Current ratio: %s. Position Relative: To Primary: %s. To Target: %s. Target to Primary: %s.'.
-                        [this.assignedcontrolled.debugname, this.assignedcontrolled.distanceto.{$target}, $desiredDistance, $currentRatio,
-                        $positionRelativeToPrimaryTarget, $positionRelativeToTarget, $positionTargetRelativeToPrimaryTarget]"
+                            [this.assignedcontrolled.debugname, this.assignedcontrolled.distanceto.{$target}, $desiredDistance, $currentRatio,
+                            $positionRelativeToPrimaryTarget, $positionRelativeToTarget, $positionTargetRelativeToPrimaryTarget]"
                         chance="$debugChance" />
                     <create_position name="$waypointForAttack"
                         x="$positionRelativeToTarget.x * $currentRatio"
@@ -1640,12 +1652,12 @@
                     </do_if>
                 </do_if>
             </do_for_each>
-            <do_if value="@$isFleeing == true and not (@$isFleeingShort == true)">
-                <remove_value name="$isFleeingShort" />
+            <do_if value="@$isFleeing == true and not (@$isGoOutRadius == true)">
+                <remove_value name="$isGoOutRadius" />
                 <resume label="fleeOut" />
             </do_if>
-            <do_elseif value="@$isFleeingShort == true">
-                <remove_value name="$isFleeingShort" />
+            <do_elseif value="@$isGoOutRadius == true">
+                <remove_value name="$isGoOutRadius" />
                 <resume label="acquireTarget" />
             </do_elseif>
             <include_interrupt_actions ref="AvoidDronesAttack" />
@@ -1750,7 +1762,8 @@
                     append="true" multiple="true" recursive="true" sortdescending="false">
                     <match module="true" />
                     <match state="componentstate.wreck" negate="true" />
-                    <!-- <match_is_in_view_of object="this.assignedcontrolled" horizontal="360deg" vertical="360deg" /> -->
+                    <!--
+                    <match_is_in_view_of object="this.assignedcontrolled" horizontal="360deg" vertical="360deg" /> -->
                 </find_object_component>
                 <do_if value="$components.count == 0">
                     <remove_value name="$positionForAttack" />
@@ -1855,7 +1868,8 @@
                         <match_parent>
                             <match state="componentstate.wreck" negate="true" />
                         </match_parent>
-                        <!-- <match_is_in_view_of object="this.assignedcontrolled" horizontal="360deg" vertical="360deg" /> -->
+                        <!--
+                        <match_is_in_view_of object="this.assignedcontrolled" horizontal="360deg" vertical="360deg" /> -->
                     </find_object_component>
                     <do_if value="$weaponComponents.count gt 0">
                         <set_value name="$targetWeaponDistance"
@@ -1997,7 +2011,8 @@
                         </create_orientation>
                         <move_to destination="$targetSector" object="this.assignedcontrolled"
                             forceposition="true" forcerotation="true" reverse="true"
-                            boost="this.assignedcontrolled.distanceto.{[$targetSector, $positionForAttackStepBack]} gt 1km" travel="false">
+                            boost="this.assignedcontrolled.distanceto.{[$targetSector, $positionForAttackStepBack]} gt 1km"
+                            travel="false">
                             <position value="$positionForAttackStepBack" />
                             <rotation value="$rotationOnTarget" />
                         </move_to>
@@ -2005,7 +2020,8 @@
                     <do_else>
                         <move_to destination="$targetSector" object="this.assignedcontrolled"
                             forceposition="true" forcerotation="true" reverse="true"
-                            boost="this.assignedcontrolled.distanceto.{[$targetSector, $positionForAttackStepBack]} gt 1km" travel="false">
+                            boost="this.assignedcontrolled.distanceto.{[$targetSector, $positionForAttackStepBack]} gt 1km"
+                            travel="false">
                             <position value="$positionForAttackStepBack" />
                         </move_to>
                     </do_else>
@@ -2025,7 +2041,8 @@
                     <wait exact="10ms" />
                 </do_if>
                 <do_elseif value="$safetyIndicator == 0">
-                    <!-- wait a bit ... -->
+                    <!--
+                    wait a bit ... -->
                     <debug_text
                         text="'AttackStationInSector [%s]: Staying and attacking for %s seconds. Rotation: Current: %s. Target: %s. Possible attack strength: %s'.
                         [this.assignedcontrolled.debugname, $updateTime, this.assignedcontrolled.relativerotation.{$target},
@@ -2066,19 +2083,16 @@
                         <set_command_action commandaction="commandaction.attackingto" param="$primaryTarget" />
                         <wait exact="$updateTime" />
                         <debug_text
-                            text="'AttackStationInSector [%s]: Target is attacked count: %s. By Primary: %s. Target Hull: %s.'.
+                            text="'AttackStationInSector [%s]: Target is attacked count: %s. By Primary: %s. Target: %s. Primary: %s. Hull: %s.'.
                             [this.assignedcontrolled.debugname, $targetIsReallyAttacked, $targetIsReallyAttackedByPrimaryWeapon,
-                            $primaryTarget.hullpercentage]"
+                            @$target.debugname, $primaryTarget.debugname, $primaryTarget.hullpercentage]"
                             chance="$debugChance" />
                         <append_to_list name="$countOfAttacks" exact="$targetIsReallyAttackedByPrimaryWeapon" />
-                        <!-- <append_to_list name="$countOfAttacks" exact="$targetIsReallyAttacked" /> -->
                         <do_if
-                            value="(this.attention ge attention.visible) and (($targetIsReallyAttackedByPrimaryWeapon lt 2 and $countOfAttacks.count == 1) or ($countOfAttacks.count gt 1 and $countOfAttacks.average lt 6))">
-                            <!-- value="(this.attention ge attention.visible) and (($targetIsReallyAttacked lt 5 and $countOfAttacks.count
-                            == 1) or ($countOfAttacks.count gt 1 and $countOfAttacks.average lt 8))"> -->
+                            value="(this.attention ge attention.visible) and (($targetIsReallyAttackedByPrimaryWeapon lt 2 and $countOfAttacks.count == 1) or ($countOfAttacks.count gt 1 and $countOfAttacks.average lt 6)) and ($targetIsReallyAttacked lt ($updateTime / 2)f)">
                             <debug_text
-                                text="'AttackStationInSector [%s]: AttackFailed. Target %s is not really attacked (%s, average %s in %s). Safety Indicator: %s. Attack Strength: %s. Going to acquire new target!'.
-                                [this.assignedcontrolled.debugname, $target.debugname, $targetIsReallyAttackedByPrimaryWeapon,
+                                text="'AttackStationInSector [%s]: AttackFailed. Target %s is not really attacked: %s (%s). Average %s in %s. Safety Indicator: %s. Attack Strength: %s. Going to acquire new target!'.
+                                [this.assignedcontrolled.debugname, $target.debugname, $targetIsReallyAttackedByPrimaryWeapon, $targetIsReallyAttacked,
                                 @$countOfAttacks.average, @$countOfAttacks.count, $safetyIndicator, $possibleAttackStrength]"
                                 chance="$debugChance" />
                             <remove_value name="$positionForAttack" />
@@ -2103,7 +2117,8 @@
                 text="'AttackStationInSector [%s]: Target: %s is Destroyed. Primary Target: %s.'.
                 [this.assignedcontrolled.debugname, $target.debugname, $primaryTarget.debugname]"
                 chance="$debugChance" />
-            <!-- To Update -->
+            <!--
+            To Update -->
             <apply_experience entity="this" experience="'protect_sector'" chance="80" />
             <apply_experience object="this.assignedcontrolled" role="entityrole.service" experience="'protect_sector'" chance="60" />
             <label name="problemWithTarget" />
@@ -2111,11 +2126,13 @@
             <do_if value="@$isFleeing == true">
                 <resume label="SafePathMove" />
             </do_if>
-            <!-- To Update -->
+            <!--
+            To Update -->
             <remove_value name="$components" />
             <find_object_component name="$components"
                 object="$primaryTarget" checkoperational="false" integrated="false"
-                indestructible="false" invulnerable="false" sortbydistanceto="this.assignedcontrolled" excluded="$excludedComponents"
+                indestructible="false" invulnerable="false" sortbydistanceto="this.assignedcontrolled"
+                excluded="$excludedComponents"
                 append="true" multiple="true" recursive="true" sortdescending="false">
                 <match module="true" />
                 <match state="componentstate.wreck" negate="true" />
@@ -2130,17 +2147,20 @@
                 value="$components.count gt 0 and this.assignedcontrolled.bboxdistanceto.{@$components.{1}} le @$maxEffectiveCombatRange">
                 <set_value name="$positionRelativeToNewTarget" exact="this.assignedcontrolled.relativeposition.{$components.{1}}" />
                 <set_value name="$positionRelativeFromOldToNewTarget" exact="$target.relativeposition.{$components.{1}}" />
-                <!-- 1. Calculate magnitudes of both position vectors -->
+                <!--
+                1. Calculate magnitudes of both position vectors -->
                 <set_value name="$magnitude1"
                     exact="sqrt($positionRelativeToNewTarget.x ^ 2 + $positionRelativeToNewTarget.y ^ 2 + $positionRelativeToNewTarget.z ^ 2)" />
                 <set_value name="$magnitude2"
                     exact="sqrt($positionRelativeFromOldToNewTarget.x ^ 2 + $positionRelativeFromOldToNewTarget.y ^ 2 + $positionRelativeFromOldToNewTarget.z ^ 2)" />
 
-                <!-- 2. Calculate dot product -->
+                <!--
+                2. Calculate dot product -->
                 <set_value name="$dotProduct"
                     exact="$positionRelativeToNewTarget.x * $positionRelativeFromOldToNewTarget.x + $positionRelativeToNewTarget.y * $positionRelativeFromOldToNewTarget.y + $positionRelativeToNewTarget.z * $positionRelativeFromOldToNewTarget.z" />
 
-                <!-- 3. Calculate normalized dot product (cosine of angle) -->
+                <!--
+                3. Calculate normalized dot product (cosine of angle) -->
                 <do_if value="$magnitude1 * $magnitude2 != 0">
                     <set_value name="$normalizedDot" exact="$dotProduct / ($magnitude1 * $magnitude2)" />
                 </do_if>
@@ -2155,24 +2175,29 @@
 
                 <set_value name="$strafeOnAttack" exact="false" />
                 <remove_value name="$strafePositionRelative" />
-                <!-- 4. Interpret the result -->
+                <!--
+                4. Interpret the result -->
                 <do_if value="$normalizedDot gt 0.7">
-                    <!-- Positions are roughly in the same direction (position2 is more farther/closer) -->
+                    <!--
+                    Positions are roughly in the same direction (position2 is more farther/closer) -->
                     <debug_text
                         text="'AttackStationInSector [%s]: Position 2 is mainly farther/closer to center than Position 1'.
                         [this.assignedcontrolled.debugname]"
                         chance="$debugChance" />
                 </do_if>
                 <do_elseif value="$normalizedDot lt -0.7">
-                    <!-- Positions are in roughly opposite directions (more than ~135° angle) -->
+                    <!--
+                    Positions are in roughly opposite directions (more than ~135° angle) -->
                     <debug_text
                         text="'AttackStationInSector [%s]: Position 2 is mainly on the opposite side from Position 1'.
                         [this.assignedcontrolled.debugname]"
                         chance="$debugChance" />
-                    <!-- This is a critical case - could mean crossing through the station center -->
+                    <!--
+                    This is a critical case - could mean crossing through the station center -->
                 </do_elseif>
                 <do_elseif value="$normalizedDot lt 0.5 and $normalizedDot gt -0.5">
-                    <!-- Positions are roughly perpendicular (position2 is more to the side) -->
+                    <!--
+                    Positions are roughly perpendicular (position2 is more to the side) -->
                     <debug_text
                         text="'AttackStationInSector [%s]: Position 2 is mainly to the side of Position 1'.
                         [this.assignedcontrolled.debugname]"
@@ -2189,7 +2214,8 @@
                         chance="$debugChance" />
                 </do_elseif>
                 <do_else>
-                    <!-- Positions are at an angle (position2 is partially to the side and partially farther/closer) -->
+                    <!--
+                    Positions are at an angle (position2 is partially to the side and partially farther/closer) -->
                     <debug_text
                         text="'AttackStationInSector [%s]: Position 2 is at an angle to Position 1'.
                         [this.assignedcontrolled.debugname]"
@@ -2215,14 +2241,14 @@
                 [this.assignedcontrolled.debugname, @$attacker.debugname]"
                 chance="$debugChance" />
             <do_if
-                value="@$dronesAttack == true and @$fleeingFormationLeader != null and @$fleeingFormationLeader != this.assignedcontrolled">
+                value="@$dronesAttack == true and @$temporaryFormationLeader != null and @$temporaryFormationLeader != this.assignedcontrolled">
                 <debug_text
                     text="'AttackStationInSector [%s]: DronesAttack: Going to Fleeing Formation Leader: %s.'.
-                    [this.assignedcontrolled.debugname, @$fleeingFormationLeader.debugname]"
+                    [this.assignedcontrolled.debugname, @$temporaryFormationLeader.debugname]"
                     chance="$debugChance" />
                 <break_formation object="this.assignedcontrolled" />
                 <leave_formation object="this.assignedcontrolled" />
-                <signal_objects object="@$fleeingFormationLeader" param="'FleeingFormationJoin'" param2="this.assignedcontrolled" />
+                <signal_objects object="@$temporaryFormationLeader" param="'FleeingFormationJoin'" param2="this.assignedcontrolled" />
             </do_if>
             <set_value name="$enemyDronesShare" exact="true" />
             <do_while value="@$dronesAttack == true">
@@ -2248,7 +2274,7 @@
             </do_while>
             <label name="postDroneAttack" />
             <set_value name="$enemyDronesShare" exact="false" />
-            <do_if value="@$fleeingFormationLeader == this.assignedcontrolled">
+            <do_if value="@$temporaryFormationLeader == this.assignedcontrolled">
                 <debug_text
                     text="'AttackStationInSector [%s]: DronesAttack: FleeingFormation: Breaking formation for %s ships.'.
                     [this.assignedcontrolled.debugname, @$fleeingFormationList.count]"
@@ -2256,14 +2282,14 @@
                 <break_formation object="this.assignedcontrolled" />
                 <remove_value name="$fleeingFormationList" />
             </do_if>
-            <do_elseif value="@$fleeingFormationLeader != null">
+            <do_elseif value="@$temporaryFormationLeader != null">
                 <debug_text
                     text="'AttackStationInSector [%s]: DronesAttack: FleeingFormation: Leaving formation for %s ships.'.
-                    [this.assignedcontrolled.debugname, @$fleeingFormationLeader.debugname]"
+                    [this.assignedcontrolled.debugname, @$temporaryFormationLeader.debugname]"
                     chance="$debugChance" />
                 <leave_formation object="this.assignedcontrolled" />
             </do_elseif>
-            <remove_value name="$fleeingFormationLeader" />
+            <remove_value name="$temporaryFormationLeader" />
             <do_if
                 value="@this.assignedcontrolled.units.{unitcategory.defence}.count gt @this.assignedcontrolled.availableunits.{unitcategory.defence}.count or
                 @this.assignedcontrolled.units.{unitcategory.repair}.count gt @this.assignedcontrolled.availableunits.{unitcategory.repair}.count">
@@ -2280,18 +2306,34 @@
             </do_if>
             <remove_value name="$dronesAttack" />
             <remove_value name="$isFleeing" />
-            <do_if value="this.assignedcontrolled.hullpercentage gt 99 and this.assignedcontrolled.shieldpercentage lt 100">
-                <debug_text
-                    text="'AttackStationInSector [%s]: UnderAttack: Will wait till Shield (%s) will recovered.'.
-                    [this.assignedcontrolled.debugname, this.assignedcontrolled.shieldpercentage]"
-                    chance="$debugChance" />
-                <wait exact="0.5s * (100 - this.assignedcontrolled.shieldpercentage)" />
-                <resume label="acquireTarget" />
-            </do_if>
-            <remove_value name="$attackTimeStamp" />
 
             <label name="finish" />
-            <set_value name="$attackTimeStamp" exact="player.age" />
+
+            <find_object_component name="$damagedComponents" object="this.assignedcontrolled" class="class.destructible"
+                checkoperational="false" multiple="true">
+                <match_any>
+                    <match restorable="true" comment="wrecked" />
+                    <match repairable="true" invulnerable="false">
+                        <match_hull min="100" negate="true" />
+                    </match>
+                    <match needsrepair="true" invulnerable="false">
+                        <match_hull min="100" negate="true" />
+                    </match>
+                </match_any>
+            </find_object_component>
+            <do_if value="this.assignedcontrolled.hullpercentage == 100 and $damagedComponents.count == 0">
+                <do_if value="this.assignedcontrolled.shieldpercentage lt 100">
+                    <debug_text
+                        text="'AttackStationInSector [%s]: UnderAttack: Will wait till Shield (%s) will recovered.'.
+                            [this.assignedcontrolled.debugname, this.assignedcontrolled.shieldpercentage]"
+                        chance="$debugChance" />
+                    <wait exact="0.5s * (100 - this.assignedcontrolled.shieldpercentage)" />
+                </do_if>
+                <do_if value="@$primaryTarget != null and @$primaryTarget.isrealclass.station and @$primaryTarget.iswreck == false">
+                    <resume label="acquireTarget" />
+                </do_if>
+            </do_if>
+
             <do_if value="@$attackTimeStamp gt 0">
                 <set_value name="$attackTimeStamp" exact="player.age - $attackTimeStamp" />
             </do_if>
@@ -2299,26 +2341,39 @@
                 text="'AttackStationInSector [%s]: Finishing in %s.'.
                 [this.assignedcontrolled.debugname, @$attackTimeStamp.formatted.{'%m:%S'}]"
                 chance="$debugChance" />
-            <do_if value="this.assignedcontrolled.hullpercentage le 95">
+            <do_if value="this.assignedcontrolled.hullpercentage le 98 or $damagedComponents.count gt 0">
                 <debug_text
-                    text="'AttackStationInSector [%s]: Hull is broken: %s. Going to repair.'.
-                    [this.assignedcontrolled.debugname, this.assignedcontrolled.hullpercentage]"
+                    text="'AttackStationInSector [%s]: Hull is broken: %s. Components damaged: %s. Going to repair.'.
+                    [this.assignedcontrolled.debugname, this.assignedcontrolled.hullpercentage, $damagedComponents.count]"
                     chance="$debugChance" />
+                <set_value name="this.assignedcontrolled.pilot.$playerOwnedWorkaroundForRestock" exact="true" />
                 <create_order id="'Resupply'" object="this.assignedcontrolled" immediate="true">
                     <param name="internalorder" value="true" />
                     <param name="debugchance" value="$debugChance" />
                     <param name="onlyuseresupplierships" value="false" />
                     <param name="urgent" value="true" />
-                    <param name="playerOwnedWorkaround" value="true" />
+                    <!-- <param name="playerOwnedWorkaround" value="true" /> -->
                 </create_order>
             </do_if>
             <do_else>
-                <!-- Stop the remaining movement -->
                 <stop_moving object="this.ship" />
                 <wait exact="10ms" />
+                <do_if
+                    value="@this.assignedcontrolled.commander != null">
+                    <debug_text
+                        text="'AttackStationInSector [%s]: Inform Commander: %s.'.
+                        [this.assignedcontrolled.debugname, this.assignedcontrolled.commander.debugname]"
+                    />
+                    <signal_objects object="this.assignedcontrolled.commander" param="'StationAttackIsFinished'"
+                        param2="this.assignedcontrolled" delay="3s" />
+                </do_if>
             </do_else>
         </actions>
     </attention>
     <on_abort>
+        <debug_text text="'AttackStationInSector [%s]: Aborted.'.
+            [this.assignedcontrolled.debugname]" chance="$debugChance" />
+        <stop_moving object="this.ship" />
     </on_abort>
+
 </aiscript>
