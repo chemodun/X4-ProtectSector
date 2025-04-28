@@ -683,23 +683,10 @@
         <actions>
             <break_formation object="this.assignedcontrolled" />
             <leave_formation object="this.assignedcontrolled" />
-            <set_value name="$isCarrier" exact="false" />
-            <do_if value="this.assignedcontrolled.type == shiptype.carrier">
-                <do_for_each name="$subordinate" in="this.assignedcontrolled.subordinates">
-                    <do_if
-                        value="not $subordinate.iscapitalship and ($subordinate.primarypurpose == purpose.fight) and not $subordinate.subordinategroupdockoverride
-                            and ($subordinate.assignment == assignment.defence or $subordinate.assignment == assignment.attack or ($subordinate.assignment == assignment.interception and
-                            not @$target.iscapitalship) or ($subordinate.assignment == assignment.bombardment and @$target.iscapitalship))">
-                        <set_value name="$isCarrier" />
-                        <break />
-                    </do_if>
-                    <wait exact="10ms" />
-                </do_for_each>
-            </do_if>
             <debug_text
-                text="'AttackStationInSector [%s]: Starting attack on %s. Defence NPC: %s (%s). Is Carrier: %s'.
+                text="'AttackStationInSector [%s]: Starting attack on %s. Defence NPC: %s (%s).'.
                 [this.assignedcontrolled.debugname, @$primaryTarget.debugname,
-                @this.assignedcontrolled.defencenpc.name, @this.assignedcontrolled.defencenpc, $isCarrier]"
+                @this.assignedcontrolled.defencenpc.name, @this.assignedcontrolled.defencenpc]"
                 chance="$debugChance" />
             <set_value name="$targetSector" exact="$primaryTarget.sector" />
             <label name="approachingTarget" />

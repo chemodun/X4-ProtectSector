@@ -534,7 +534,7 @@
     <include_interrupt_actions ref="RelationsConversionList" />
 
     <debug_to_file directory="'protectsector'" name="'debug_'  + this.assignedcontrolled.idcode + '_' + this.assignedcontrolled"
-      text="'[%s at %s, %s] - Version: %s.\nHome Sector: %s\nAttack Stations: %s\nAttack Ships XL: %s\nAttack Ships L: %s\nAttack Ships M: %s\nAttack Ships S: %s\nAttack Ships Out Of Stations Distance: %s\nAttack Visible Only: %s\nAttack Hostile Only: %s\nRelation Threshold: %s\nProtect Player Ships In Sector: %s\nProtect Only Non Military Ships: %s\nPursue Fleeing Target: %s\nShare Targets Between Fleets: %s\nShields Preserve On Flight: %s\nBreak On Destruction Percentage: %s\nPark In Center Of Sector: %s\nDesired Parking Position: %s at %s\nRecord Actions To Log Book: %s\nDelay Between Scans: %s, in seconds: %s\nDebug chance: %s'
+      text="'[%s at %s, %s] - Version: %s.\nHome Sector: %s\nAttack Stations: %s (Tactical: %s, Internal: %s)\nAttack Ships XL: %s\nAttack Ships L: %s\nAttack Ships M: %s\nAttack Ships S: %s\nAttack Ships Out Of Stations Distance: %s\nAttack Visible Only: %s\nAttack Hostile Only: %s\nRelation Threshold: %s\nProtect Player Ships In Sector: %s\nProtect Only Non Military Ships: %s\nPursue Fleeing Target: %s\nShare Targets Between Fleets: %s\nShields Preserve On Flight: %s\nBreak On Destruction Percentage: %s\nPark In Center Of Sector: %s\nDesired Parking Position: %s at %s\nRecord Actions To Log Book: %s\nDelay Between Scans: %s, in seconds: %s\nDebug chance: %s'
         .[
           this.assignedcontrolled.debugname,
           this.assignedcontrolled.sector.knownname,
@@ -542,6 +542,8 @@
           @$scriptVersion,
           $homeSector.knownname,
           $attackStations,
+          $attackStationsTactical,
+          $attackStationsInternal,
           $attackShipsXL,
           $attackShipsL,
           $attackShipsM,
@@ -623,6 +625,42 @@
       value="$desiredParkingPosition != null and @$desiredParkingPosition.{1}.isclass.sector and @$desiredParkingPosition.{1} != $homeSector">
       <edit_order_param order="this.assignedcontrolled.order" param="'homeSector'" value="$desiredParkingPosition.{1}" />
     </do_elseif>
+
+    <do_if value="@$attackStationsInternal == true">
+      <set_value name="$attackStationsInternalAcceptable"
+        exact="this.assignedcontrolled.iscapitalship and this.assignedcontrolled.type != shiptype.carrier" />
+      <set_value name="$incompatibleAssignments"
+        exact="[
+          assignment.defence,
+          assignment.attack,
+          assignment.interception,
+          assignment.bombardment,
+          assignment.assist
+        ]" />
+      <do_if value="$attackStationsInternalAcceptable">
+        <do_for_each name="$subordinate" in="this.assignedcontrolled.allsubordinates">
+          <do_if
+            value="not $subordinate.iscapitalship and $incompatibleAssignments.indexof.{@$subordinate.assignment} gt 0">
+            <set_value name="$attackStationsInternalAcceptable" exact="false" />
+            <break />
+          </do_if>
+        </do_for_each>
+      </do_if>
+      <do_if value="$attackStationsInternalAcceptable" negate="true">
+        <edit_order_param order="this.assignedcontrolled.order" param="'attackStationsInternal'" value="false" />
+        <debug_to_file directory="'protectsector'" name="'debug_'  + this.assignedcontrolled.idcode + '_' + this.assignedcontrolled"
+          text="'[%s at %s, %s] - Attack stations internal mode can not be used. Reset to : %s.'
+            .[
+              this.assignedcontrolled.debugname,
+              this.assignedcontrolled.sector.knownname,
+              this.assignedcontrolled.fleet.name,
+              $attackStationsInternalAcceptable
+            ]"
+          output="true" append="true" />
+      </do_if>
+      <remove_value name="$attackStationsInternalAcceptable" />
+      <remove_value name="$incompatibleAssignments" />
+    </do_if>
 
     <set_command_action commandaction="commandaction.scanningto" param="$homeSector" />
 
