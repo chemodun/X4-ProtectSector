@@ -22,6 +22,7 @@
   <interrupts>
     <library>
       <actions name="RefreshTargetsRelatedData">
+        <set_value name="$positionInSector" exact="this.assignedcontrolled.relativeposition.{$targetSector}" />
         <do_if value="$thisRadius? and @$thisRadius" negate="true">
           <set_value name="$thisRadius" exact="this.assignedcontrolled.size / 2m" />
         </do_if>
@@ -40,7 +41,6 @@
             <set_value name="$safeDistanceToPrimary" exact="$safeDistanceToPrimary * 2" />
           </do_if>
           <set_value name="$positionRelativeToPrimaryTarget" exact="this.assignedcontrolled.relativeposition.{$primaryTarget}" />
-          <set_value name="$positionInSector" exact="this.assignedcontrolled.relativeposition.{$targetSector}" />
         </do_if>
         <do_if value="$target? and @$target">
           <set_value name="$targetRadius" exact="$target.size / 2m" />
@@ -1376,6 +1376,7 @@
               <interrupt_after_time
                 time="if @$isFleeing == true then 1s else if this.assignedcontrolled.isclass.ship_xl then 10s else 5s" />
             </move_to>
+            <remove_value name="$rotationOnTarget" />
           </do_if>
           <set_value name="$distanceToMove" exact="this.assignedcontrolled.distanceto.{[$targetSector, $positionToMove]}" />
           <do_all exact="50">
@@ -1488,6 +1489,7 @@
               </move_to>
             </do_if>
             <remove_value name="$rotationsIsNotAcceptable" />
+            <remove_value name="$rotationOnTarget" />
           </do_if>
           <do_if value="$isAttackingPosition">
             <set_value name="$positionForAttackInitial" exact="$pathWaypoint" />
@@ -1788,9 +1790,6 @@
               text="'AttackStationInSector [%s]: Strafe for attack: %s. To Position: %s (%s).'.
                 [this.assignedcontrolled.debugname, $strafeOnAttack, $strafePositionRelative, $positionForAttack]"
               chance="$debugChance" />
-            <create_orientation name="$rotationOnTarget" orientation="look_at" refobject="$target" useaimtarget="true">
-              <position object="this.assignedcontrolled" />
-            </create_orientation>
             <remove_value name="$positionToMove" />
             <remove_value name="$strafePositionRelative" />
             <remove_value name="$previousPositionForAttackRelative" />
@@ -1798,9 +1797,6 @@
           <do_else>
             <set_value name="$positionDelta" exact="[$currentDistanceToTarget * 0.05, $thisRadius].max" />
             <set_value name="$positionRatio" exact="1 - $positionDelta / $currentDistanceToTarget" />
-            <create_orientation name="$rotationOnTarget" orientation="look_at" refobject="$target" useaimtarget="true">
-              <position object="this.assignedcontrolled" />
-            </create_orientation>
             <set_value name="$previousPositionForAttackRelative" exact="$positionRelativeToTarget" />
             <create_position name="$positionForAttack"
               object="$target"
@@ -1863,6 +1859,9 @@
           <do_if value="$safetyIndicator gt 0">
             <set_command command="command.attackobject" param="$primaryTarget" />
             <set_command_action commandaction="commandaction.flying" />
+            <create_orientation name="$rotationOnTarget" orientation="look_at" refobject="$target" useaimtarget="true">
+              <position object="this.assignedcontrolled" />
+            </create_orientation>
             <do_if value="@$strafeOnAttack">
               <move_strafe object="this.assignedcontrolled" destination="$targetSector" finishonapproach="true" forcerotation="true">
                 <position value="$positionForAttack" />
@@ -1887,6 +1886,8 @@
                 <interrupt_after_time time="if this.assignedcontrolled.isclass.ship_xl then 10s else 5s" />
               </move_to>
             </do_if>
+            <remove_value name="$rotationsIsNotAcceptable" />
+            <remove_value name="$rotationOnTarget" />
             <do_if
               value="this.assignedcontrolled.attention ge attention.visible and this.assignedcontrolled.isclass.ship_l and $targetIsReallyAttackedByPrimaryWeapon ge 3">
               <set_value name="$safetyIndicator" exact="0" />
@@ -1987,6 +1988,8 @@
               <interrupt_after_time time="if this.assignedcontrolled.isclass.ship_xl then 10s else 5s" />
             </move_to>
           </do_if>
+          <remove_value name="$rotationsIsNotAcceptable" />
+          <remove_value name="$rotationOnTarget" />
           <set_value name="$safetyIndicator" exact="0" />
           <remove_value name="$positionForAttackStepBack" />
           <include_interrupt_actions ref="RefreshTargetsRelatedData" />
@@ -1996,8 +1999,8 @@
           <!--
                     wait a bit ... -->
           <debug_text
-            text="'AttackStationInSector [%s]: Staying and attacking for %s seconds. Rotation: Current: %s. Target: %s. Possible attack strength: %s'.
-              [this.assignedcontrolled.debugname, $updateTime, this.assignedcontrolled.relativerotation.{$target}, $rotationOnTarget, $possibleAttackStrength]"
+            text="'AttackStationInSector [%s]: Staying and attacking for %s seconds. Rotation: %s. Possible attack strength: %s'.
+              [this.assignedcontrolled.debugname, $updateTime, this.assignedcontrolled.relativerotation.{$target}, $possibleAttackStrength]"
             chance="$debugChance" />
           <do_if value="$possibleAttackStrength == 0">
             <debug_text
@@ -2029,6 +2032,8 @@
               <break />
             </do_if>
           </do_all>
+          <remove_value name="$rotationsIsNotAcceptable" />
+          <remove_value name="$rotationOnTarget" />
           <do_if value="$safetyIndicator == 0">
             <set_command command="command.attackobject" param="$primaryTarget" />
             <set_command_action commandaction="commandaction.attackingto" param="$primaryTarget" />
@@ -2299,6 +2304,21 @@
           />
           <signal_objects object="this.assignedcontrolled.commander" param="'StationAttackIsFinished'"
             param2="this.assignedcontrolled" delay="3s" />
+          <remove_value name="$positionInSector" />
+          <remove_value name="$thisRadius" />
+          <remove_value name="$targetSector" />
+          <remove_value name="$primaryTargetRadius" />
+          <remove_value name="$maxEffectiveTargetCombatRange" />
+          <remove_value name="$positionPrimaryTargetInSector" />
+          <remove_value name="$currentDistanceToPrimary" />
+          <remove_value name="$safeDistanceToPrimary" />
+          <remove_value name="$positionRelativeToPrimaryTarget" />
+          <remove_value name="$targetRadius" />
+          <remove_value name="$currentDistanceToTarget" />
+          <remove_value name="$targetEffectiveRange" />
+          <remove_value name="$positionTargetRelativeToPrimaryTarget" />
+          <remove_value name="$positionRelativeToTarget" />
+          <remove_value name="$target" />
         </do_if>
       </do_else>
     </actions>
@@ -2306,6 +2326,7 @@
   <on_abort>
     <debug_text text="'AttackStationInSector [%s]: Aborted.'. [this.assignedcontrolled.debugname]" chance="$debugChance" />
     <stop_moving object="this.ship" />
+    <remove_value name="$primaryTarget" />
   </on_abort>
 
 </aiscript>
