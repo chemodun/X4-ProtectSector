@@ -725,116 +725,44 @@
         [this.assignedcontrolled.debugname, $skillPiloting, $skillMorale, $safeDistanceCoefficient]"
         chance="$debugChance" />
 
-      <!-- calculate best quadrant to use against the target -->
-      <set_value name="$quadrants" exact="[quadrant.left, quadrant.right, quadrant.front]" />
-      <set_value name="$quadrantTable" exact="table[]" />
 
-      <!-- check this turrets -->
-      <do_all exact="$quadrants.count" counter="$i">
-        <set_value name="$quadrantTable.{$quadrants.{$i}}" exact="this.ship.dps.turrets.{$quadrants.{$i}}" />
-      </do_all>
-      <!-- best quadrant -->
-      <set_value name="$bestQuadrant" exact="$quadrantTable.keys.sorted.last" />
-
-      <set_value name="$quadrants" exact="[quadrant.left, quadrant.right, quadrant.up, quadrant.down, quadrant.back, quadrant.front]" />
-      <set_value name="$dpsLasers" exact="this.ship.dps.lasers.all" />
-      <set_value name="$dpsMissiles" exact="this.ship.dps.missiles.all" />
-      <do_if value="$dpsLasers and $dpsMissiles">
-        <set_value name="$bestQuadrant" exact="quadrant.front" />
-        <set_value name="$frontWeapon" exact="1" />
-        <do_if value="$dpsMissiles gt $dpsLasers">
-          <set_value name="$frontWeapon" exact="2" />
-        </do_if>
-      </do_if>
-      <do_else>
-        <do_if value="$dpsLasers">
-          <!-- if forward weapons are available, always manoeuver to orient forward weapons on big targets. -->
-          <set_value name="$bestQuadrant" exact="quadrant.front" />
-          <set_value name="$frontWeapon" exact="1" />
-        </do_if>
-        <do_if value="$dpsMissiles">
-          <!-- works even if missile launchers are not front-mounted. will only fail if missile launchers can only fire to the
-                    rear. -->
-          <set_value name="$bestQuadrant" exact="quadrant.front" />
-          <set_value name="$frontWeapon" exact="2" />
-        </do_if>
-      </do_else>
-      <debug_text
-        text="'AttackStationInSector [%s]: Best quadrant: %s. Front Weapon: %s. DPS: missiles: %s, lasers: %s'.
-          [this.assignedcontrolled.debugname, $bestQuadrant, @$frontWeapon, $dpsMissiles, $dpsLasers]" />
-      <remove_value name="$dpsMissiles" />
-      <remove_value name="$dpsLasers" />
-
-      <do_if value="not @$frontWeapon" chance="[$skillCombined + 50, 100].min">
-        <!-- NB: if we are using a front-mounted weapon, we have to align with the target's y-plane. otherwise, we can fly above or
-            below the target. some capital ships have turrets concentrated above or below their hulls. while design demands that capital
-            ships align themselves to ecliptic, nothing stopping us from flying above or below the target. -->
-        <set_value name="$verticalQuadrants" exact="[quadrant.up, quadrant.down]" />
-        <set_value name="$verticalQuadrantTable" exact="table[]" />
-        <do_all exact="$verticalQuadrants.count" counter="$i">
-          <set_value name="$verticalQuadrantTable.{$verticalQuadrants.{$i}}"
-            exact="this.ship.dps.turrets.{$verticalQuadrants.{$i}}" />
-        </do_all>
-        <!-- best quadrant -->
-        <set_value name="$bestVerticalQuadrant" exact="$verticalQuadrantTable.keys.sorted.last" />
-        <do_if value="$quadrantTable.{$bestQuadrant} gt $verticalQuadrantTable.{$bestVerticalQuadrant}">
-          <set_value name="$bestVerticalQuadrant" exact="null" />
-        </do_if>
-        <debug_text
-          text="'AttackStationInSector [%s]: Best quadrant: Vertical: %s with dps %s. Horizontal: %s with dps: %s'.
-            [this.assignedcontrolled.debugname, $bestVerticalQuadrant, @$verticalQuadrantTable.{$bestVerticalQuadrant}, $bestQuadrant, $quadrantTable.{$bestQuadrant}]"
-          chance="$debugChance" />
-      </do_if>
-
-      <do_if value="not @$frontWeapon and ($bestQuadrant == quadrant.front) and not @$bestVerticalQuadrant">
-        <set_value name="$frontWeapon" exact="3" />
-      </do_if>
-      <debug_text
-        text="'frontWeapon [%s]: Front Weapon: %s. Max range: Lasers : %s . Missiles : %s. All: %s'.
-          [this.assignedcontrolled.debugname, $frontWeapon, this.assignedcontrolled.maxcombatrange.lasers.all, this.assignedcontrolled.maxcombatrange.missiles.all, this.assignedcontrolled.maxcombatrange.all]"
-        chance="$debugChance" />
-
-      <set_value name="$maxEffectiveCombatRange" exact="this.assignedcontrolled.maxcombatrange.all" />
-      <do_if value="@$frontWeapon == 1">
-        <set_value name="$maxEffectiveCombatRange" exact="this.assignedcontrolled.maxcombatrange.lasers.all" />
-      </do_if>
-
-      <do_if value="$frontWeapon != 3">
-        <!-- adjust $maxEffectiveCombatRange by the distance of the weapon farthest from the front of the ship -->
-        <set_value name="$weaponDistance" exact="0m" />
-        <set_value name="$weaponsList" exact="this.assignedcontrolled.weapons.operational.list" />
-        <do_for_each name="$weaponItem" in="$weaponsList" reverse="true">
-          <do_if value="not $weaponItem.isclass.turret and not $weaponItem.iswreck and @$weaponItem.isinactiveweapongroup">
-            <set_value name="$weaponDist" exact="$weaponItem.relativeposition.{this.assignedcontrolled}.z" />
-            <set_value name="$weaponDist" exact="this.assignedcontrolled.length/2m - $weaponDist" />
-            <do_if value="$weaponDist gt $weaponDistance">
-              <set_value name="$weaponDistance" exact="$weaponDist" />
-            </do_if>
-            <remove_value name="$weaponDist" />
+      <!-- adjust $maxEffectiveCombatRange by the distance of the weapon farthest from the front of the ship only for Primary Weapon-->
+      <set_value name="$maxEffectiveCombatRange" exact="0m" />
+      <set_value name="$weaponsList" exact="this.assignedcontrolled.weapons.operational.list" />
+      <do_for_each name="$weaponItem" in="$weaponsList" reverse="true">
+        <do_if value="not $weaponItem.isclass.turret and not $weaponItem.iswreck and @$weaponItem.isinactiveweapongroup and @$weaponItem.grouptag == null">
+          <set_value name="$weaponDist" exact="$weaponItem.relativeposition.{this.assignedcontrolled}.z" />
+          <set_value name="$weaponDist" exact="$thisRadius - $weaponDist" />
+          <set_value name="$weaponFireRange" exact="$weaponItem.maxfirerange - $weaponDist" />
+          <do_if value="$weaponFireRange gt $maxEffectiveCombatRange">
+            <set_value name="$maxEffectiveCombatRange" exact="$weaponFireRange" />
           </do_if>
-          <wait exact="10ms" />
-        </do_for_each>
-        <set_value name="$maxEffectiveCombatRange"
-          exact="[$maxEffectiveCombatRange - $weaponDistance * 2, $maxEffectiveCombatRange * 0.1].max" />
-        <debug_text
-          text="'AttackStationInSector [%s]: Max Effective Combat Range: %s. Weapon Distance: %s'.
-            [this.assignedcontrolled.debugname, $maxEffectiveCombatRange, $weaponDistance]"
+          <remove_value name="$weaponDist" />
+          <remove_value name="$weaponFireRange" />
+        </do_if>
+        <wait exact="10ms" />
+      </do_for_each>
+      <debug_text
+        text="'AttackStationInSector [%s]: Max Effective Combat Range: %s.'.[this.assignedcontrolled.debugname, $maxEffectiveCombatRange]" chance="$debugChance" />
+      <remove_value name="$weaponsList" />
+      <do_if value="$maxEffectiveCombatRange ge 0">
+        <set_value name="$maxEffectiveCombatRange" exact="this.assignedcontrolled.maxcombatrange.primary - $thisRadius" />
+        <do_if value="$maxEffectiveCombatRange ge 0">
+          <set_value name="$maxEffectiveCombatRange" exact="this.assignedcontrolled.maxcombatrange.all - $thisRadius" />
+        </do_if>
+        <debug_text text="'AttackStationInSector [%s]: Max Effective Combat Range (fixed): %s.'.[this.assignedcontrolled.debugname, $maxEffectiveCombatRange]"
           chance="$debugChance" />
-        <remove_value name="$weaponsList" />
-        <remove_value name="$weaponDistance" />
       </do_if>
 
-      <include_interrupt_actions ref="RefreshTargetsRelatedData" />
       <debug_text
         text="'AttackStationInSector [%s]: Target %s has a max effective combat range of %s, size/2: %s'.
           [this.assignedcontrolled.debugname, $primaryTarget.debugname, $maxEffectiveTargetCombatRange, $primaryTargetRadius]"
         chance="$debugChance" />
       <do_if value="$maxEffectiveTargetCombatRange gt $maxEffectiveCombatRange">
         <debug_text
-          text="'AttackStationInSector [%s]: Target %s has a max effective combat range of %sm biggest than our %sm. Breaking the attack.'.
+          text="'AttackStationInSector [%s]: Target %s has a max effective combat range of %sm biggest than our %sm.'.
             [$primaryTarget.debugname, $primaryTarget, $maxEffectiveTargetCombatRange, $maxEffectiveCombatRange]"
           chance="$debugChance" />
-        <!-- <resume label="finish" /> -->
       </do_if>
 
       <set_value name="$excludedComponents" exact="[]" />
