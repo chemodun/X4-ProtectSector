@@ -216,8 +216,8 @@
         <do_if
           value="(@$temporaryFormationLeader == null or @$temporaryFormationLeader == this.assignedcontrolled or @$isGoOutRadius == true) and (@$positionPointTemporary == null or $positionMoveOut.y gt $positionPointTemporary.y)">
           <append_to_list name="$waypoints" exact="$positionMoveOut" />
-          <remove_value name="$positionMoveOut" />
         </do_if>
+        <remove_value name="$positionMoveOut" />
         <remove_value name="$positionPointTemporary" />
         <set_value name="$isAttackingPosition" exact="false" />
       </actions>
@@ -255,6 +255,7 @@
           <set_value name="$dronesAttack" exact="$enemyDronesCount ge 20 and this.assignedcontrolled.isclass.ship_l" />
           <remove_value name="$enemyDronesNearTarget" />
           <remove_value name="$enemyDronesNearShip" />
+          <remove_value name="$enemyDronesCount" />
         </do_if>
       </actions>
       <actions name="AvoidDronesAttack">
@@ -338,14 +339,14 @@
             [this.assignedcontrolled.debugname, $positionToSideStep, $positionSideStep, $offsetX, $offsetY, $offsetZ]"
           chance="$debugChance" />
         <!-- 7. Maintain the same distance from target (normalize to sphere) -->
-        <set_value name="$currentRadius" exact="sqrt($positionToSideStep.x^2 + $positionToSideStep.y^2 + $positionToSideStep.z^2)" />
-        <set_value name="$newRadius" exact="sqrt($positionSideStep.x^2 + $positionSideStep.y^2 + $positionSideStep.z^2)" />
-        <set_value name="$radiusRatio" exact="$currentRadius / $newRadius" />
+        <set_value name="$sideStepRadiusCurrent" exact="sqrt($positionToSideStep.x^2 + $positionToSideStep.y^2 + $positionToSideStep.z^2)" />
+        <set_value name="$sideStepRadiusNew" exact="sqrt($positionSideStep.x^2 + $positionSideStep.y^2 + $positionSideStep.z^2)" />
+        <set_value name="$sideStepRadiusRatio" exact="$sideStepRadiusCurrent / $sideStepRadiusNew" />
 
         <create_position name="$positionSideStep"
-          x="$positionSideStep.x * $radiusRatio"
-          y="$positionSideStep.y * $radiusRatio"
-          z="$positionSideStep.z * $radiusRatio" />
+          x="$positionSideStep.x * $sideStepRadiusRatio"
+          y="$positionSideStep.y * $sideStepRadiusRatio"
+          z="$positionSideStep.z * $sideStepRadiusRatio" />
 
         <debug_text
           text="'AttackStationInSector [%s]: SideStepPosition: Created side-step position: Original: %s, New: %s.'.
@@ -374,9 +375,9 @@
         <remove_value name="$offsetX" />
         <remove_value name="$offsetY" />
         <remove_value name="$offsetZ" />
-        <remove_value name="$currentRadius" />
-        <remove_value name="$newRadius" />
-        <remove_value name="$radiusRatio" />
+        <remove_value name="$sideStepRadiusCurrent" />
+        <remove_value name="$sideStepRadiusNew" />
+        <remove_value name="$sideStepRadiusRatio" />
       </actions>
       <actions name="GetRandom">
         <create_list name="$randomList" />
@@ -412,7 +413,7 @@
         <event_object_attacked object="this.assignedcontrolled" />
         <check_any>
           <check_all>
-            <set_value name="$isUnderAttack" exact="player.age" />
+            <set_value name="$latestAttacked" exact="player.age" />
             <check_value value="@event.param.trueowner != this.assignedcontrolled.trueowner" />
             <check_value value="@$safetyIndicator ge 0" />
             <check_value value="@event.param == $primaryTarget" />
@@ -658,7 +659,7 @@
       <append_to_list name="$randomAngleTenThirty" exact="$r" />
       <set_value name="$r" operation="add" exact="2" />
     </do_while>
-    <set_value name="$isUnderAttack" exact="player.age - 3s" />
+    <set_value name="$latestAttacked" exact="player.age - 3s" />
     <set_value name="$safeDistanceCoefficient" exact="if this.assignedcontrolled.isclass.ship_l then 1.2m else 1.5m" />
     <set_value name="$attackTimeStamp" exact="0s" />
   </init>
@@ -1081,6 +1082,7 @@
             [this.assignedcontrolled.debugname, $interimPosition, this.assignedcontrolled.relativeposition.{$targetSector}]"
           chance="$debugChance" />
       </do_else>
+      <remove_value name="$pathCrossesUnSafeRadius" />
       <append_to_list name="$waypoints" exact="$interimPositionRelativeToPrimaryTarget" />
       <debug_text
         text="'AttackStationInSector [%s]: SafePath: Final position: %s'.[this.assignedcontrolled.debugname, $interimPositionRelativeToPrimaryTarget]"
@@ -1251,6 +1253,7 @@
                 <set_value name="$positionToMoveToCheck" exact="$positionSideStepInSector" />
                 <set_value name="$positionSignalToCheck" exact="true" />
               </do_else>
+              <remove_value name="$pathCrossesUnSafeRadius" />
               <remove_value name="$positionSideStepInSector" />
               <remove_value name="$positionSideStep" />
               <remove_value name="$positionToMoveIsBlockedBy" />
@@ -1296,7 +1299,6 @@
               space="$nearStation" />
             <set_value name="$safeRadiusAroundObject"
               exact="($nearStation.maxcombatrange.all + ($nearStation.size / 2) + $thisRadius) * 1.1" />
-            <remove_value name="$pathCrossesUnSafeRadius" />
             <debug_text
               text="'AttackStationInSector [%s]: SafePathMove: Checking if path to waypoint crosses unsafe radius %s around station: %s.'.
                 [this.assignedcontrolled.debugname, $safeRadiusAroundObject, $nearStation.debugname]"
@@ -1385,7 +1387,7 @@
               <break />
             </do_if>
             <set_value name="$moveUsingTravelMode"
-              exact="this.assignedcontrolled.travel.available and (player.age - @$isUnderAttack) gt 3s and $distanceToMove ge 10km" />
+              exact="this.assignedcontrolled.travel.available and (player.age - @$latestAttacked) gt 3s and $distanceToMove ge 10km" />
             <do_if value="$moveUsingTravelMode">
               <debug_text
                 text="'AttackStationInSector [%s]: SafePathMove: Moving via Travel: Distance: %s. MaxSpeed: %s.'.
@@ -2319,6 +2321,7 @@
           <remove_value name="$positionTargetRelativeToPrimaryTarget" />
           <remove_value name="$positionRelativeToTarget" />
           <remove_value name="$target" />
+          <remove_value name="$waypoints" />
         </do_if>
       </do_else>
     </actions>
