@@ -239,8 +239,8 @@
             <set_value name="$enemyDronesNearShip" exact="$enemyDronesNearTarget" />
           </do_else>
           <set_value name="$enemyDronesCount" exact="[$enemyDronesNearTarget.count, $enemyDronesNearShip.count].max" />
-          <do_if value="@$enemyDronesShare == true">
-            <signal_objects object="$primaryTarget" param="'EnemyDronesCount'" param2="$enemyDronesCount"
+          <do_if value="@$enemyDronesCountShare == true">
+            <signal_objects object="$primaryTarget" param="'EnemyDronesCountInfo'" param2="$enemyDronesCount"
               param3="this.assignedcontrolled" />
             <set_value name="$enemyDronesCount" exact="[$enemyDronesCount, @$enemyDronesSharedCount].max" />
           </do_if>
@@ -483,8 +483,8 @@
             chance="$debugChance" />
           <break_formation object="this.assignedcontrolled" />
           <leave_formation object="this.assignedcontrolled" />
-          <signal_objects object="$primaryTarget" param="'StationAttackRescueRequest'" param2="this.assignedcontrolled" />
-          <set_value name="$rescueRequest" exact="false" />
+          <signal_objects object="$primaryTarget" param="'StationAttackSupportRequest'" param2="this.assignedcontrolled" />
+          <remove_value name="$rescueRequest" />
         </do_if>
         <do_elseif value="@$isFleeing == true and this.assignedcontrolled.hullpercentage le 99">
           <debug_text
@@ -521,11 +521,6 @@
       <conditions>
         <event_object_attacked_object object="this.assignedcontrolled" />
         <check_value value="event.param == @$primaryTarget" />
-        <!-- <debug_text
-                    text="'AttackStationInSector [%s]: TargetIsAttacked: Method: %s. Component: %s. Weapon: %s, %s, %s, %s, %s'.
-                    [this.assignedcontrolled.debugname, @event.param2, @event.param3.{1}.debugname, @event.param3.{2}.debugname, @event.param3.{2}.class,
-                @event.param3.{2}.realclass, @event.param3.{2}.macro, @event.param3.{2}.grouptag]"
-                /> -->
         <set_value name="$targetIsReallyAttacked" operation="add" />
         <check_value value="@event.param3.{2} != null and @event.param3.{2}.grouptag == null" />
         <set_value name="$targetIsReallyAttackedByPrimaryWeapon" operation="add" />
@@ -533,13 +528,11 @@
     </handler>
     <handler>
       <conditions>
-        <!-- param2 = [[$ref, $pos], $radius] param3 = asker -->
         <event_object_signalled object="this.assignedcontrolled.sector" param="'StationAttackIsPosBlocked'" check="false" />
         <check_value value="@event.param2.{1} != null and @event.param2.{2} != null and @event.param3 != null" />
         <check_value value="@event.param3 != this.assignedcontrolled" />
         <check_value value="$positionToMove?" />
-        <check_value
-          value="$positionToMove.distanceto.{event.param2.{1}} lt (this.assignedcontrolled.size + event.param2.{2}) * 1.5 " />
+        <check_value value="$positionToMove.distanceto.{event.param2.{1}} lt (this.assignedcontrolled.size + event.param2.{2}) * 1.5 " />
         <remove_value name="event.param3.pilot.$StationAttackListeningForAnswer" />
       </conditions>
       <actions>
@@ -577,13 +570,11 @@
     </handler>
     <handler>
       <conditions>
-        <event_object_signalled object="$primaryTarget" param="'StationAttackRescueRequest'" check="false" />
+        <event_object_signalled object="$primaryTarget" param="'StationAttackSupportRequest'" check="false" />
         <check_value value="this.assignedcontrolled.isclass.ship_l" />
         <check_value value="@event.param2 != null and @event.param2 != this.assignedcontrolled" />
         <check_value value="this.assignedcontrolled.hullpercentage == 100" />
         <check_value value="this.assignedcontrolled.shieldpercentage gt 95" />
-        <check_value value="@$isFleeing == true" />
-        <check_value value="@$dronesAttack == true" />
       </conditions>
       <actions>
         <debug_text
@@ -615,9 +606,9 @@
     </handler>
     <handler>
       <conditions>
-        <event_object_signalled object="$primaryTarget" param="'EnemyDronesCount'" />
+        <event_object_signalled object="$primaryTarget" param="'EnemyDronesCountInfo'" />
         <check_value value="event.param3 != this.assignedcontrolled" />
-        <check_value value="@$enemyDronesShare == true" />
+        <check_value value="@$enemyDronesCountShare == true" />
         <set_value name="$enemyDronesSharedCount" exact="[@$enemyDronesSharedCount, event.param2].max" />
       </conditions>
     </handler>
@@ -651,7 +642,7 @@
     <set_value name="$r" exact="30" />
     <do_while value="$r le 60">
       <append_to_list name="$randomAngleThirtySixty" exact="$r" />
-      <set_value name="$r" operation="add" exact="5" />
+      <set_value name="$r" operation="add" exact="3" />
     </do_while>
     <create_list name="$randomAngleTenThirty" />
     <set_value name="$r" exact="10" />
@@ -660,7 +651,8 @@
       <set_value name="$r" operation="add" exact="2" />
     </do_while>
     <set_value name="$latestAttacked" exact="player.age - 3s" />
-    <set_value name="$safeDistanceCoefficient" exact="if this.assignedcontrolled.isclass.ship_l then 1.2m else 1.5m" />
+    <set_value name="$safeDistanceCoefficientBase" exact="if this.assignedcontrolled.isclass.ship_l then 1.2m else 1.5m" />
+    <set_value name="$safeDistanceCoefficient" exact="$safeDistanceCoefficientBase * 2" />
     <set_value name="$attackTimeStamp" exact="0s" />
   </init>
   <attention min="unknown">
@@ -727,7 +719,11 @@
 
       <set_value name="$skillPiloting" exact="this.skill.piloting" />
       <set_value name="$skillMorale" exact="this.skill.morale" />
-      <set_value name="$skillCombined" exact="this.assignedcontrolled.combinedskill" />
+      <set_value name="$safeDistanceCoefficient" exact="$safeDistanceCoefficientBase * (1 + (15 - this.skill.piloting) / 30 + (15 - this.skill.morale) / 30)" />
+      <debug_text
+        text="'AttackStationInSector [%s]: Skill: Piloting: %s. Morale: %s. Safe Distance Coefficient: %s.'.
+        [this.assignedcontrolled.debugname, $skillPiloting, $skillMorale, $safeDistanceCoefficient]"
+        chance="$debugChance" />
 
       <!-- calculate best quadrant to use against the target -->
       <set_value name="$quadrants" exact="[quadrant.left, quadrant.right, quadrant.front]" />
@@ -2183,6 +2179,7 @@
       <label name="fleeOut" />
       <remove_value name="$positionToMove" />
       <debug_text text="'AttackStationInSector [%s]: Moved out from %s.'. [this.assignedcontrolled.debugname, @$attacker.debugname]" chance="$debugChance" />
+      <remove_value name="$attacker" />
       <do_if value="@$dronesAttack == true and @$temporaryFormationLeader != null and @$temporaryFormationLeader != this.assignedcontrolled">
         <debug_text
           text="'AttackStationInSector [%s]: DronesAttack: Going to Fleeing Formation Leader: %s.'.
@@ -2192,7 +2189,7 @@
         <leave_formation object="this.assignedcontrolled" />
         <signal_objects object="@$temporaryFormationLeader" param="'FleeingFormationJoin'" param2="this.assignedcontrolled" />
       </do_if>
-      <set_value name="$enemyDronesShare" exact="true" />
+      <set_value name="$enemyDronesCountShare" exact="true" />
       <do_while value="@$dronesAttack == true">
         <include_interrupt_actions ref="CheckDronesAttack" />
         <do_if value="@$dronesAttack == true">
@@ -2214,7 +2211,7 @@
         </do_if>
       </do_while>
       <label name="postDroneAttack" />
-      <set_value name="$enemyDronesShare" exact="false" />
+      <remove_value name="$enemyDronesCountShare" />
       <do_if value="@$temporaryFormationLeader == this.assignedcontrolled">
         <debug_text
           text="'AttackStationInSector [%s]: DronesAttack: FleeingFormation: Breaking formation for %s ships.'.[this.assignedcontrolled.debugname, @$fleeingFormationList.count]"
@@ -2322,6 +2319,9 @@
           <remove_value name="$positionRelativeToTarget" />
           <remove_value name="$target" />
           <remove_value name="$waypoints" />
+          <remove_value name="$fleeingFormationList" />
+          <remove_value name="$positionMoveOut" />
+          <remove_value name="$positionMoveOutCommon" />
         </do_if>
       </do_else>
     </actions>
