@@ -107,8 +107,7 @@
                 @this.assignedcontrolled.sector.knownname,
                 @this.assignedcontrolled.fleet.name,
                 @this.assignedcontrolled.fleetunits.count
-              ]"
-            chance="@$debugChance" />
+              ]" />
           <create_group groupname="$subordinates" />
         </do_if>
         <do_if value="@$subordinatesToBeUpdatedAfter" negate="true">
@@ -118,8 +117,7 @@
                 @this.assignedcontrolled.debugname,
                 @this.assignedcontrolled.sector.knownname,
                 @this.assignedcontrolled.fleet.name
-              ]"
-            chance="@$debugChance" />
+              ]" />
           <set_value name="$subordinatesToBeUpdatedAfter" exact="player.age - 1" />
         </do_if>
         <do_if value="player.gameversion ge 750 and $subordinatesToBeUpdatedAfter lt player.age">
@@ -129,8 +127,7 @@
               @this.assignedcontrolled.debugname,
               @this.assignedcontrolled.sector.knownname,
               @this.assignedcontrolled.fleet.name
-            ]"
-            chance="@$debugChance" />
+            ]" />
           <clear_group group="$subordinates" />
           <do_if value="not this.assignedcontrolled.commander">
             <add_to_group groupname="$subordinates" list="this.assignedcontrolled.allsubordinates" />
@@ -253,23 +250,21 @@
               this.assignedcontrolled.sector.knownname,
               this.assignedcontrolled.fleet.name,
               @$scriptVersion
-            ]"
-            debugchance="$debugChance" />
+            ]" />
           <check_any>
             <check_value value="@$scriptVersion lt 101" />
           </check_any>
         </check_all>
       </conditions>
       <actions>
-        <debug_to_file directory="'protectsector'" name="'debug_'  + this.assignedcontrolled.idcode + '_' + this.assignedcontrolled"
-          text="'[%s at %s, %s] - Re-init for versions %s prior to 1.01'
+        <debug_text
+          text="'ProtectSector [%s at %s, %s] - Re-init for versions %s prior to 1.01'
           .[
             this.assignedcontrolled.debugname,
             this.assignedcontrolled.sector.knownname,
             this.assignedcontrolled.fleet.name,
             @$scriptVersion,
-          ]"
-          output="true" append="true" />
+          ]" />
         <do_if value="@$scriptVersion lt 101">
           <create_order object="this.assignedcontrolled" id="'ProtectSector'" default="true">
             <param name="homeSector" value="if $ps_space.isclass.sector then $ps_space else $ps_space.sector" />
@@ -327,8 +322,8 @@
         </check_all>
       </conditions>
       <actions>
-        <debug_to_file directory="'protectsector'" name="'debug_'  + this.assignedcontrolled.idcode + '_' + this.assignedcontrolled"
-          text="'[%s at %s, %s] -  %s, our : %s {%s} in sector: %s with order: %s, top commander:  %s {%s} in sector: %s with order: %s,  assigned:  %s {%s} in sector: %s with order: %s, assigned top commander:  %s {%s} in sector: %s with order: %s, attacker: %s {%s}'
+        <debug_text
+          text="'ProtectSector [%s at %s, %s] -  %s, our : %s {%s} in sector: %s with order: %s, top commander:  %s {%s} in sector: %s with order: %s,  assigned:  %s {%s} in sector: %s with order: %s, assigned top commander:  %s {%s} in sector: %s with order: %s, attacker: %s {%s}'
             .[
               this.assignedcontrolled.debugname,
               this.assignedcontrolled.sector.knownname,
@@ -352,8 +347,7 @@
               @event.object.assignedcontrolled.toplevelcommander.defaultorder.id,
               @event.param.debugname,
               @event.param.class
-            ]"
-          output="true" append="true" />
+            ]" />
         <set_value name="$targetOnResponse" exact="event.param" />
         <do_if value="$targetOnResponse.coverowner">
           <signal_objects object="$targetOnResponse" param="'LoseCover'" param2="true" />
@@ -385,8 +379,8 @@
         </check_any>
       </conditions>
       <actions>
-        <debug_to_file directory="'protectsector'" name="'debug_'  + this.assignedcontrolled.idcode + '_' + this.assignedcontrolled"
-          text="'[%s at %s, %s] - Event %s : %s{%s} status: iswreck: %s, isoperational: %s,  pilot: %s (%s), param: %s {%s}, target info - %s'
+        <debug_text
+          text="'ProtectSector [%s at %s, %s] - Event %s : %s{%s} status: iswreck: %s, isoperational: %s,  pilot: %s (%s), param: %s {%s}, target info - %s'
             .[
               this.assignedcontrolled.debugname,
               this.assignedcontrolled.sector.knownname,
@@ -401,8 +395,7 @@
               @event.param.debugname,
               @event.param.class,
               @$targetInfo
-            ]"
-          output="true" append="true" />
+            ]" />
         <do_if value="$targetInfo? and $targetInfo != null and $targetInfo.$name? and @$targetInfo.$isShip">
           <set_value name="$textUnit" exact="{1972092401, 1011}.[this.assignedcontrolled.name, this.assignedcontrolled.idcode]" />
           <do_if
@@ -459,8 +452,7 @@
               @this.assignedcontrolled.sector.knownname,
               @this.assignedcontrolled.fleet.name,
               @this.assignedcontrolled.fleetunits.count
-            ]"
-          chance="@$debugChance" />
+            ]" />
         <!-- prepare group of subordinates to request fleet reinstate -->
         <include_interrupt_actions ref="SubordinatesRefresh" />
         <signal_objects object="player.entity" param="'reconstitute_fleet'" param2="this.assignedcontrolled"
@@ -472,15 +464,14 @@
         <event_object_subordinate_removed object="this.assignedcontrolled" />
       </conditions>
       <actions>
-        <debug_to_file directory="'protectsector'" name="'debug_'  + this.assignedcontrolled.idcode + '_' + this.assignedcontrolled"
-          text="'[%s at %s, %s] - SubordinateRemovedHandler: subordinate %s was removed.'.
+        <debug_text
+          text="'ProtectSector [%s at %s, %s] - SubordinateRemovedHandler: subordinate %s was removed.'.
             [
               @this.assignedcontrolled.debugname,
               @this.assignedcontrolled.sector.knownname,
               @this.assignedcontrolled.fleet.name,
               @event.param.debugname
-            ]"
-          output="true" append="true" />
+            ]" />
         <set_value name="$subordinate" exact="event.param" />
         <do_if value="@$subordinate.pilot.$escortgroup != null">
           <do_for_each name="$escortShip" in="$subordinate.pilot.$escortgroup">
@@ -499,15 +490,14 @@
         <event_object_subordinate_added object="this.assignedcontrolled" />
       </conditions>
       <actions>
-        <debug_to_file directory="'protectsector'" name="'debug_'  + this.assignedcontrolled.idcode + '_' + this.assignedcontrolled"
-          text="'[%s at %s, %s] - SubordinateAddedHandler: subordinate %s is added.'.
+        <debug_text
+          text="'ProtectSector [%s at %s, %s] - SubordinateAddedHandler: subordinate %s is added.'.
           [
             @this.assignedcontrolled.debugname,
             @this.assignedcontrolled.sector.knownname,
             @this.assignedcontrolled.fleet.name,
             @event.param.debugname
-          ]"
-          output="true" append="true" />
+          ]" />
         <set_value name="$subordinate" exact="event.param" />
         <do_if value="@$subordinate.pilot.$escortgroup != null">
           <do_for_each name="$escortShip" in="$subordinate.pilot.$escortgroup">
@@ -533,8 +523,8 @@
 
     <include_interrupt_actions ref="RelationsConversionList" />
 
-    <debug_to_file directory="'protectsector'" name="'debug_'  + this.assignedcontrolled.idcode + '_' + this.assignedcontrolled"
-      text="'[%s at %s, %s] - Version: %s.\nHome Sector: %s\nAttack Stations: %s (Tactical: %s, Internal: %s)\nAttack Ships XL: %s\nAttack Ships L: %s\nAttack Ships M: %s\nAttack Ships S: %s\nAttack Ships Out Of Stations Distance: %s\nAttack Visible Only: %s\nAttack Hostile Only: %s\nRelation Threshold: %s\nProtect Player Ships In Sector: %s\nProtect Only Non Military Ships: %s\nPursue Fleeing Target: %s\nShare Targets Between Fleets: %s\nShields Preserve On Flight: %s\nBreak On Destruction Percentage: %s\nPark In Center Of Sector: %s\nDesired Parking Position: %s at %s\nRecord Actions To Log Book: %s\nDelay Between Scans: %s, in seconds: %s\nDebug chance: %s'
+    <debug_text
+      text="'ProtectSector [%s at %s, %s] - Version: %s.\nHome Sector: %s\nAttack Stations: %s (Tactical: %s, Internal: %s)\nAttack Ships XL: %s\nAttack Ships L: %s\nAttack Ships M: %s\nAttack Ships S: %s\nAttack Ships Out Of Stations Distance: %s\nAttack Visible Only: %s\nAttack Hostile Only: %s\nRelation Threshold: %s\nProtect Player Ships In Sector: %s\nProtect Only Non Military Ships: %s\nPursue Fleeing Target: %s\nShare Targets Between Fleets: %s\nShields Preserve On Flight: %s\nBreak On Destruction Percentage: %s\nPark In Center Of Sector: %s\nDesired Parking Position: %s at %s\nRecord Actions To Log Book: %s\nDelay Between Scans: %s, in seconds: %s\nDebug chance: %s'
         .[
           this.assignedcontrolled.debugname,
           this.assignedcontrolled.sector.knownname,
@@ -565,8 +555,7 @@
           $delayBetweenScans,
           $delayBetweenScansInSeconds,
           $debugChance,
-        ]"
-      output="true" append="true" />
+        ]" />
 
     <set_value name="$textTitle" exact="{1972092401, 1000}" />
     <set_value name="$textShip" exact="{1972092401, 1001}" />
@@ -577,8 +566,8 @@
       <set_value name="$targetInfo" exact="this.assignedcontrolled.aipilot.$targetInfo" />
       <set_value name="$target" exact="@$targetInfo.$target" />
       <set_value name="$isStartedByPlayer" exact="false" />
-      <debug_to_file directory="'protectsector'" name="'debug_'  + this.assignedcontrolled.idcode + '_' + this.assignedcontrolled"
-        text="'[%s at %s, %s] - Station after attack : %s {%s}, iswreck: %s, targetInfo: %s'
+      <debug_text
+        text="'ProtectSector [%s at %s, %s] - Station after attack : %s {%s}, iswreck: %s, targetInfo: %s'
               .[
                 this.assignedcontrolled.debugname,
                 this.assignedcontrolled.sector.knownname,
@@ -587,8 +576,7 @@
                 $target.class,
                 $target.iswreck,
                 $targetInfo
-              ]"
-        output="true" append="true" />
+              ]" />
 
 
       <do_if value="$target.iswreck">
@@ -616,7 +604,7 @@
 
     <create_group groupname="$targets" />
 
-    <set_value name="$debugChance" exact="100" />
+    <!-- <set_value name="$debugChance" exact="100" /> -->
 
     <do_if value="$parkInCenterOfSector and $desiredParkingPosition != null">
       <edit_order_param order="this.assignedcontrolled.order" param="'desiredParkingPosition'" value="null" />
@@ -648,15 +636,14 @@
       </do_if>
       <do_if value="$attackStationsInternalAcceptable" negate="true">
         <edit_order_param order="this.assignedcontrolled.order" param="'attackStationsInternal'" value="false" />
-        <debug_to_file directory="'protectsector'" name="'debug_'  + this.assignedcontrolled.idcode + '_' + this.assignedcontrolled"
-          text="'[%s at %s, %s] - Attack stations internal mode can not be used. Reset to : %s.'
+        <debug_text
+          text="'ProtectSector [%s at %s, %s] - Attack stations internal mode can not be used. Reset to : %s.'
             .[
               this.assignedcontrolled.debugname,
               this.assignedcontrolled.sector.knownname,
               this.assignedcontrolled.fleet.name,
               $attackStationsInternalAcceptable
-            ]"
-          output="true" append="true" />
+            ]" />
       </do_if>
       <remove_value name="$attackStationsInternalAcceptable" />
       <remove_value name="$incompatibleAssignments" />
@@ -670,8 +657,8 @@
     </do_if>
     <set_value name="$relationsThresholdInternal" exact="$relationsConversionList.{$relationsThreshold}" />
 
-    <debug_to_file directory="'protectsector'" name="'debug_'  + this.assignedcontrolled.idcode + '_' + this.assignedcontrolled"
-      text="'[%s at %s, %s] - Started (by player: %s) with %s subordinates and %s as top commander. Relation Threshold: %s (%s). Debug chance: %s'
+    <debug_text
+      text="'ProtectSector [%s at %s, %s] - Started (by player: %s) with %s subordinates and %s as top commander. Relation Threshold: %s (%s). Debug chance: %s'
         .[
           this.assignedcontrolled.debugname,
           this.assignedcontrolled.sector.knownname,
@@ -682,8 +669,7 @@
           $relationsThresholdInternal,
           $relationsThreshold,
           $debugChance
-        ]"
-      output="true" append="true" />
+        ]" />
 
 
     <set_value name="$parkingPosition" exact="null" />
@@ -755,16 +741,15 @@
   </init>
   <patch sinceversion="104">
     <set_value name="$idleDelay" exact="$delayBetweenScansInSeconds" />
-    <debug_to_file directory="'protectsector'" name="'debug_'  + this.assignedcontrolled.idcode + '_' + this.assignedcontrolled"
-      text="'[%s at %s, %s] - Patched for version 104. Idle delay: %s. Debug chance: %s'
+    <debug_text
+      text="'ProtectSector [%s at %s, %s] - Patched for version 104. Idle delay: %s. Debug chance: %s'
         .[
           this.assignedcontrolled.debugname,
           this.assignedcontrolled.sector.knownname,
           this.assignedcontrolled.fleet.name,
           $idleDelay,
           $debugChance
-        ]"
-      output="true" append="true" />
+        ]" />
   </patch>
   <patch sinceversion="106">
     <include_interrupt_actions ref="SubordinatesRefresh" />
@@ -840,8 +825,8 @@
 
       <label name="protectPlayerShipsCheck" />
 
-      <debug_to_file directory="'protectsector'" name="'debug_'  + this.assignedcontrolled.idcode + '_' + this.assignedcontrolled"
-        text="'[%s at %s, %s] : Classes: %s, Classes possible: %s. Station attack: %s. Protect: %s.'.
+      <debug_text
+        text="'ProtectSector [%s at %s, %s] : Classes: %s, Classes possible: %s. Station attack: %s. Protect: %s.'.
           [
             this.assignedcontrolled.debugname,
             this.assignedcontrolled.sector.knownname,
@@ -850,18 +835,16 @@
             $classesAcceptableForAttack,
             $attackStations,
             $protectPlayerShipsInSector
-          ]"
-        output="true" append="true" />
+          ]" />
 
       <do_if value="$classesForAttack.count">
         <do_if value="$targetOnResponse? and @$targetOnResponse != null" negate="true">
-          <!-- <debug_to_file directory="'protectsector'" name="'debug_'  + this.assignedcontrolled.idcode + '_' + this.assignedcontrolled"
-          text="'[%s at %s, %s] : Search initiated'.
+          <!-- <debug_text text="'ProtectSector [%s at %s, %s] : Search initiated'.
             [
               this.assignedcontrolled.debugname,
               this.assignedcontrolled.sector.knownname,
               this.assignedcontrolled.fleet.name
-            ]" output="true" append="true" /> -->
+            ]" /> -->
           <do_if value="$attackVisibleOnly">
             <do_if value="$relationsThreshold ge 25">
               <!-- <debug_to_file directory="'protectsector'" name="'debug_'  + this.assignedcontrolled.idcode + '_' +
@@ -871,7 +854,7 @@
                     this.assignedcontrolled.debugname,
                     this.assignedcontrolled.sector.knownname,
                     this.assignedcontrolled.fleet.name
-                  ]" output="true" append="true" /> -->
+                  ]" /> -->
               <find_ship name="$ships" space="this.assignedcontrolled.sector" class="$classesForAttack" recursive="true" multiple="true"
                 isinliveview="true" ishostileto="this.owner" sortbydistanceto="this.assignedcontrolled">
                 <match trueowner="faction.player" negate="true" />
@@ -886,7 +869,7 @@
                     this.assignedcontrolled.debugname,
                     this.assignedcontrolled.sector.knownname,
                     this.assignedcontrolled.fleet.name
-                  ]" output="true" append="true" /> -->
+                  ]" /> -->
               <find_ship name="$ships" space="this.assignedcontrolled.sector" class="$classesForAttack" recursive="true" multiple="true"
                 isinliveview="true" sortbydistanceto="this.assignedcontrolled">
                 <match trueowner="faction.player" negate="true" />
@@ -903,7 +886,7 @@
                     this.assignedcontrolled.debugname,
                     this.assignedcontrolled.sector.knownname,
                     this.assignedcontrolled.fleet.name
-                  ]" output="true" append="true" /> -->
+                  ]" /> -->
               <find_ship name="$ships" space="this.assignedcontrolled.sector" class="$classesForAttack" recursive="true" multiple="true"
                 ishostileto="this.owner" sortbydistanceto="this.assignedcontrolled">
                 <match trueowner="faction.player" negate="true" />
@@ -918,7 +901,7 @@
                     this.assignedcontrolled.debugname,
                     this.assignedcontrolled.sector.knownname,
                     this.assignedcontrolled.fleet.name
-                  ]" output="true" append="true" /> -->
+                  ]" /> -->
               <find_ship name="$ships" space="this.assignedcontrolled.sector" class="$classesForAttack" recursive="true" multiple="true"
                 sortbydistanceto="this.assignedcontrolled">
                 <match trueowner="faction.player" negate="true" />
@@ -930,8 +913,8 @@
         <do_else>
           <create_list name="$ships" />
           <append_to_list name="$ships" exact="$targetOnResponse" />
-          <debug_to_file directory="'protectsector'" name="'debug_'  + this.assignedcontrolled.idcode + '_' + this.assignedcontrolled"
-            text="'[%s at %s, %s] : Response on attack by: %s. List of ships: %s. Target: %s'.
+          <debug_text
+            text="'ProtectSector [%s at %s, %s] : Response on attack by: %s. List of ships: %s. Target: %s'.
               [
                 this.assignedcontrolled.debugname,
                 this.assignedcontrolled.sector.knownname,
@@ -939,8 +922,7 @@
                 @$targetOnResponse.debugname,
                 $ships,
                 @$target,
-              ]"
-            output="true" append="true" />
+              ]" />
           <!-- <set_value name="$targetOnResponse" exact="null" /> -->
           <wait min="10ms" max="50ms" /> <!-- to give a chance to mark the target as own -->
         </do_else>
@@ -957,8 +939,8 @@
               </do_if>
             </do_if>
             <set_value name="$relation" exact="$ship.relationto.{this.owner}" />
-            <debug_to_file directory="'protectsector'" name="'debug_'  + this.assignedcontrolled.idcode + '_' + this.assignedcontrolled"
-              text="'[%s at %s, %s] - %s - Target to check: %s {%s}, distance - %s, relation - %s, threshold: %s, share targets: %s, to skip - %s, ignore time: %s, player age: %s'
+            <debug_text
+              text="'ProtectSector [%s at %s, %s] - %s - Target to check: %s {%s}, distance - %s, relation - %s, threshold: %s, share targets: %s, to skip - %s, ignore time: %s, player age: %s'
                 .[
                   this.assignedcontrolled.debugname,
                   this.assignedcontrolled.sector.knownname,
@@ -973,8 +955,7 @@
                   $ship.pilot.$ignoreTime?,
                   @$ship.pilot.$ignoreTime,
                   player.age
-                ]"
-              output="true" append="true" />
+                ]" />
             <do_if value="$relation le $relationsThresholdInternal">
               <do_if value="$ship.pilot.$ignoreTime? and not $shareTargetsBetweenFleets" negate="true">
                 <set_value name="$target" exact="$ship" />
@@ -994,8 +975,7 @@
                           $target.commander.class,
                           $target.debugname,
                           $target.class
-                        ]"
-                      output="true" append="true" />
+                        ]" />
                     <set_value name="$target" exact="$target.commander" />
                   </do_if>
                   <do_else>
@@ -1011,8 +991,7 @@
                           $target.commander.class,
                           $target.debugname,
                           $target.class
-                        ]"
-                      output="true" append="true" />
+                        ]" />
                     <set_value name="$targetClassIsAllowed" exact="false" />
                     <set_value name="$target" exact="null" />
                   </do_else>
@@ -1056,7 +1035,7 @@
                           $station.class,
                           $target.distanceto.{$station},
                           $attackShipsOutOfStationsDistance
-                        ]" output="true" append="true" /> -->
+                        ]" /> -->
                   <do_if value="$target.distanceto.{$station} le $attackShipsOutOfStationsDistance">
                     <debug_to_file directory="'protectsector'"
                       name="'debug_'  + this.assignedcontrolled.idcode + '_' + this.assignedcontrolled"
@@ -1071,8 +1050,7 @@
                             $station.class,
                             $target.distanceto.{$station},
                             $attackShipsOutOfStationsDistance
-                          ]"
-                      output="true" append="true" />
+                          ]" />
                     <do_if value="$station.relationto.{this.assignedcontrolled} le $relationsThresholdInternal">
                       <debug_to_file directory="'protectsector'"
                         name="'debug_'  + this.assignedcontrolled.idcode + '_' + this.assignedcontrolled"
@@ -1085,8 +1063,7 @@
                               $station.class,
                               this.assignedcontrolled.debugname,
                               this.assignedcontrolled.class
-                            ]"
-                        output="true" append="true" />
+                            ]" />
                       <set_value name="$target" exact="null" />
                       <break />
                     </do_if>
@@ -1120,8 +1097,8 @@
             $stationIsUnderConstruction = false
           ]" />
 
-          <debug_to_file directory="'protectsector'" name="'debug_'  + this.assignedcontrolled.idcode + '_' + this.assignedcontrolled"
-            text="'[%s at %s, %s] - Final target is: %s {%s}, distance: %s, targetInfo: %s'
+          <debug_text
+            text="'ProtectSector [%s at %s, %s] - Final target is: %s {%s}, distance: %s, targetInfo: %s'
               .[
                 this.assignedcontrolled.debugname,
                 this.assignedcontrolled.sector.knownname,
@@ -1130,8 +1107,7 @@
                 $target.class,
                 $targetDistanceTo,
                 $targetInfo
-              ]"
-            output="true" append="true" />
+              ]" />
           <do_if value="$recordActionsToLogBook">
             <set_value name="$textUnit" exact="{1972092401, 1011}.[this.assignedcontrolled.name, this.assignedcontrolled.idcode]" />
             <do_if
@@ -1149,8 +1125,8 @@
 
           <do_if value="$target.exists and $target.pilot.exists and not $shareTargetsBetweenFleets">
             <set_value name="$target.pilot.$ignoreTime" exact="player.age + 60" />
-            <debug_to_file directory="'protectsector'" name="'debug_'  + this.assignedcontrolled.idcode + '_' + this.assignedcontrolled"
-              text="'[%s at %s, %s] - Target marked to ignore: %s {%s}, ignore time: %s, player age: %s'
+            <debug_text
+              text="'ProtectSector [%s at %s, %s] - Target marked to ignore: %s {%s}, ignore time: %s, player age: %s'
                 .[
                   this.assignedcontrolled.debugname,
                   this.assignedcontrolled.sector.knownname,
@@ -1160,8 +1136,7 @@
                   $ship.pilot.$ignoreTime?,
                   @$ship.pilot.$ignoreTime,
                   player.age
-                ]"
-              output="true" append="true" />
+                ]" />
           </do_if>
 
           <resume label="targetApproaching" />
@@ -1173,8 +1148,8 @@
           <stop_moving object="this.assignedcontrolled" />
         </do_if>
 
-        <debug_to_file directory="'protectsector'" name="'debug_'  + this.assignedcontrolled.idcode + '_' + this.assignedcontrolled"
-          text="'[%s at %s, %s] : Warning! No ship classes (%s or %s) or stations (%s) are selected for attack. Protect is : %s'.
+        <debug_text
+          text="'ProtectSector [%s at %s, %s] : Warning! No ship classes (%s or %s) or stations (%s) are selected for attack. Protect is : %s'.
                   [
                     this.assignedcontrolled.debugname,
                     this.assignedcontrolled.sector.knownname,
@@ -1183,8 +1158,7 @@
                     $classesAcceptableForAttack,
                     $attackStations,
                     $protectPlayerShipsInSector
-                  ]"
-          output="true" append="true" />
+                  ]" />
 
         <do_if value="$protectPlayerShipsInSector" negate="true">
           <!-- Player notification -->
@@ -1207,13 +1181,12 @@
 
         <!-- SEARCHING  STATION ************************************************************************ -->
 
-        <!-- <debug_to_file directory="'protectsector'" name="'debug_'  + this.assignedcontrolled.idcode + '_' + this.assignedcontrolled"
-          text="'[%s at %s, %s] - Start stations search'
+        <!-- <debug_text text="'ProtectSector [%s at %s, %s] - Start stations search'
             .[
               this.assignedcontrolled.debugname,
               this.assignedcontrolled.sector.knownname,
               this.assignedcontrolled.fleet.name
-            ]" output="true" append="true" /> -->
+            ]" /> -->
 
         <do_if value="$attackVisibleOnly">
           <do_if value="$relationsThreshold ge 25">
@@ -1281,8 +1254,8 @@
           <do_if value="$stationRelation le $relationsThresholdInternal">
             <set_value name="$stationDistanceTo" exact="this.assignedcontrolled.distanceto.{$station}" />
             <do_if value="$station.isclass.[class.station]">
-              <debug_to_file directory="'protectsector'" name="'debug_'  + this.assignedcontrolled.idcode + '_' + this.assignedcontrolled"
-                text="'[%s at %s, %s] - %s - Station to check: %s {%s}, distance - %s, relation - %s, threshold: %s'
+              <debug_text
+                text="'ProtectSector [%s at %s, %s] - %s - Station to check: %s {%s}, distance - %s, relation - %s, threshold: %s'
                 .[
                   this.assignedcontrolled.debugname,
                   this.assignedcontrolled.sector.knownname,
@@ -1293,8 +1266,7 @@
                   $stationDistanceTo,
                   $stationRelation,
                   $relationsThresholdInternal
-                ]"
-                output="true" append="true" />
+                ]" />
               <set_value name="$target" exact="$station" />
             </do_if>
             <do_elseif
@@ -1302,8 +1274,8 @@
               <set_value name="$station" exact="$station.base" />
               <set_value name="$stationDistanceTo" exact="this.assignedcontrolled.distanceto.{$station}" />
               <set_value name="$stationRelation" exact="$station.relationto.{faction.player}" />
-              <debug_to_file directory="'protectsector'" name="'debug_'  + this.assignedcontrolled.idcode + '_' + this.assignedcontrolled"
-                text="'[%s at %s, %s] - %s - Station under construction to check: %s {%s}, distance - %s, relation - %s, threshold: %s'
+              <debug_text
+                text="'ProtectSector [%s at %s, %s] - %s - Station under construction to check: %s {%s}, distance - %s, relation - %s, threshold: %s'
                 .[
                   this.assignedcontrolled.debugname,
                   this.assignedcontrolled.sector.knownname,
@@ -1314,21 +1286,19 @@
                   $stationDistanceTo,
                   $stationRelation,
                   $relationsThresholdInternal
-                ]"
-                output="true" append="true" />
+                ]" />
               <set_value name="$target" exact="$station" />
             </do_elseif>
             <do_if value="$target != null and $macrosToSkip.indexof.{@$target.macro} gt 0">
-              <debug_to_file directory="'protectsector'" name="'debug_'  + this.assignedcontrolled.idcode + '_' + this.assignedcontrolled"
-                text="'[%s at %s, %s] - Station: %s - is an a list of macros to skip: %s. Skipping'
+              <debug_text
+                text="'ProtectSector [%s at %s, %s] - Station: %s - is an a list of macros to skip: %s. Skipping'
                 .[
                   this.assignedcontrolled.debugname,
                   this.assignedcontrolled.sector.knownname,
                   this.assignedcontrolled.fleet.name,
                   $target.debugname,
                   macrosToSkip
-                ]"
-                output="true" append="true" />
+                ]" />
               <set_value name="$target" exact="null" />
             </do_if>
           </do_if>
@@ -1362,8 +1332,8 @@
             $stationIsUnderConstruction = not $target.isclass.station
           ]" />
 
-          <debug_to_file directory="'protectsector'" name="'debug_'  + this.assignedcontrolled.idcode + '_' + this.assignedcontrolled"
-            text="'[%s at %s, %s] - Station target: %s {%s}, distance: %s, relation: %s, targets: %s, targetInfo: %s, iswreck: %s, isoperational: %s, exists: %s, isconstruction: %s, state: %s, macro: %s, isknown: %s, isactive: %s, isfunctional: %s'
+          <debug_text
+            text="'ProtectSector [%s at %s, %s] - Station target: %s {%s}, distance: %s, relation: %s, targets: %s, targetInfo: %s, iswreck: %s, isoperational: %s, exists: %s, isconstruction: %s, state: %s, macro: %s, isknown: %s, isactive: %s, isfunctional: %s'
               .[
                 this.assignedcontrolled.debugname,
                 this.assignedcontrolled.sector.knownname,
@@ -1383,8 +1353,7 @@
                 @$target.isknown,
                 @$target.isactive,
                 @$target.isfunctional,
-              ]"
-            output="true" append="true" />
+              ]" />
 
           <do_if value="this.assignedcontrolled.order" comment="Safety check in case the script is called from non-order script">
             <!-- Required for all infinite orders, no effect in case of finite timeout -->
@@ -1450,14 +1419,13 @@
 
       <do_if value="player.age gt @$resupplyCheck">
         <include_interrupt_actions ref="ResupplyWorkaroundRefresh" />
-        <debug_to_file directory="'protectsector'" name="'debug_'  + this.assignedcontrolled.idcode + '_' + this.assignedcontrolled"
-          text="'[%s at %s, %s] - Resupply check'
+        <debug_text
+          text="'ProtectSector [%s at %s, %s] - Resupply check'
             .[
               this.assignedcontrolled.debugname,
               this.assignedcontrolled.sector.knownname,
               this.assignedcontrolled.fleet.name
-            ]"
-          output="true" append="true" />
+            ]" />
         <signal_objects object="this.assignedcontrolled" param="'resupply'" param2="[this.assignedcontrolled.hullpercentage lt 100]"
           param3="$debugChance" />
         <set_value name="$resupplyCheck" exact="player.age + 30min" />
@@ -1544,8 +1512,8 @@
         <set_value name="$targetOptimalDistanceForAttack"
           exact="this.assignedcontrolled.size + this.assignedcontrolled.maxradarrange * $attackDistanceAsPercentageOfRadarRange * 0.01 + $target.size" />
 
-        <debug_to_file directory="'protectsector'" name="'debug_'  + this.assignedcontrolled.idcode + '_' + this.assignedcontrolled"
-          text="'[%s at %s, %s] - move iteration : %s {%s} status: iswreck: %s, isoperational: %s,  pilot: %s (%s), distance - %s, radar percentage: %s, acceptable distance - %s'
+        <debug_text
+          text="'ProtectSector [%s at %s, %s] - move iteration : %s {%s} status: iswreck: %s, isoperational: %s,  pilot: %s (%s), distance - %s, radar percentage: %s, acceptable distance - %s'
             .[
               this.assignedcontrolled.debugname,
               this.assignedcontrolled.sector.knownname,
@@ -1559,8 +1527,7 @@
               $targetDistanceTo,
               $attackDistanceAsPercentageOfRadarRange,
               $targetOptimalDistanceForAttack
-            ]"
-          output="true" append="true" />
+            ]" />
 
         <set_value name="$approachingIterationsCount" operation="add" />
 
@@ -1582,8 +1549,8 @@
           </do_if>
 
           <do_if value="@$targetDistanceToIsNotDecreasing ge 3 or $approachingIterationsCount ge 10">
-            <debug_to_file directory="'protectsector'" name="'debug_'  + this.assignedcontrolled.idcode + '_' + this.assignedcontrolled"
-              text="'[%s at %s, %s] - Too fast for us : %s {%s} status: iswreck: %s, isoperational: %s,  pilot: %s (%s), distance: not decreasing count: %s, iterations count: %s'
+            <debug_text
+              text="'ProtectSector [%s at %s, %s] - Too fast for us : %s {%s} status: iswreck: %s, isoperational: %s,  pilot: %s (%s), distance: not decreasing count: %s, iterations count: %s'
                   .[
                     this.assignedcontrolled.debugname,
                     this.assignedcontrolled.sector.knownname,
@@ -1596,8 +1563,7 @@
                   $target.pilot?,
                   @$targetDistanceToIsNotDecreasing,
                   @$approachingIterationsCount
-                  ]"
-              output="true" append="true" />
+                  ]" />
             <do_if value="$recordActionsToLogBook">
               <set_value name="$textUnit" exact="{1972092401, 1011}.[this.assignedcontrolled.name, this.assignedcontrolled.idcode]" />
               <do_if
@@ -1639,8 +1605,8 @@
                 </check_any>
               </conditions>
               <actions>
-                <debug_to_file directory="'protectsector'" name="'debug_'  + this.assignedcontrolled.idcode + '_' + this.assignedcontrolled"
-                  text="'[%s at %s, %s] - moving is interrupted by %s : %s {%s} status: iswreck: %s, isoperational: %s,  pilot: %s (%s), distance - %s, acceptable distance - %s'
+                <debug_text
+                  text="'ProtectSector [%s at %s, %s] - moving is interrupted by %s : %s {%s} status: iswreck: %s, isoperational: %s,  pilot: %s (%s), distance - %s, acceptable distance - %s'
                     .[
                       this.assignedcontrolled.debugname,
                       this.assignedcontrolled.sector.knownname,
@@ -1654,8 +1620,7 @@
                       $target.pilot?,
                       $targetDistanceTo,
                       $targetOptimalDistanceForAttack
-                    ]"
-                  output="true" append="true" />
+                    ]" />
                 <do_if value="$recordActionsToLogBook">
                   <do_if value="event.name == 'event_object_destroyed'">
                     <set_value name="$textUnit" exact="{1972092401, 1011}.[this.assignedcontrolled.name, this.assignedcontrolled.idcode]" />
@@ -1701,8 +1666,8 @@
         <remove_value name="$positionIdle" />
 
         <do_if value="not $targetOptimalDistanceForAttack? or $targetDistanceTo le $targetOptimalDistanceForAttack">
-          <debug_to_file directory="'protectsector'" name="'debug_'  + this.assignedcontrolled.idcode + '_' + this.assignedcontrolled"
-            text="'[%s at %s, %s] - Run order.fight.attack.object : %s {%s} status: iswreck: %s, isoperational: %s,  pilot: %s (%s), distance - %s, acceptable distance - %s'
+          <debug_text
+            text="'ProtectSector [%s at %s, %s] - Run order.fight.attack.object : %s {%s} status: iswreck: %s, isoperational: %s,  pilot: %s (%s), distance - %s, acceptable distance - %s'
               .[
                 this.assignedcontrolled.debugname,
                 this.assignedcontrolled.sector.knownname,
@@ -1715,8 +1680,7 @@
                 $target.pilot?,
                 $targetDistanceTo,
                 $targetOptimalDistanceForAttack
-              ]"
-            output="true" append="true" />
+              ]" />
           <do_if value="$recordActionsToLogBook">
             <set_value name="$textUnit" exact="{1972092401, 1011}.[this.assignedcontrolled.name, this.assignedcontrolled.idcode]" />
             <do_if
@@ -1745,8 +1709,8 @@
 
           <set_value name="$targetDistanceTo" exact="this.assignedcontrolled.distanceto.{$target}" />
 
-          <debug_to_file directory="'protectsector'" name="'debug_'  + this.assignedcontrolled.idcode + '_' + this.assignedcontrolled"
-            text="'[%s at %s, %s] - After run order.fight.attack.object : %s {%s} status: iswreck: %s, isoperational: %s,  pilot: %s (%s), distance - %s, acceptable distance - %s'
+          <debug_text
+            text="'ProtectSector [%s at %s, %s] - After run order.fight.attack.object : %s {%s} status: iswreck: %s, isoperational: %s,  pilot: %s (%s), distance - %s, acceptable distance - %s'
               .[
                 this.assignedcontrolled.debugname,
                 this.assignedcontrolled.sector.knownname,
@@ -1759,8 +1723,7 @@
                 $target.pilot?,
                 $targetDistanceTo,
                 $targetOptimalDistanceForAttack
-              ]"
-            output="true" append="true" />
+              ]" />
 
           <do_if value="$target.exists and not $target.iswreck and $pursueFleeingTarget and $target.sector == $homeSector">
             <resume label="targetApproaching" />
@@ -1787,8 +1750,8 @@
       </get_jump_path>
 
       <do_if value="$jumpPath.count lt 2">
-        <debug_to_file directory="'protectsector'" name="'debug_'  + this.assignedcontrolled.idcode + '_' + this.assignedcontrolled"
-          text="'[%s at %s, %s] - ERROR: we are not at the target sector, but no jump path found from %s %s to %s %s. aborting.'.
+        <debug_text
+          text="'ProtectSector [%s at %s, %s] - ERROR: we are not at the target sector, but no jump path found from %s %s to %s %s. aborting.'.
           [
             this.assignedcontrolled.debugname,
             this.assignedcontrolled.sector.knownname,
@@ -1797,12 +1760,10 @@
             this.sector,
             $homeSector.knownname,
             $homeSector
-          ]"
-          output="true" append="true" />
+          ]" />
         <do_all exact="$jumpPath.count" counter="$pathIndex">
           <debug_to_file directory="'protectsector'" name="'debug_'  + this.assignedcontrolled.idcode + '_' + this.assignedcontrolled"
-            text="'jumpPath entry %s: %s %s %s'.[$pathIndex, $jumpPath.{$pathIndex}.class, $jumpPath.{$pathIndex}.knownname, $jumpPath.{$pathIndex}]"
-            output="true" append="true" />
+            text="'jumpPath entry %s: %s %s %s'.[$pathIndex, $jumpPath.{$pathIndex}.class, $jumpPath.{$pathIndex}.knownname, $jumpPath.{$pathIndex}]" />
         </do_all>
         <resume label="cleanup" />
       </do_if>
@@ -1849,15 +1810,14 @@
       <remove_value name="$subordinate.pilot.$playerOwnedWorkaroundForRestock" />
     </do_for_each>
     <remove_value name="this.assignedcontrolled.pilot.$playerOwnedWorkaroundForRestock" />
-    <debug_to_file directory="'protectsector'" name="'debug_'  + this.assignedcontrolled.idcode + '_' + this.assignedcontrolled"
-      text="'[%s at %s, %s] - Aborted. Commander: %s. Killed: %s.'.
+    <debug_text
+      text="'ProtectSector [%s at %s, %s] - Aborted. Commander: %s. Killed: %s.'.
           [
             @this.assignedcontrolled.debugname,
             @this.assignedcontrolled.sector.knownname,
             @this.assignedcontrolled.fleet.name,
             @this.assignedcontrolled.fleet.commander.debugname,
             @event.name == 'event_object_destroyed'
-          ]"
-      output="true" append="true" />
+          ]" />
   </on_abort>
 </aiscript>
