@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <diff>
   <add sel="/icons">
-    <icon name="order_protectsector" texture="assets\fx\gui\textures\order\order_patrol.tga" height="32" width="32"></icon>
+    <icon name="order_protectsector" texture="extensions\protectsector\assets\fx\gui\textures\order\order_protectsector.tga" height="32" width="32"></icon>
+    <icon name="order_attackstationinsector" texture="extensions\protectsector\assets\fx\gui\textures\order\order_attackstationinsector.tga" height="32" width="32"></icon>
   </add>
 </diff>
