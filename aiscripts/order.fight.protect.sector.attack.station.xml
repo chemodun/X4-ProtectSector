@@ -1198,14 +1198,13 @@
             ]" />
         <do_if value="(@$isFleeing == true or @$isGoOutRadius == true) and ($i == 1)" negate="true">
           <do_if value="($maxEffectiveTargetCombatRange * 1.2) ge $waypointDistance">
-            <set_value name="$waypointDistanceRatio" exact="$maxEffectiveTargetCombatRange * 1.3 / $waypointDistance" />
+            <set_value name="$waypointDistanceRatio" exact="$maxEffectiveTargetCombatRange * 1.3 /[$waypointDistance, 1].max" />
             <do_if value="$isAttackingPosition">
               <create_position name="$positionToMovePreliminary" object="$target"
                 x="$pathWaypoint.x * $waypointDistanceRatio"
                 y="$pathWaypoint.y * $waypointDistanceRatio"
                 z="$pathWaypoint.z * $waypointDistanceRatio"
                 space="$targetSector" />
-              <!-- Check if the position is already occupied by the other ship -->
             </do_if>
             <do_else>
               <create_position name="$positionToMovePreliminary" object="$primaryTarget"
