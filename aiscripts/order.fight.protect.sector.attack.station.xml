@@ -2006,33 +2006,35 @@
             <set_command command="command.attackobject" param="$primaryTarget" />
             <set_command_action commandaction="commandaction.attackingto" param="$primaryTarget" />
             <wait exact="$updateTime" />
-            <append_to_list name="$accountAttacksStrength" exact="$targetIsReallyAttackedByPrimaryWeapon" />
-            <do_if value="$accountAttacksStrength.count gt 3">
-              <remove_from_list name="$accountAttacksStrength" exact="$accountAttacksStrength.{1}" multiple="false" />
-            </do_if>
-            <debug_text
-              text="'AttackStationInSector [%s]: Target is attacked count: %s. By Primary: %s. Average: %s. Target: %s. Primary: %s. Hull: %s.'.
+            <do_if value="this.attention ge attention.visible">
+              <append_to_list name="$accountAttacksStrength" exact="$targetIsReallyAttackedByPrimaryWeapon" />
+              <do_if value="$accountAttacksStrength.count gt 3">
+                <remove_from_list name="$accountAttacksStrength" exact="$accountAttacksStrength.{1}" multiple="false" />
+              </do_if>
+              <debug_text
+                text="'AttackStationInSector [%s]: Target is attacked count: %s. By Primary: %s. Average: %s. Target: %s. Primary: %s. Hull: %s.'.
                 [this.assignedcontrolled.debugname, $targetIsReallyAttacked, $targetIsReallyAttackedByPrimaryWeapon, @$accountAttacksStrength.average,
                 @$target.debugname, $primaryTarget.debugname, $primaryTarget.hullpercentage]" />
-            <do_if
-              value="(this.attention ge attention.visible) and (($targetIsReallyAttackedByPrimaryWeapon lt 2 and $accountAttacksStrength.count == 1) or ($accountAttacksStrength.count gt 1 and $accountAttacksStrength.average lt 6)) and ($targetIsReallyAttacked lt ($updateTime / 2)f)">
-              <debug_text
-                text="'AttackStationInSector [%s]: AttackFailed. Target %s is not really attacked: %s (%s). Average %s in %s. Safety Indicator: %s. Attack Strength: %s.'.
+              <do_if
+                value="(($targetIsReallyAttackedByPrimaryWeapon lt 2 and $accountAttacksStrength.count == 1) or ($accountAttacksStrength.count gt 1 and $accountAttacksStrength.average lt 6)) and ($targetIsReallyAttacked lt ($updateTime / 2)f)">
+                <debug_text
+                  text="'AttackStationInSector [%s]: AttackFailed. Target %s is not really attacked: %s (%s). Average %s in %s. Safety Indicator: %s. Attack Strength: %s.'.
                   [this.assignedcontrolled.debugname, $target.debugname, $targetIsReallyAttackedByPrimaryWeapon, $targetIsReallyAttacked,
                   @$accountAttacksStrength.average, @$accountAttacksStrength.count, $safetyIndicator, $possibleAttackStrength]" />
-              <do_if value="$targetIsReallyAttackedByPrimaryWeapon gt 1 or $accountAttacksStrength.average gt 2">
-                <set_value name="$safetyIndicator" exact="1" />
-                <clear_list list="$accountAttacksStrength" />
-                <debug_text text="'AttackStationInSector [%s]: AttackFailed. Going to move forward.'.[this.assignedcontrolled.debugname]" />
+                <do_if value="$targetIsReallyAttackedByPrimaryWeapon gt 1 or $accountAttacksStrength.average gt 2">
+                  <set_value name="$safetyIndicator" exact="1" />
+                  <clear_list list="$accountAttacksStrength" />
+                  <debug_text text="'AttackStationInSector [%s]: AttackFailed. Going to move forward.'.[this.assignedcontrolled.debugname]" />
+                </do_if>
+                <do_else>
+                  <debug_text text="'AttackStationInSector [%s]: AttackFailed. Going to select another target.'.[this.assignedcontrolled.debugname]" />
+                  <remove_value name="$positionForAttack" />
+                  <remove_value name="$positionToMove" />
+                  <remove_value name="$targetIsReallyAttacked" />
+                  <clear_list list="$accountAttacksStrength" />
+                  <resume label="acquireTarget" />
+                </do_else>
               </do_if>
-              <do_else>
-                <debug_text text="'AttackStationInSector [%s]: AttackFailed. Going to select another target.'.[this.assignedcontrolled.debugname]" />
-                <remove_value name="$positionForAttack" />
-                <remove_value name="$positionToMove" />
-                <remove_value name="$targetIsReallyAttacked" />
-                <clear_list list="$accountAttacksStrength" />
-                <resume label="acquireTarget" />
-              </do_else>
             </do_if>
           </do_if>
           <do_else>
