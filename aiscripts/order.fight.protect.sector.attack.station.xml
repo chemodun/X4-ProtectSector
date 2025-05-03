@@ -22,7 +22,6 @@
   <interrupts>
     <library>
       <actions name="RefreshTargetsRelatedData">
-        <set_value name="$positionInSector" exact="this.assignedcontrolled.relativeposition.{$targetSector}" />
         <set_value name="$skillCoefficient" exact="1 + ([12 - this.skill.piloting, 0].max)f / 30 + ([12 - this.skill.morale, 0].max)f / 30" />
         <set_value name="$safeDistanceCoefficient" exact="$safeDistanceCoefficientBase * ($skillCoefficient)m" />
         <do_if value="$thisRadius? and @$thisRadius" negate="true">
@@ -30,6 +29,7 @@
         </do_if>
         <do_if value="$primaryTarget? and @$primaryTarget">
           <set_value name="$targetSector" exact="$primaryTarget.sector" />
+          <set_value name="$positionInSector" exact="this.assignedcontrolled.relativeposition.{$targetSector}" />
           <do_if value="$primaryTargetRadius? and @$primaryTargetRadius" negate="true">
             <set_value name="$primaryTargetRadius" exact="$primaryTarget.size / 2m" />
             <set_value name="$maxEffectiveTargetCombatRange"
@@ -785,8 +785,11 @@
     <set_value name="$attackTimeStamp" exact="0s" />
     <create_group groupname="$formationGroup" />
     <set_value name="$droneModeSave" exact="this.assignedcontrolled.defencedronemode" />
-    <set_value name="$travelModeCheckIntervals"
-      exact="[[this.assignedcontrolled.travel.chargetime * 2, $updateTime / 2].max, [this.assignedcontrolled.travel.chargetime * 4, $updateTime].max]" />
+    <create_list name="$travelModeCheckIntervals" />
+    <do_all exact="2" counter="$i">
+      <append_to_list name="$travelModeCheckIntervals"
+        exact="[this.assignedcontrolled.travel.chargetime * 2 * $i, $updateTime * $i / 2].max * (if $isXL then 2 else 1)" />
+    </do_all>
     <create_list name="$accountAttacksStrength" />
     <include_interrupt_actions ref="RefreshTargetsRelatedData" />
   </init>
@@ -798,7 +801,6 @@
           @this.assignedcontrolled.defencenpc.name, @this.assignedcontrolled.defencenpc]" />
       <break_formation object="this.assignedcontrolled" />
       <leave_formation object="this.assignedcontrolled" />
-      <set_value name="$targetSector" exact="$primaryTarget.sector" />
       <label name="approachingTarget" />
       <remove_value name="$positionForAttack" />
       <do_if
