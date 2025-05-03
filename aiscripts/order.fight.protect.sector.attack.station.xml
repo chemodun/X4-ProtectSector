@@ -460,7 +460,7 @@
               <check_value value="this.assignedcontrolled.shieldpercentage le 91" />
               <check_all>
                 <check_value value="$dronesAttacksCount ge 50" />
-                <check_value value="@$joinedToFormationAt == null or (player.age - $joinedToFormationAt) ge 3min" />
+                <check_value value="@$joinedToFormationAt == null or (player.age - $joinedToFormationAt) ge 3min or $dronesAttacksCount ge 200" />
                 <set_value name="$dronesAttacksCountSaved" exact="$dronesAttacksCount" />
                 <set_value name="$dronesAttacksCount" exact="0" />
               </check_all>
@@ -653,6 +653,7 @@
         <force_wingmen_to_formation_offset leader="this.assignedcontrolled.formationleader" />
         <do_if value="@$supportRequestReceived == true">
           <set_value name="$joinedToFormationAt" exact="player.age" />
+          <set_value name="$dronesAttacksCount" exact="0" />
         </do_if>
         <remove_value name="$supportRequestReceived" />
         <abort_called_scripts resume="UnderDroneAttack" />
