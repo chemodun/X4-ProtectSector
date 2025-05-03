@@ -1410,7 +1410,8 @@
               <break />
             </do_if>
             <set_value name="$moveUsingTravelMode"
-              exact="this.assignedcontrolled.travel.available and (player.age - @$latestAttacked) gt 3s and $distanceToMove ge 10km" />
+              exact="this.assignedcontrolled.travel.available and (player.age - @$latestAttacked) gt 3s and ((not this.assignedcontrolled.boost.available) or
+                $distanceToMove ge (this.assignedcontrolled.boost.maxspeed)f * (this.assignedcontrolled.boost.remainingduration)f * 0.66m)" />
             <do_if value="$moveUsingTravelMode">
               <debug_text
                 text="'AttackStationInSector [%s]: SafePathMove: Moving via Travel: Distance: %s. MaxSpeed: %s. Charge time: %s.'.
@@ -1435,7 +1436,7 @@
                     <debug_text
                       text="'AttackStationInSector [%s]: SafePathMove: TravelModeCheckDistance[%s]: Distance from starting point %s (%s) after %s. Traveling: %s. Charging: %s. Coasting: %s. Usual speed: %s.'.
                         [this.assignedcontrolled.debugname, @event.param3, this.assignedcontrolled.distanceto.{[$targetSector, $positionInSector]},
-                        ($travelModeCheckIntervals.{@event.param3})f * (this.assignedcontrolled.maxspeed)f, $travelModeCheckIntervals.{@event.param3},
+                        ($travelModeCheckIntervals.{@event.param3})f * $baseMaxSpeed, $travelModeCheckIntervals.{@event.param3},
                         this.assignedcontrolled.travel.active, this.assignedcontrolled.travel.charging, this.assignedcontrolled.travel.iscoasting,
                         $baseMaxSpeed]"
                     />
@@ -1451,7 +1452,7 @@
                       </check_all>
                     </check_any>
                     <check_value
-                      value="(this.assignedcontrolled.distanceto.{[$targetSector, $positionInSector]})f le (2.5 * ($travelModeCheckIntervals.{@event.param3})f * $baseMaxSpeed)" />
+                      value="(this.assignedcontrolled.distanceto.{[$targetSector, $positionInSector]})f le (($travelModeCheckIntervals.{@event.param3})f * $baseMaxSpeed" />
                   </conditions>
                 </interrupt>
               </move_to>
