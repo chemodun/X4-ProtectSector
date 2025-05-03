@@ -377,9 +377,10 @@
         </do_if>
         <do_if value="@$formationLeader != null and @this.assignedcontrolled != @$formationLeader">
           <debug_text
-            text="'AttackStationInSector [%s]: DronesAttack: Leaving formation. Leader: %s. Local: %s.'.
+            text="'AttackStationInSector [%s]: DronesAttack: Formation: Leaving formation. Leader: %s. Local: %s.'.
                 [this.assignedcontrolled.debugname, @this.assignedcontrolled.formationleader.debugname, @$formationLeader.debugname]" />
           <signal_objects object="@$formationLeader" param="'AntiDronesAttackFormationLeave'" param2="this.assignedcontrolled" />
+          <remove_value name="$joinedToFormationAt" />
           <remove_value name="$formationLeader" />
           <remove_value name="$formationWingman" />
         </do_if>
@@ -387,7 +388,7 @@
       <actions name="FormationBreak">
         <do_if value="@$formationLeader != null and @this.assignedcontrolled == @$formationLeader">
           <debug_text
-            text="'AttackStationInSector [%s]: DronesAttack: Breaking formation. Leader: %s. Local: %s.'.
+            text="'AttackStationInSector [%s]: DronesAttack: Formation: Breaking formation. Leader: %s. Local: %s.'.
                 [this.assignedcontrolled.debugname, @this.assignedcontrolled.formationleader.debugname, @$formationLeader.debugname]" />
           <break_formation object="this.assignedcontrolled" />
           <clear_group group="$formationGroup" />
@@ -459,6 +460,7 @@
               <check_value value="this.assignedcontrolled.shieldpercentage le 91" />
               <check_all>
                 <check_value value="$dronesAttacksCount ge 50" />
+                <check_value value="@$joinedToFormationAt == null or (player.age - $joinedToFormationAt) ge 3min" />
                 <set_value name="$dronesAttacksCountSaved" exact="$dronesAttacksCount" />
                 <set_value name="$dronesAttacksCount" exact="0" />
               </check_all>
@@ -598,6 +600,7 @@
           </do_else>
         </do_if>
         <set_value name="$formationLeader" exact="@event.param2" />
+        <set_value name="$supportRequestReceived" exact="true" />
         <signal_objects object="$formationLeader" param="'AntiDronesAttackFormationJoinRequest'" param2="this.assignedcontrolled" delay="200ms" />
         <include_interrupt_actions ref="RefreshTargetsRelatedData" />
         <do_if value="$currentDistanceToPrimary gt $safeDistanceToPrimary * $safeDistanceCoefficient and @$dronesAttacksCount lt 50">
@@ -628,8 +631,8 @@
       <actions>
         <add_to_group groupname="$formationGroup" object="event.param2" />
         <debug_text
-          text="'AttackStationInSector [%s]: DronesAttack: Formation: Successfully joined: %s. In total: %s.'.
-            [this.assignedcontrolled.debugname, @event.param2.debugname, @$formationGroup.count]" />
+          text="'AttackStationInSector [%s]: DronesAttack: Formation: Successfully joined: %s. In total: %s. List: %s.'.
+            [this.assignedcontrolled.debugname, @event.param2.debugname, @$formationGroup.count, @this.assignedcontrolled.currentformationwingmen]" />
       </actions>
     </handler>
     <handler>
@@ -643,10 +646,15 @@
       </conditions>
       <actions>
         <debug_text
-          text="'AttackStationInSector [%s]: DronesAttack: Formation: Formation update succeeded. Leader: %s.'.
-          [this.assignedcontrolled.debugname, @this.assignedcontrolled.formationleader.debugname, @$formationLeader.debugname]" />
+          text="'AttackStationInSector [%s]: DronesAttack: Formation: Formation update succeeded. Leader: %s. Local: %s. List: %s.'.
+          [this.assignedcontrolled.debugname, @this.assignedcontrolled.formationleader.debugname, @$formationLeader.debugname,
+          @this.assignedcontrolled.currentformationwingmen]" />
         <signal_objects object="$formationLeader" param="'AntiDronesAttackFormationJoined'" param2="this.assignedcontrolled" />
         <force_wingmen_to_formation_offset leader="this.assignedcontrolled.formationleader" />
+        <do_if value="@$supportRequestReceived == true">
+          <set_value name="$joinedToFormationAt" exact="player.age" />
+        </do_if>
+        <remove_value name="$supportRequestReceived" />
         <abort_called_scripts resume="UnderDroneAttack" />
       </actions>
     </handler>
@@ -655,8 +663,9 @@
         <event_object_formation_update_failed object="this.assignedcontrolled" />
         <check_value value="@$formationLeader != null" />
         <debug_text
-          text="'AttackStationInSector [%s]: DronesAttack: Formation: Formation update failed. Leader: %s. Local: %s. Wingman: %s.'.
-          [this.assignedcontrolled.debugname, @this.assignedcontrolled.formationleader.debugname, @$formationLeader.debugname, @$formationWingman]" />
+          text="'AttackStationInSector [%s]: DronesAttack: Formation: Formation update failed. Leader: %s. Local: %s. Wingman: %s. List: %s.'.
+          [this.assignedcontrolled.debugname, @this.assignedcontrolled.formationleader.debugname, @$formationLeader.debugname, @$formationWingman,
+          @this.assignedcontrolled.currentformationwingmen]" />
       </conditions>
     </handler>
     <handler>
@@ -674,8 +683,8 @@
       <actions>
         <set_value name="$currentWingman" exact="if event.param == 'AntiDronesAttackFormationLeave' then event.param2 else event.object" />
         <debug_text
-          text="'AttackStationInSector [%s]: DronesAttack: Formation: Leave request received: %s. Or Destroyed: %s. Currently in: %s.'.
-            [this.assignedcontrolled.debugname, @event.param2.debugname, @event.object.debugname, @$formationGroup.count]" />
+          text="'AttackStationInSector [%s]: DronesAttack: Formation: Leave request received: %s. Or Destroyed: %s. Currently in: %s. List: %s.'.
+            [this.assignedcontrolled.debugname, @event.param2.debugname, @event.object.debugname, @$formationGroup.count, @this.assignedcontrolled.currentformationwingmen]" />
         <remove_from_group group="$formationGroup" object="$currentWingman" />
         <remove_value name="$currentWingman" />
         <do_if value="@$formationGroup.count == 0">
