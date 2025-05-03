@@ -117,7 +117,31 @@
             </do_elseif>
             <!-- <wait exact="10ms" /> -->
           </do_for_each>
+          <do_for_each name="$subordinate" in="this.assignedcontrolled.subordinates.{assignment.supplyfleet}">
+            <do_if value="$subordinate.order.id != 'MoveWait' and $subordinate.sector == $targetSector">
+              <debug_text
+                text="'AttackStationInSector [%s]: Subordinate %s - set them to wait. Class: %s. Assignment: %s. Order: %s.'.
+                  [this.assignedcontrolled.debugname, @$subordinate.debugname, @$subordinate.class, @$subordinate.assignment, @$subordinate.order.id]" />
+              <get_safe_pos result="$subordinatePos" sector="$targetSector" radius="$subordinate.size" ignored="$subordinate" object="this.assignedcontrolled"
+                includefiringrange="true" />
+              <create_order object="$subordinate" id="'MoveWait'" immediate="true">
+                <param name="destination" value="[$targetSector, $subordinatePos]" />
+                <param name="withdraw" value="true" />
+              </create_order>
+              <remove_value name="$subordinatePos" />
+            </do_if>
+          </do_for_each>
         </do_if>
+      </actions>
+      <actions name="RecallSubordinatesFromWait">
+        <do_for_each name="$subordinate" in="this.assignedcontrolled.subordinates.{assignment.supplyfleet}">
+          <do_if value="$subordinate.order.id == 'MoveWait'">
+            <cancel_all_orders object="$subordinate" />
+            <debug_text
+              text="'AttackStationInSector [%s]: Recalling subordinate %s from wait. Class: %s. Assignment: %s. Order: %s.'.
+              [this.assignedcontrolled.debugname, @$subordinate.debugname, @$subordinate.class, @$subordinate.assignment, @$subordinate.order.id]" />
+          </do_if>
+        </do_for_each>
       </actions>
       <actions name="IsNotAcceptableRotation">
         <create_orientation name="$rotationOnTarget" orientation="look_at" refobject="$rotationGetOn" useaimtarget="true">
@@ -2296,6 +2320,7 @@
             param2="this.assignedcontrolled" delay="3s" />
         </do_if>
         <set_drone_mode object="this.assignedcontrolled" category="unitcategory.defence" mode="$droneModeSave" />
+        <include_interrupt_actions ref="RecallSubordinatesFromWait" />
         <remove_value name="$positionInSector" />
         <remove_value name="$thisRadius" />
         <remove_value name="$targetSector" />
@@ -2337,6 +2362,7 @@
     <stop_moving object="this.ship" />
     <remove_value name="$primaryTarget" />
     <set_drone_mode object="this.assignedcontrolled" category="unitcategory.defence" mode="$droneModeSave" />
+    <include_interrupt_actions ref="RecallSubordinatesFromWait" />
   </on_abort>
 
 </aiscript>
