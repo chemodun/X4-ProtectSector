@@ -473,15 +473,17 @@
               @event.param.debugname
             ]" />
         <set_value name="$subordinate" exact="event.param" />
-        <do_if value="@$subordinate.pilot.$escortgroup != null">
-          <do_for_each name="$escortShip" in="$subordinate.pilot.$escortgroup">
+        <do_if value="@$subordinate.pilot != null">
+          <do_if value="@$subordinate.pilot.$escortgroup != null">
+            <do_for_each name="$escortShip" in="$subordinate.pilot.$escortgroup">
+              <remove_value name="$escortShip.pilot.$playerOwnedWorkaroundForRestock" />
+            </do_for_each>
+          </do_if>
+          <do_for_each name="$escortShip" in="$subordinate.subordinates">
             <remove_value name="$escortShip.pilot.$playerOwnedWorkaroundForRestock" />
           </do_for_each>
+          <remove_value name="$subordinate.pilot.$playerOwnedWorkaroundForRestock" />
         </do_if>
-        <do_for_each name="$escortShip" in="$subordinate.subordinates">
-          <remove_value name="$escortShip.pilot.$playerOwnedWorkaroundForRestock" />
-        </do_for_each>
-        <remove_value name="$subordinate.pilot.$playerOwnedWorkaroundForRestock" />
         <remove_value name="$subordinate" />
       </actions>
     </handler>
@@ -595,6 +597,7 @@
             text="{1972092401, 1041}.[$textUnit, $textEnemy, $textHomeSector, $textDestroyedBy]" interaction="showonmap"
             object="this.assignedcontrolled" />
         </do_if>
+        <set_value name="$IdleAfterStationDestroy" exact="true" />
       </do_if>
       <remove_value name="this.assignedcontrolled.aipilot.$targetInfo" />
     </do_if>
@@ -788,6 +791,11 @@
       <do_if value="this.assignedcontrolled.sector != $homeSector">
         <wait min="500ms" max="1s" />
         <resume label="flightToHomeSector" />
+      </do_if>
+
+      <do_if value="@$IdleAfterStationDestroy == true">
+        <set_value name="$idleDelay" exact="if this.assignedcontrolled.isclass.ship_xl then 1min else 30s" />
+        <resume label="goingIdle" />
       </do_if>
 
       <!-- SEARCH ******************************************************************************* -->
@@ -1430,70 +1438,74 @@
           param3="$debugChance" />
         <set_value name="$resupplyCheck" exact="player.age + 30min" />
       </do_if>
-
-      <do_if value="(@$parkingPosition != null) and (not @$parkedAtPosition)">
-
-        <create_orientation name="$orientation" orientation="look_at" refposition="$parkingPosition">
-          <position object="this.assignedcontrolled" />
-        </create_orientation>
-
-        <set_value name="$interruptAfterTime" min="[50s, $idleDelay].min" max="[50s, $idleDelay].max" />
-        <set_value name="$parkingTimestamp" exact="player.age" />
-
-        <move_to object="this.assignedcontrolled" destination="this.assignedcontrolled.sector" abortpath="true" forcerotation="true"
-          forceposition="true"
-          uselocalhighways="false" boost="true" travel="true">
-          <position value="$parkingPosition" />
-          <rotation value="$orientation" />
-          <interrupt_after_time time="$interruptAfterTime" />
-        </move_to>
-
-        <set_value name="$parkedAtPosition"
-          exact="($parkingPosition != null) and (this.assignedcontrolled.distanceto.{$parkingPosition} le 10km)" />
-
-        <do_if value="$parkedAtPosition and $idleDelay - (player.age - $parkingTimestamp) gt 10s">
-          <set_value name="$idleDelay" exact="$idleDelay - (player.age - $parkingTimestamp)" />
-        </do_if>
-        <do_else>
-          <resume label="targetSearching" />
-        </do_else>
-        <set_value name="$positionIdle" exact="$parkingPosition" />
-      </do_if>
-
-      <do_else>
-        <do_if value="this.assignedcontrolled.speed">
-          <stop_moving object="this.assignedcontrolled" />
-        </do_if>
-      </do_else>
-
       <!-- prepare group of subordinates to request fleet reinstate -->
       <include_interrupt_actions ref="SubordinatesRefresh" />
+      <do_if value="@$IdleAfterStationDestroy == true">
+        <remove_value name="$IdleAfterStationDestroy" />
+        <set_command_action commandaction="commandaction.calculating" />
+        <wait exact="$idleDelay" />
+      </do_if>
+      <do_else>
+        <do_if value="(@$parkingPosition != null) and (not @$parkedAtPosition)">
 
-      <do_if value="(not $positionIdle?) or (player.age ge @$positionIdleTime)">
-        <find_object name="$objects" space="this.assignedcontrolled.sector"
-          class="[class.station, class.gate, class.highwayentrygate, class.highwayexitgate]" known="true"
-          recursive="true" multiple="true">
-          <match_relation_to object="this.assignedcontrolled" relation="neutral" comparison="ge" />
-        </find_object>
-        <do_if value="$objects.count gt 0">
-          <set_value name="$object" exact="$objects.random" />
-          <create_position name="$positionIdle" space="this.assignedcontrolled.sector" object="$object" />
-          <remove_value name="$object" />
+          <create_orientation name="$orientation" orientation="look_at" refposition="$parkingPosition">
+            <position object="this.assignedcontrolled" />
+          </create_orientation>
+
+          <set_value name="$interruptAfterTime" min="[50s, $idleDelay].min" max="[50s, $idleDelay].max" />
+          <set_value name="$parkingTimestamp" exact="player.age" />
+
+          <move_to object="this.assignedcontrolled" destination="this.assignedcontrolled.sector" abortpath="true" forcerotation="true"
+            forceposition="true"
+            uselocalhighways="false" boost="true" travel="true">
+            <position value="$parkingPosition" />
+            <rotation value="$orientation" />
+            <interrupt_after_time time="$interruptAfterTime" />
+          </move_to>
+
+          <set_value name="$parkedAtPosition"
+            exact="($parkingPosition != null) and (this.assignedcontrolled.distanceto.{$parkingPosition} le 10km)" />
+
+          <do_if value="$parkedAtPosition and $idleDelay - (player.age - $parkingTimestamp) gt 10s">
+            <set_value name="$idleDelay" exact="$idleDelay - (player.age - $parkingTimestamp)" />
+          </do_if>
+          <do_else>
+            <resume label="targetSearching" />
+          </do_else>
+          <set_value name="$positionIdle" exact="$parkingPosition" />
         </do_if>
         <do_else>
-          <set_value name="$positionIdle" exact="null" />
+          <do_if value="this.assignedcontrolled.speed">
+            <stop_moving object="this.assignedcontrolled" />
+          </do_if>
         </do_else>
-        <remove_value name="$objects" />
-        <set_value name="$positionIdleTime" exact="player.age + 300" />
-      </do_if>
 
-      <run_script name="'move.idle'">
-        <param name="Min" value="[30s, $idleDelay].min" />
-        <param name="Max" value="[30s, $idleDelay].max" />
-        <param name="anchorpos_sector" value="$positionIdle" />
-        <param name="MaxDistance" value="if @$parkingPosition != null then 10km else 100km" />
-        <param name="debugchance" value="$debugChance" />
-      </run_script>
+        <do_if value="(not $positionIdle?) or (player.age ge @$positionIdleTime)">
+          <find_object name="$objects" space="this.assignedcontrolled.sector"
+            class="[class.station, class.gate, class.highwayentrygate, class.highwayexitgate]" known="true"
+            recursive="true" multiple="true">
+            <match_relation_to object="this.assignedcontrolled" relation="neutral" comparison="ge" />
+          </find_object>
+          <do_if value="$objects.count gt 0">
+            <set_value name="$object" exact="$objects.random" />
+            <create_position name="$positionIdle" space="this.assignedcontrolled.sector" object="$object" />
+            <remove_value name="$object" />
+          </do_if>
+          <do_else>
+            <set_value name="$positionIdle" exact="null" />
+          </do_else>
+          <remove_value name="$objects" />
+          <set_value name="$positionIdleTime" exact="player.age + 300" />
+        </do_if>
+
+        <run_script name="'move.idle'">
+          <param name="Min" value="[30s, $idleDelay].min" />
+          <param name="Max" value="[30s, $idleDelay].max" />
+          <param name="anchorpos_sector" value="$positionIdle" />
+          <param name="MaxDistance" value="if @$parkingPosition != null then 10km else 100km" />
+          <param name="debugchance" value="$debugChance" />
+        </run_script>
+      </do_else>
 
       <set_value name="$idleDelay" exact="$delayBetweenScansInSeconds" />
 
@@ -1767,7 +1779,20 @@
         </do_all>
         <resume label="cleanup" />
       </do_if>
-      <find_zone name="$homeLocation" space="$homeSector" normalzone="true" sortbydistanceto="$jumpPath.last" />
+
+      <do_if value="@$jumpPath.last.zone != null">
+        <set_value name="$homeLocation" exact="$jumpPath.last.zone" />
+      </do_if>
+      <do_else>
+        <find_zone name="$homeLocations" space="$homeSector" normalzone="true" sortbydistanceto="$jumpPath.last" multiple="true" />
+        <do_if value="$homeLocations.count gt 0">
+          <set_value name="$homeLocation" exact="$homeLocations.{1}" />
+        </do_if>
+        <remove_value name="$homeLocations" />
+      </do_else>
+
+      <get_safe_pos result="$destinationAtHome" zone="$homeLocation" radius="this.assignedcontrolled.size" min="1km" max="5km" object="$jumpPath.last" />
+
       <remove_value name="$jumpPath" />
 
       <set_command command="command.movetozone" param="$homeLocation" />
@@ -1786,9 +1811,6 @@
       <do_if value="@$desiredParkingPosition != null and @$desiredParkingPosition.{2} != null">
         <set_value name="$destinationAtHome" exact="@$desiredParkingPosition.{2}" />
       </do_if>
-      <do_else>
-        <get_safe_pos result="$destinationAtHome" zone="$homeLocation" radius="this.assignedcontrolled.size" min="1km" max="35km" />
-      </do_else>
 
       <move_to object="this.assignedcontrolled" destination="$homeLocation" travel="true" forceposition="false" finishonapproach="true"
         commandaction="false">
