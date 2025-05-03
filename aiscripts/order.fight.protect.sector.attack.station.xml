@@ -23,6 +23,8 @@
     <library>
       <actions name="RefreshTargetsRelatedData">
         <set_value name="$positionInSector" exact="this.assignedcontrolled.relativeposition.{$targetSector}" />
+        <set_value name="$skillCoefficient" exact="1 + ([12 - this.skill.piloting, 0].max)f / 30 + ([12 - this.skill.morale, 0].max)f / 30" />
+        <set_value name="$safeDistanceCoefficient" exact="$safeDistanceCoefficientBase * ($skillCoefficient)m" />
         <do_if value="$thisRadius? and @$thisRadius" negate="true">
           <set_value name="$thisRadius" exact="this.assignedcontrolled.size / 2m" />
         </do_if>
@@ -786,6 +788,7 @@
     <set_value name="$travelModeCheckIntervals"
       exact="[[this.assignedcontrolled.travel.chargetime * 2, $updateTime / 2].max, [this.assignedcontrolled.travel.chargetime * 4, $updateTime].max]" />
     <create_list name="$accountAttacksStrength" />
+    <include_interrupt_actions ref="RefreshTargetsRelatedData" />
   </init>
   <attention min="unknown">
     <actions>
@@ -841,13 +844,10 @@
         <resume label="finish" />
       </do_if>
 
-      <set_value name="$skillPiloting" exact="this.skill.piloting" />
-      <set_value name="$skillMorale" exact="this.skill.morale" />
-      <set_value name="$skillCoefficient" exact="1 + ([12 - this.skill.piloting, 0].max)f / 30 + ([12 - this.skill.morale, 0].max)f / 30" />
-      <set_value name="$safeDistanceCoefficient" exact="$safeDistanceCoefficientBase * ($skillCoefficient)m" />
+
       <debug_text
         text="'AttackStationInSector [%s]: Skill: Piloting: %s. Morale: %s. Coefficients: Skill: %s. Safe Distance: %s.'.
-        [this.assignedcontrolled.debugname, $skillPiloting, $skillMorale, $skillCoefficient, $safeDistanceCoefficient]" />
+        [this.assignedcontrolled.debugname, this.skill.piloting, this.skill.morale, $skillCoefficient, $safeDistanceCoefficient]" />
 
 
       <!-- adjust $maxEffectiveCombatRange by the distance of the weapon farthest from the front of the ship only for Primary Weapon-->
@@ -1440,19 +1440,31 @@
                         this.assignedcontrolled.travel.active, this.assignedcontrolled.travel.charging, this.assignedcontrolled.travel.iscoasting,
                         $baseMaxSpeed]"
                     />
+                    <check_value
+                      value="(this.assignedcontrolled.distanceto.{[$targetSector, $positionInSector]})f le ($travelModeCheckIntervals.{@event.param3} * $baseMaxSpeed)f" />
+                    <debug_text
+                      text="'AttackStationInSector [%s]: SafePathMove: TravelModeCheckDistance[%s]: Distance too low.'.
+                        [this.assignedcontrolled.debugname, @event.param3]" />
                     <check_any>
                       <check_all>
                         <check_value value="@event.param3 == 1" />
                         <check_value value="this.assignedcontrolled.travel.active" negate="true" />
                         <check_value value="this.assignedcontrolled.travel.charging" negate="true" />
+                        <debug_text
+                          text="'AttackStationInSector [%s]: SafePathMove: TravelModeCheckDistance[%s]: Not started.'.
+                          [this.assignedcontrolled.debugname, @event.param3]" />
                       </check_all>
                       <check_all>
                         <check_value value="@event.param3 == 2" />
                         <check_value value="this.assignedcontrolled.travel.active" negate="true" />
+                        <debug_text
+                          text="'AttackStationInSector [%s]: SafePathMove: TravelModeCheckDistance[%s]: Not moved.'.
+                          [this.assignedcontrolled.debugname, @event.param3]" />
                       </check_all>
                     </check_any>
-                    <check_value
-                      value="(this.assignedcontrolled.distanceto.{[$targetSector, $positionInSector]})f le (($travelModeCheckIntervals.{@event.param3})f * $baseMaxSpeed" />
+                    <debug_text
+                      text="'AttackStationInSector [%s]: SafePathMove: TravelModeCheckDistance[%s]: Breaking.'.
+                      [this.assignedcontrolled.debugname, @event.param3]" />
                   </conditions>
                 </interrupt>
               </move_to>
