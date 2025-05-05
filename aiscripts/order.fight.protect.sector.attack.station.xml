@@ -2236,19 +2236,12 @@
       </do_elseif>
       <remove_value name="$formationLeader" />
       <do_if
-        value="(not (@$goingToRepair == true)) and @this.assignedcontrolled.units.{unitcategory.defence}.count gt @this.assignedcontrolled.availableunits.{unitcategory.defence}.count or
-                @this.assignedcontrolled.units.{unitcategory.repair}.count gt @this.assignedcontrolled.availableunits.{unitcategory.repair}.count">
+        value="(not (@$goingToRepair == true)) and @this.assignedcontrolled.units.{unitcategory.defence}.count gt @this.assignedcontrolled.availableunits.{unitcategory.defence}.count">
         <do_if
           value="@this.assignedcontrolled.units.{unitcategory.defence}.count gt @this.assignedcontrolled.availableunits.{unitcategory.defence}.count">
           <set_drone_mode object="this.assignedcontrolled" category="unitcategory.defence" mode="dronemode.defend" />
           <set_drone_armed object="this.assignedcontrolled" category="unitcategory.defence" armed="false" />
         </do_if>
-        <do_if
-          value="@this.assignedcontrolled.units.{unitcategory.repair}.count gt @this.assignedcontrolled.availableunits.{unitcategory.repair}.count">
-          <set_drone_armed object="this.assignedcontrolled" category="unitcategory.repair" armed="false" />
-        </do_if>
-        <wait exact="$updateTime / 2" />
-        <set_drone_armed object="this.assignedcontrolled" category="unitcategory.repair" armed="true" />
       </do_if>
       <remove_value name="$dronesAttack" />
       <remove_value name="$isFleeing" />
