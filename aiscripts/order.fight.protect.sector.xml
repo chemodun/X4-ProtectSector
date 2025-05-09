@@ -292,6 +292,93 @@
               $ships.count
             ]" />
       </actions>
+      <actions name="ScanForEnemyStations">
+        <clear_list list="$stations" />
+        <do_if value="$attackVisibleOnly">
+          <do_if value="$relationsThreshold ge 25">
+            <do_if value="$macrosToSkip.count == 1">
+              <find_object name="$stations" space="this.assignedcontrolled.sector" class="[class.station, class.buildstorage]" recursive="true" multiple="true"
+                ishostileto="this.owner" known="true"
+                sortbyvalue="(if @loop.element.pilot.$ignoreTime gt player.age then 1000km else 0km) +
+                  (if @loop.element.relationto.{this.owner} le $relationsThresholdInternal then 0km else 1000km) + loop.element.distanceto.{this.assignedcontrolled}"
+                sortdescending="false">
+                <match macro="$macrosToSkip.{1}" negate="true" />
+              </find_object>
+            </do_if>
+            <do_else>
+              <find_object name="$stations" space="this.assignedcontrolled.sector" class="[class.station, class.buildstorage]" recursive="true" multiple="true"
+                ishostileto="this.owner" known="true"
+                sortbyvalue="(if @loop.element.pilot.$ignoreTime gt player.age then 1000km else 0km) +
+                  (if @loop.element.relationto.{this.owner} le $relationsThresholdInternal then 0km else 1000km) +
+                  (if $macrosToSkip.indexof.{@loop.element.macro} == 0 then 0km else 1000km) + loop.element.distanceto.{this.assignedcontrolled}"
+                sortdescending="false" />
+            </do_else>
+          </do_if>
+          <do_else>
+            <do_if value="$macrosToSkip.count == 1">
+              <find_object name="$stations" space="this.assignedcontrolled.sector" class="[class.station, class.buildstorage]" recursive="true" multiple="true"
+                known="true"
+                sortbyvalue="(if @loop.element.pilot.$ignoreTime gt player.age then 1000km else 0km) +
+                  (if @loop.element.relationto.{this.owner} le $relationsThresholdInternal then 0km else 1000km) + loop.element.distanceto.{this.assignedcontrolled}"
+                sortdescending="false">
+                <match_relation_to object="this.assignedcontrolled" relation="neutral" comparison="le" />
+                <match macro="$macrosToSkip.{1}" negate="true" />
+              </find_object>
+            </do_if>
+            <do_else>
+              <find_object name="$stations" space="this.assignedcontrolled.sector" class="[class.station, class.buildstorage]" recursive="true" multiple="true"
+                known="true"
+                sortbyvalue="(if @loop.element.pilot.$ignoreTime gt player.age then 1000km else 0km) +
+                  (if @loop.element.relationto.{this.owner} le $relationsThresholdInternal then 0km else 1000km) +
+                  (if $macrosToSkip.indexof.{@loop.element.macro} == 0 then 0km else 1000km) + loop.element.distanceto.{this.assignedcontrolled}"
+                sortdescending="false">
+                <match_relation_to object="this.assignedcontrolled" relation="neutral" comparison="le" />
+              </find_object>
+            </do_else>
+          </do_else>
+        </do_if>
+        <do_else>
+          <do_if value="$relationsThreshold ge 25">
+            <do_if value="$macrosToSkip.count == 1">
+              <find_object name="$stations" space="this.assignedcontrolled.sector" class="[class.station, class.buildstorage]" recursive="true" multiple="true"
+                ishostileto="this.owner"
+                sortbyvalue="(if @loop.element.pilot.$ignoreTime gt player.age then 1000km else 0km) +
+                  (if @loop.element.relationto.{this.owner} le $relationsThresholdInternal then 0km else 1000km) + loop.element.distanceto.{this.assignedcontrolled}"
+                sortdescending="false">
+                <match macro="$macrosToSkip.{1}" negate="true" />
+              </find_object>
+            </do_if>
+            <do_else>
+              <find_object name="$stations" space="this.assignedcontrolled.sector" class="[class.station, class.buildstorage]" recursive="true" multiple="true"
+                ishostileto="this.owner"
+                sortbyvalue="(if @loop.element.pilot.$ignoreTime gt player.age then 1000km else 0km) +
+                  (if @loop.element.relationto.{this.owner} le $relationsThresholdInternal then 0km else 1000km) +
+                  (if $macrosToSkip.indexof.{@loop.element.macro} == 0 then 0km else 1000km) + loop.element.distanceto.{this.assignedcontrolled}"
+                sortdescending="false" />
+            </do_else>
+          </do_if>
+          <do_else>
+            <do_if value="$macrosToSkip.count == 1">
+              <find_object name="$stations" space="this.assignedcontrolled.sector" class="[class.station, class.buildstorage]" recursive="true" multiple="true"
+                sortbyvalue="(if @loop.element.pilot.$ignoreTime gt player.age then 1000km else 0km) +
+                  (if @loop.element.relationto.{this.owner} le $relationsThresholdInternal then 0km else 1000km) + loop.element.distanceto.{this.assignedcontrolled}"
+                sortdescending="false">
+                <match_relation_to object="this.assignedcontrolled" relation="neutral" comparison="le" />
+                <match macro="$macrosToSkip.{1}" negate="true" />
+              </find_object>
+            </do_if>
+            <do_else>
+              <find_object name="$stations" space="this.assignedcontrolled.sector" class="[class.station, class.buildstorage]" recursive="true" multiple="true"
+                sortbyvalue="(if @loop.element.pilot.$ignoreTime gt player.age then 1000km else 0km) +
+                  (if @loop.element.relationto.{this.owner} le $relationsThresholdInternal then 0km else 1000km) +
+                  (if $macrosToSkip.indexof.{@loop.element.macro} == 0 then 0km else 1000km) + loop.element.distanceto.{this.assignedcontrolled}"
+                sortdescending="false">
+                <match_relation_to object="this.assignedcontrolled" relation="neutral" comparison="le" />
+              </find_object>
+            </do_else>
+          </do_else>
+        </do_else>
+      </actions>
       <actions name="HazardInSector">
         <do_if value="$homeSector.hashazardousregion and @$ignoreHazardThreat != true">
           <write_to_logbook category="general" title="$textTitle" text="{1972092401, 1101}.[$textUnit, $textHomeSector]"
@@ -631,11 +718,32 @@
           <abort_called_scripts resume="protectPlayerShipsCheck" />
         </do_if>
         <do_else>
+          <do_if value="$attackStations and (player.age - $lastStationScan) ge 30s">
+            <include_interrupt_actions ref="ScanForEnemyStations" />
+            <debug_text
+              text="'ProtectSector [%s at %s, %s] - ReScan stations result. Target found: %s. Relation: %s. Threshold: %s. Distance: %s.'.
+              [
+                @this.assignedcontrolled.debugname,
+                @this.assignedcontrolled.sector.knownname,
+                @this.assignedcontrolled.fleet.name,
+                @$stations.{1}.debugname,
+                @$stations.{1}.relationto.{this.owner},
+                $relationsThresholdInternal,
+                @$stations.{1}.distanceto.{this.assignedcontrolled}
+              ]" />
+            <set_value name="$lastStationScan" exact="player.age" />
+            <do_if
+              value="$stations.count gt 0 and @$stations.{1}.relationto.{this.owner} le $relationsThresholdInternal and $macrosToSkip.indexof.{@$stations.{1}.macro} gt 0">
+              <set_value name="$idleTill" exact="0" />
+              <abort_called_scripts resume="checkForEnemyStations" />
+            </do_if>
+          </do_if>
           <do_if value="($idleTill - player.age) gt $delayBetweenScansInSeconds">
             <signal_objects object="this.assignedcontrolled" param="'ProtectSectorReScan'" delay="$delayBetweenScansInSeconds" />
           </do_if>
           <do_else>
             <set_value name="$idleDelay" exact="$updateTime" />
+            <set_value name="$idleTill" exact="0" />
             <abort_called_scripts resume="goingIdle" />
           </do_else>
         </do_else>
@@ -861,10 +969,12 @@
 
     <include_interrupt_actions ref="ResupplyChecksInit" />
     <create_list name="$ships" />
+    <create_list name="$stations" />
     <set_value name="$updateTime"
       exact="if this.assignedcontrolled.isclass.ship_xl then 15min else (if this.assignedcontrolled.isclass.ship_l then 9min else 4min)" />
     <set_value name="$idleDelay" exact="$updateTime" />
     <set_value name="$idleTill" exact="0" />
+    <set_value name="$lastStationScan" exact="player.age" />
   </init>
   <patch sinceversion="104">
     <set_value name="$idleDelay" exact="$delayBetweenScansInSeconds" />
@@ -904,10 +1014,12 @@
     <include_interrupt_actions ref="ResupplyChecksInit" />
     <include_interrupt_actions ref="ResupplyWorkaroundRefresh" />
     <create_list name="$ships" />
+    <create_list name="$stations" />
     <set_value name="$updateTime"
       exact="if this.assignedcontrolled.isclass.ship_xl then 15min else (if this.assignedcontrolled.isclass.ship_l then 9min else 4min)" />
     <set_value name="$idleDelay" exact="$updateTime" />
     <set_value name="$idleTill" exact="0" />
+    <set_value name="$lastStationScan" exact="player.age" />
     <include_interrupt_actions ref="HazardInSector" />
   </patch>
   <attention min="unknown">
@@ -1254,6 +1366,8 @@
 
       </do_elseif>
 
+      <label name="checkForEnemyStations" />
+
       <do_if value="$attackStations">
 
         <!-- SEARCHING  STATION ************************************************************************ -->
@@ -1265,64 +1379,9 @@
               this.assignedcontrolled.fleet.name
             ]" /> -->
 
-        <do_if value="$attackVisibleOnly">
-          <do_if value="$relationsThreshold ge 25">
-            <do_if value="$macrosToSkip.count == 1">
-              <find_object name="$stations" space="this.assignedcontrolled.sector" class="[class.station, class.buildstorage]"
-                recursive="true" multiple="true" sortbydistanceto="this.assignedcontrolled" ishostileto="this.owner" known="true">
-                <match macro="$macrosToSkip.{1}" negate="true" />
-              </find_object>
-            </do_if>
-            <do_else>
-              <find_object name="$stations" space="this.assignedcontrolled.sector" class="[class.station, class.buildstorage]"
-                recursive="true" multiple="true" sortbydistanceto="this.assignedcontrolled" ishostileto="this.owner" known="true" />
-            </do_else>
-          </do_if>
-          <do_else>
-            <do_if value="$macrosToSkip.count == 1">
-              <find_object name="$stations" space="this.assignedcontrolled.sector" class="[class.station, class.buildstorage]"
-                recursive="true" multiple="true" sortbydistanceto="this.assignedcontrolled" known="true">
-                <match_relation_to object="this.assignedcontrolled" relation="neutral" comparison="le" />
-                <match macro="$macrosToSkip.{1}" negate="true" />
-              </find_object>
-            </do_if>
-            <do_else>
-              <find_object name="$stations" space="this.assignedcontrolled.sector" class="[class.station, class.buildstorage]"
-                recursive="true" multiple="true" sortbydistanceto="this.assignedcontrolled" known="true">
-                <match_relation_to object="this.assignedcontrolled" relation="neutral" comparison="le" />
-              </find_object>
-            </do_else>
-          </do_else>
+        <do_if value="@$stations.count == 0">
+          <include_interrupt_actions ref="ScanForEnemyStations" />
         </do_if>
-        <do_else>
-          <do_if value="$relationsThreshold ge 25">
-            <do_if value="$macrosToSkip.count == 1">
-              <find_object name="$stations" space="this.assignedcontrolled.sector" class="[class.station, class.buildstorage]"
-                recursive="true" multiple="true" sortbydistanceto="this.assignedcontrolled" ishostileto="this.owner">
-                <match macro="$macrosToSkip.{1}" negate="true" />
-              </find_object>
-            </do_if>
-            <do_else>
-              <find_object name="$stations" space="this.assignedcontrolled.sector" class="[class.station, class.buildstorage]"
-                recursive="true" multiple="true" sortbydistanceto="this.assignedcontrolled" ishostileto="this.owner" />
-            </do_else>
-          </do_if>
-          <do_else>
-            <do_if value="$macrosToSkip.count == 1">
-              <find_object name="$stations" space="this.assignedcontrolled.sector" class="[class.station, class.buildstorage]"
-                recursive="true" multiple="true" sortbydistanceto="this.assignedcontrolled">
-                <match_relation_to object="this.assignedcontrolled" relation="neutral" comparison="le" />
-                <match macro="$macrosToSkip.{1}" negate="true" />
-              </find_object>
-            </do_if>
-            <do_else>
-              <find_object name="$stations" space="this.assignedcontrolled.sector" class="[class.station, class.buildstorage]"
-                recursive="true" multiple="true" sortbydistanceto="this.assignedcontrolled">
-                <match_relation_to object="this.assignedcontrolled" relation="neutral" comparison="le" />
-              </find_object>
-            </do_else>
-          </do_else>
-        </do_else>
 
         <set_value name="$target" exact="null" />
 
@@ -1366,7 +1425,7 @@
                 ]" />
               <set_value name="$target" exact="$station" />
             </do_elseif>
-            <do_if value="$target != null and $macrosToSkip.indexof.{@$target.macro} gt 0">
+            <do_if value="$target != null and $macrosToSkip.indexof.{@$target.macro} gt 0 ">
               <debug_text
                 text="'ProtectSector [%s at %s, %s] - Station: %s - is an a list of macros to skip: %s. Skipping'
                 .[
@@ -1382,10 +1441,10 @@
           <do_if value="$target != null">
             <break />
           </do_if>
-          <wait min="5ms" max="15ms" profile="flat"
-            comment="we fire while targetApproaching the target. wait is just to ensure we don't have infinite loops if moving returns immediately" />
+          <wait min="5ms" max="15ms" profile="flat" comment="Wait is just to ensure we don't have infinite loops" />
         </do_for_each>
 
+        <clear_list list="$stations" />
 
         <do_if value="$target != null">
 
