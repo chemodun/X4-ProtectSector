@@ -28,6 +28,7 @@
       <t id="182">Park exactly there</t>
       <t id="191">Delay between scans, seconds</t>
       <t id="201">Attack distance: percentage of radar range</t>
+      <t id="211">Ignore the threats of hazardous zones. Some sectors contains a hazardous zones, which can destroy a ships. You will ignore it...</t>
       <t id="901">Record to logbook</t>
       <t id="1000">..: Protect Sector :..</t>
       <t id="1001">ship</t>
@@ -47,6 +48,7 @@
       <t id="1042">%s: %s in %s is abandoned</t>
       <t id="1043">%s: %s is left %s</t>
       <t id="1044">%s: %s in %s is too fast</t>
+      <t id="1101">%s: The %s contains a \033Rhazardous\033X zones. Stopping to work...</t>
       <t id="10001">Attack Station</t>
       <t id="10011">An experimental order to attack only stations. Available only for L and XL ships</t>
     </page>

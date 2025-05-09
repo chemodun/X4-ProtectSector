@@ -26,6 +26,7 @@
           <param name="parkInCenterOfSector" value="$orderdef.$parkInCenterOfSector" />
           <param name="desiredParkingPosition" value="$orderdef.$desiredParkingPosition" />
           <param name="delayBetweenScans" value="$orderdef.$delayBetweenScans" />
+          <param name="ignoreHazardousZones" value="$orderdef.$ignoreHazardousZones" />
           <param name="recordActionsToLogBook" value="$orderdef.$recordActionsToLogBook" />
           <param name="isStartedByPlayer" value="false" />
         </create_order>
@@ -52,6 +53,7 @@
         <set_value name="$orderdef.$parkInCenterOfSector" exact="$order.$parkInCenterOfSector" />
         <set_value name="$orderdef.$desiredParkingPosition" exact="$order.$desiredParkingPosition" />
         <set_value name="$orderdef.$delayBetweenScans" exact="$order.$delayBetweenScans" />
+        <set_value name="$orderdef.$ignoreHazardousZones" exact="$order.$ignoreHazardousZones" />
         <set_value name="$orderdef.$recordActionsToLogBook" exact="$order.$recordActionsToLogBook" />
         <run_script name="$scriptname">
           <param name="homeSector" value="$orderdef.$homeSector" />
@@ -75,6 +77,7 @@
           <param name="parkInCenterOfSector" value="$orderdef.$parkInCenterOfSector" />
           <param name="desiredParkingPosition" value="$orderdef.$desiredParkingPosition" />
           <param name="delayBetweenScans" value="$orderdef.$delayBetweenScans" />
+          <param name="ignoreHazardousZones" value="$orderdef.$ignoreHazardousZones" />
           <param name="recordActionsToLogBook" value="$orderdef.$recordActionsToLogBook" />
           <param name="isStartedByPlayer" value="false" />
         </run_script>
