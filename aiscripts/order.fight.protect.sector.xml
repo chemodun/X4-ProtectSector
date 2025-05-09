@@ -228,11 +228,15 @@
                   this.assignedcontrolled.fleet.name
                 ]" /> -->
             <find_ship name="$ships" space="this.assignedcontrolled.sector" class="$classesForAttack" recursive="true" multiple="true" isinliveview="true"
-              ishostileto="this.owner" sortdescending="false"
+              ishostileto="this.owner" checkoperational="true" docked="false"
               sortbyvalue="(if @loop.element.pilot.$ignoreTime gt player.age then 1000km else 0km) +
-                (if @loop.element.relationto.{this.owner} le $relationsThresholdInternal then 0km else 1000km) + loop.element.distanceto.{this.assignedcontrolled}">
+                (if @loop.element.relationto.{this.owner} le $relationsThresholdInternal then 0km else 1000km) + loop.element.distanceto.{this.assignedcontrolled}"
+              sortdescending="false">
               <match trueowner="faction.player" negate="true" />
-              <match race="race.drone" negate="true" />
+              <match owner="faction.ownerless" negate="true" />
+              <match state="componentstate.wreck" negate="true" />
+              <match_pilot active="true" />
+              <match_pilot race="race.drone" negate="true" />
             </find_ship>
           </do_if>
           <do_else>
@@ -243,11 +247,15 @@
                   this.assignedcontrolled.fleet.name
                 ]" /> -->
             <find_ship name="$ships" space="this.assignedcontrolled.sector" class="$classesForAttack" recursive="true" multiple="true" isinliveview="true"
+              checkoperational="true" docked="false"
               sortbyvalue="(if @loop.element.pilot.$ignoreTime gt player.age then 1000km else 0km) +
                 (if @loop.element.relationto.{this.owner} le $relationsThresholdInternal then 0km else 1000km) + loop.element.distanceto.{this.assignedcontrolled}"
               sortdescending="false">
               <match trueowner="faction.player" negate="true" />
-              <match race="race.drone" negate="true" />
+              <match owner="faction.ownerless" negate="true" />
+              <match state="componentstate.wreck" negate="true" />
+              <match_pilot active="true" />
+              <match_pilot race="race.drone" negate="true" />
             </find_ship>
           </do_else>
         </do_if>
@@ -260,11 +268,15 @@
                   this.assignedcontrolled.fleet.name
                 ]" /> -->
             <find_ship name="$ships" space="this.assignedcontrolled.sector" class="$classesForAttack" recursive="true" multiple="true" ishostileto="this.owner"
+              checkoperational="true" docked="false"
               sortbyvalue="(if @loop.element.pilot.$ignoreTime gt player.age then 1000km else 0km) +
                 (if @loop.element.relationto.{this.owner} le $relationsThresholdInternal then 0km else 1000km) + loop.element.distanceto.{this.assignedcontrolled}"
               sortdescending="false">
               <match trueowner="faction.player" negate="true" />
-              <match race="race.drone" negate="true" />
+              <match owner="faction.ownerless" negate="true" />
+              <match state="componentstate.wreck" negate="true" />
+              <match_pilot active="true" />
+              <match_pilot race="race.drone" negate="true" />
             </find_ship>
           </do_if>
           <do_else>
@@ -274,23 +286,27 @@
                   this.assignedcontrolled.sector.knownname,
                   this.assignedcontrolled.fleet.name
                 ]" /> -->
-            <find_ship name="$ships" space="this.assignedcontrolled.sector" class="$classesForAttack" recursive="true" multiple="true"
+            <find_ship name="$ships" space="this.assignedcontrolled.sector" class="$classesForAttack" recursive="true" multiple="true" checkoperational="true"
+              docked="false"
               sortbyvalue="(if @loop.element.pilot.$ignoreTime gt player.age then 1000km else 0km) +
                 (if @loop.element.relationto.{this.owner} le $relationsThresholdInternal then 0km else 1000km) + loop.element.distanceto.{this.assignedcontrolled}"
               sortdescending="false">
               <match trueowner="faction.player" negate="true" />
-              <match race="race.drone" negate="true" />
+              <match owner="faction.ownerless" negate="true" />
+              <match state="componentstate.wreck" negate="true" />
+              <match_pilot active="true" />
+              <match_pilot race="race.drone" negate="true" />
             </find_ship>
           </do_else>
         </do_else>
-        <debug_text
+        <!-- <debug_text
           text="'ProtectSector [%,s at %s, %s] - ScanForEnemyShips: found %s ships.'.
             [
               this.assignedcontrolled.debugname,
               this.assignedcontrolled.sector.knownname,
               this.assignedcontrolled.fleet.name,
               $ships.count
-            ]" />
+            ]" /> -->
       </actions>
       <actions name="ScanForEnemyStations">
         <clear_list list="$stations" />
@@ -303,6 +319,8 @@
                   (if @loop.element.relationto.{this.owner} le $relationsThresholdInternal then 0km else 1000km) + loop.element.distanceto.{this.assignedcontrolled}"
                 sortdescending="false">
                 <match macro="$macrosToSkip.{1}" negate="true" />
+                <match state="componentstate.wreck" negate="true" />
+                <match state="componentstate.operational" />
               </find_object>
             </do_if>
             <do_else>
@@ -311,7 +329,10 @@
                 sortbyvalue="(if @loop.element.pilot.$ignoreTime gt player.age then 1000km else 0km) +
                   (if @loop.element.relationto.{this.owner} le $relationsThresholdInternal then 0km else 1000km) +
                   (if $macrosToSkip.indexof.{@loop.element.macro} == 0 then 0km else 1000km) + loop.element.distanceto.{this.assignedcontrolled}"
-                sortdescending="false" />
+                sortdescending="false">
+                <match state="componentstate.wreck" negate="true" />
+                <match state="componentstate.operational" />
+              </find_object>
             </do_else>
           </do_if>
           <do_else>
@@ -323,6 +344,8 @@
                 sortdescending="false">
                 <match_relation_to object="this.assignedcontrolled" relation="neutral" comparison="le" />
                 <match macro="$macrosToSkip.{1}" negate="true" />
+                <match state="componentstate.wreck" negate="true" />
+                <match state="componentstate.operational" />
               </find_object>
             </do_if>
             <do_else>
@@ -333,6 +356,8 @@
                   (if $macrosToSkip.indexof.{@loop.element.macro} == 0 then 0km else 1000km) + loop.element.distanceto.{this.assignedcontrolled}"
                 sortdescending="false">
                 <match_relation_to object="this.assignedcontrolled" relation="neutral" comparison="le" />
+                <match state="componentstate.wreck" negate="true" />
+                <match state="componentstate.operational" />
               </find_object>
             </do_else>
           </do_else>
@@ -346,6 +371,8 @@
                   (if @loop.element.relationto.{this.owner} le $relationsThresholdInternal then 0km else 1000km) + loop.element.distanceto.{this.assignedcontrolled}"
                 sortdescending="false">
                 <match macro="$macrosToSkip.{1}" negate="true" />
+                <match state="componentstate.wreck" negate="true" />
+                <match state="componentstate.operational" />
               </find_object>
             </do_if>
             <do_else>
@@ -354,7 +381,10 @@
                 sortbyvalue="(if @loop.element.pilot.$ignoreTime gt player.age then 1000km else 0km) +
                   (if @loop.element.relationto.{this.owner} le $relationsThresholdInternal then 0km else 1000km) +
                   (if $macrosToSkip.indexof.{@loop.element.macro} == 0 then 0km else 1000km) + loop.element.distanceto.{this.assignedcontrolled}"
-                sortdescending="false" />
+                sortdescending="false">
+                <match state="componentstate.wreck" negate="true" />
+                <match state="componentstate.operational" />
+              </find_object>
             </do_else>
           </do_if>
           <do_else>
@@ -365,6 +395,8 @@
                 sortdescending="false">
                 <match_relation_to object="this.assignedcontrolled" relation="neutral" comparison="le" />
                 <match macro="$macrosToSkip.{1}" negate="true" />
+                <match state="componentstate.wreck" negate="true" />
+                <match state="componentstate.operational" />
               </find_object>
             </do_if>
             <do_else>
@@ -374,6 +406,8 @@
                   (if $macrosToSkip.indexof.{@loop.element.macro} == 0 then 0km else 1000km) + loop.element.distanceto.{this.assignedcontrolled}"
                 sortdescending="false">
                 <match_relation_to object="this.assignedcontrolled" relation="neutral" comparison="le" />
+                <match state="componentstate.wreck" negate="true" />
+                <match state="componentstate.operational" />
               </find_object>
             </do_else>
           </do_else>
@@ -464,37 +498,35 @@
     </handler>
     <handler>
       <conditions>
-        <check_all>
-          <event_player_owned_attacked />
-          <check_value value="@$protectPlayerShipsInSector" />
-          <check_any>
-            <check_value value="@$protectOnlyNonMilitaryShips" negate="true" />
-            <check_all>
-              <check_value value="@$protectOnlyNonMilitaryShips" />
-              <check_any>
-                <check_value value="@event.object.primarypurpose != purpose.fight" />
-                <check_value value="@event.object.isclass.station" />
-              </check_any>
-            </check_all>
-          </check_any>
-          <check_value value="@event.param.trueowner.hasrelation.enemy.{this.trueowner}" />
-          <check_value value="@event.param.pilot.race == race.drone" negate="true" />
-          <check_value value="@event.object.sector == this.assignedcontrolled.sector and $homeSector == this.assignedcontrolled.sector" />
-          <check_value value="@event.object.isclass.ship or event.object.isclass.station" />
-          <check_value value="@event.object != this.assignedcontrolled" />
-          <check_value value="@event.object.order.id != 'ProtectSector'" />
-          <check_value value="@event.object.toplevelcommander != 'ProtectSector'" />
-          <check_value value="@event.object.assignedcontrolled.defaultorder.id != 'ProtectSector'" />
-          <check_value value="@event.object.assignedcontrolled.toplevelcommander.defaultorder.id != 'ProtectSector'" />
-          <check_value value="@event.param.isclass.{$classesForAttack}" />
-          <check_value value="@$target == null" />
-          <check_value value="@$targetOnResponse == null" />
-        </check_all>
+        <event_player_owned_attacked />
+        <check_value value="@$protectPlayerShipsInSector" />
+        <check_any>
+          <check_value value="@$protectOnlyNonMilitaryShips" negate="true" />
+          <check_all>
+            <check_value value="@$protectOnlyNonMilitaryShips" />
+            <check_any>
+              <check_value value="@event.object.primarypurpose != purpose.fight" />
+              <check_value value="@event.object.isclass.station" />
+            </check_any>
+          </check_all>
+        </check_any>
+        <check_value value="@event.param.trueowner.hasrelation.enemy.{this.trueowner}" />
+        <check_value value="@event.param.pilot.race == race.drone" negate="true" />
+        <check_value value="@event.object.sector == this.assignedcontrolled.sector and $homeSector == this.assignedcontrolled.sector" />
+        <check_value value="@event.object.isclass.ship or event.object.isclass.station" />
+        <check_value value="@event.object != this.assignedcontrolled" />
+        <check_value value="@event.object.order.id != 'ProtectSector'" />
+        <check_value value="@event.object.toplevelcommander != 'ProtectSector'" />
+        <check_value value="@event.object.assignedcontrolled.defaultorder.id != 'ProtectSector'" />
+        <check_value value="@event.object.assignedcontrolled.toplevelcommander.defaultorder.id != 'ProtectSector'" />
+        <check_value value="@event.param.isclass.{$classesForAttack}" />
+        <check_value value="@$target == null" />
+        <check_value value="@$targetOnResponse == null" />
+        <set_value name="$idleTill" exact="0" />
       </conditions>
       <actions>
-        <set_value name="$idleTill" exact="player.age" />
         <debug_text
-          text="'ProtectSector [%s at %s, %s]:  %s, our : %s {%s} in sector: %s with order: %s, top commander:  %s {%s} in sector: %s with order: %s,  assigned:  %s {%s} in sector: %s with order: %s, assigned top commander:  %s {%s} in sector: %s with order: %s, attacker: %s {%s}'
+          text="'ProtectSector [%s at %s, %s]: Event: %s, our : %s {%s} in sector: %s with order: %s, top commander:  %s {%s} in sector: %s with order: %s,  assigned:  %s {%s} in sector: %s with order: %s, assigned top commander:  %s {%s} in sector: %s with order: %s, attacker: %s {%s}'
             .[
               this.assignedcontrolled.debugname,
               this.assignedcontrolled.sector.knownname,
@@ -537,8 +569,6 @@
             object="this.assignedcontrolled" />
         </do_if>
         <apply_experience entity="this" experience="'ship_disable_easy'" chance="60" />
-        <clear_list list="$ships" />
-        <append_to_list name="$ships" exact="$targetOnResponse" />
         <abort_called_scripts resume="protectPlayerShipsCheck" />
       </actions>
     </handler>
@@ -553,7 +583,7 @@
       </conditions>
       <actions>
         <debug_text
-          text="'ProtectSector [%s at %s, %s]: Event %s : %s{%s} status: iswreck: %s, isoperational: %s,  pilot: %s (%s), param: %s {%s}, target info - %s'
+          text="'ProtectSector [%s at %s, %s]: Event: %s : %s{%s} status: iswreck: %s, isoperational: %s,  pilot: %s (%s), param: %s {%s}, target info - %s'
             .[
               this.assignedcontrolled.debugname,
               this.assignedcontrolled.sector.knownname,
@@ -689,9 +719,11 @@
       <conditions>
         <event_object_signalled object="this.assignedcontrolled" param="'ProtectSectorReScan'" />
         <check_value value="@$idleTill gt player.age" />
+        <check_value value="@$target == null" />
+        <check_value value="@$targetOnResponse == null" />
       </conditions>
       <actions>
-        <debug_text
+        <!-- <debug_text
           text="'ProtectSector [%s at %s, %s]: ReScan requested. Finish after: %s. ReScan delay: %s.'.
             [
               @this.assignedcontrolled.debugname,
@@ -699,13 +731,12 @@
               @this.assignedcontrolled.fleet.name,
               @$idleTill - player.age,
               $delayBetweenScansInSeconds
-            ]" />
+            ]" /> -->
         <include_interrupt_actions ref="ScanForEnemyShips" />
         <do_if
           value="@$ships.count gt 0 and @$ships.{1}.relationto.{this.owner} le $relationsThresholdInternal and (@$ships.{1}.pilot.$ignoreTime == null or @$ships.{1}.pilot.$ignoreTime le player.age)">
-          <set_value name="$idleTill" exact="0" />
           <debug_text
-            text="'ProtectSector [%s at %s, %s]: ReScan result. Target found: %s. Relation: %s. Threshold: %s. Distance: %s.'.
+            text="'ProtectSector [%s at %s, %s]: ReScan result. Target found: %s. Relation: %s. Threshold: %s. Distance: %s. Idle till: %s'.
             [
               @this.assignedcontrolled.debugname,
               @this.assignedcontrolled.sector.knownname,
@@ -713,38 +744,46 @@
               @$ships.{1}.debugname,
               @$ships.{1}.relationto.{this.owner},
               $relationsThresholdInternal,
-              @$ships.{1}.distanceto.{this.assignedcontrolled}
+              @$ships.{1}.distanceto.{this.assignedcontrolled},
+              $idleTill
             ]" />
-          <abort_called_scripts resume="protectPlayerShipsCheck" />
+          <do_if value="@$idleTill gt 0">
+            <set_value name="$idleTill" exact="0" />
+            <abort_called_scripts resume="protectPlayerShipsCheck" />
+          </do_if>
         </do_if>
         <do_else>
           <do_if value="$attackStations and (player.age - $lastStationScan) ge 30s">
             <include_interrupt_actions ref="ScanForEnemyStations" />
-            <debug_text
-              text="'ProtectSector [%s at %s, %s]: ReScan stations result. Target found: %s. Relation: %s. Threshold: %s. Distance: %s.'.
-              [
-                @this.assignedcontrolled.debugname,
-                @this.assignedcontrolled.sector.knownname,
-                @this.assignedcontrolled.fleet.name,
-                @$stations.{1}.debugname,
-                @$stations.{1}.relationto.{this.owner},
-                $relationsThresholdInternal,
-                @$stations.{1}.distanceto.{this.assignedcontrolled}
-              ]" />
             <set_value name="$lastStationScan" exact="player.age" />
             <do_if
               value="$stations.count gt 0 and @$stations.{1}.relationto.{this.owner} le $relationsThresholdInternal and $macrosToSkip.indexof.{@$stations.{1}.macro} gt 0">
-              <set_value name="$idleTill" exact="0" />
-              <abort_called_scripts resume="checkForEnemyStations" />
+              <debug_text
+                text="'ProtectSector [%s at %s, %s]: ReScan stations result. Target found: %s. Relation: %s. Threshold: %s. Distance: %s.'.
+                  [
+                    @this.assignedcontrolled.debugname,
+                    @this.assignedcontrolled.sector.knownname,
+                    @this.assignedcontrolled.fleet.name,
+                    @$stations.{1}.debugname,
+                    @$stations.{1}.relationto.{this.owner},
+                    $relationsThresholdInternal,
+                    @$stations.{1}.distanceto.{this.assignedcontrolled}
+                  ]" />
+              <do_if value="@$idleTill gt 0">
+                <set_value name="$idleTill" exact="0" />
+                <abort_called_scripts resume="checkForEnemyStations" />
+              </do_if>
             </do_if>
           </do_if>
           <do_if value="($idleTill - player.age) gt $delayBetweenScansInSeconds">
             <signal_objects object="this.assignedcontrolled" param="'ProtectSectorReScan'" delay="$delayBetweenScansInSeconds" />
           </do_if>
           <do_else>
-            <set_value name="$idleDelay" exact="$updateTime" />
-            <set_value name="$idleTill" exact="0" />
-            <abort_called_scripts resume="goingIdle" />
+            <do_if value="@$idleTill gt 0">
+              <set_value name="$idleDelay" exact="$updateTime" />
+              <set_value name="$idleTill" exact="0" />
+              <abort_called_scripts resume="goingIdle" />
+            </do_if>
           </do_else>
         </do_else>
       </actions>
@@ -1087,7 +1126,7 @@
       <label name="protectPlayerShipsCheck" />
 
       <debug_text
-        text="'ProtectSector [%s at %s, %s]: Classes: %s, Classes possible: %s. Station attack: %s. Protect: %s.'.
+        text="'ProtectSector [%s at %s, %s]: Classes: %s, Classes possible: %s. Station attack: %s. Protect: %s. Response on: %s. Ships: %s'.
           [
             this.assignedcontrolled.debugname,
             this.assignedcontrolled.sector.knownname,
@@ -1095,7 +1134,9 @@
             $classesForAttack,
             $classesAcceptableForAttack,
             $attackStations,
-            $protectPlayerShipsInSector
+            $protectPlayerShipsInSector,
+            $targetOnResponse,
+            $ships
           ]" />
 
       <do_if value="$classesForAttack.count">
@@ -1113,7 +1154,7 @@
           </do_if>
         </do_if>
         <do_else>
-          <create_list name="$ships" />
+          <clear_list list="$ships" />
           <append_to_list name="$ships" exact="$targetOnResponse" />
           <debug_text
             text="'ProtectSector [%s at %s, %s]: Response on attack by: %s. List of ships: %s. Target: %s'.
@@ -1272,9 +1313,8 @@
           <wait min="5ms" max="15ms" profile="flat" />
         </do_while>
         <clear_list list="$ships" />
+        <set_value name="$targetOnResponse" exact="null" />
         <do_if value="$target != null">
-
-          <set_value name="$targetOnResponse" exact="null" />
 
           <do_if value="$target.coverowner">
             <signal_objects object="$target" param="'LoseCover'" param2="true" />
@@ -1650,14 +1690,14 @@
             <set_value name="$idleTill" exact="player.age + $idleDelay" />
             <signal_objects object="this.assignedcontrolled" param="'ProtectSectorReScan'" delay="$delayBetweenScansInSeconds" />
             <do_if value="$homeSector.hashazardousregion">
-              <debug_text
+              <!-- <debug_text
                 text="'ProtectSector [%s at %s, %s]: Hazardous region - waiting for %s seconds'.
                 [
                   this.assignedcontrolled.debugname,
                   this.assignedcontrolled.sector.knownname,
                   this.assignedcontrolled.fleet.name,
                   $idleDelay
-                ]" />
+                ]" /> -->
               <get_safe_pos result="$positionIdle" object="this.assignedcontrolled" sector="this.assignedcontrolled.sector" />
               <run_script name="'move.idle'">
                 <param name="TimeOut" value="$idleDelay" />
