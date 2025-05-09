@@ -456,6 +456,7 @@
             <param name="ignoreHazardThreat" value="false" />
             <param name="recordActionsToLogBook" value="true" />
             <param name="isStartedByPlayer" value="false" />
+            <param name="debugchance" value="$debugchance" />
           </create_order>
           <return />
         </do_if>
@@ -627,8 +628,7 @@
             ]" />
         <!-- prepare group of subordinates to request fleet reinstate -->
         <include_interrupt_actions ref="SubordinatesRefresh" />
-        <signal_objects object="player.entity" param="'reconstitute_fleet'" param2="this.assignedcontrolled"
-          param3="this.assignedcontrolled.fleetunits" />
+        <signal_objects object="player.entity" param="'reconstitute_fleet'" param2="this.assignedcontrolled" param3="this.assignedcontrolled.fleetunits" />
       </actions>
     </handler>
     <handler consume="false">
@@ -1357,6 +1357,7 @@
             <param name="MaxQueueDelay" value="10s" />
             <param name="caption" value="{1016, 6}.[this.assignedcontrolled.knownname, this.assignedcontrolled.idcode]" />
             <param name="interactive" value="false" />
+            <param name="debugchance" value="$debugchance" />
           </run_script>
         </do_if>
 
@@ -1511,7 +1512,7 @@
           <do_if value="@$attackStationsInternal">
             <create_order id="'AttackStationInSector'" object="this.assignedcontrolled" immediate="true">
               <param name="primaryTarget" value="$target" />
-              <param name="debugChance" value="100" />
+              <param name="debugchance" value="$debugchance" />
             </create_order>
           </do_if>
           <do_else>
@@ -1527,12 +1528,14 @@
                 <param name="squad_attack" value="true" />
                 <param name="allowboost" value="true" />
                 <param name="forceprimarytarget" value="true" />
+                <param name="debugchance" value="$debugchance" />
               </create_order>
             </do_if>
             <do_else>
               <create_order id="'TacticalOrder'" object="this.assignedcontrolled" immediate="true">
                 <param name="selectedtarget" value="$target" />
                 <param name="aggressiveness" value="5" />
+                <param name="debugchance" value="$debugchance" />
               </create_order>
             </do_else>
           </do_else>
@@ -1560,7 +1563,7 @@
               this.assignedcontrolled.sector.knownname,
               this.assignedcontrolled.fleet.name
             ]" />
-        <signal_objects object="this.assignedcontrolled" param="'resupply'" param2="[this.assignedcontrolled.hullpercentage lt 100]" />
+        <signal_objects object="this.assignedcontrolled" param="'resupply'" param2="[this.assignedcontrolled.hullpercentage lt 100]" param3="$debugchance" />
         <set_value name="$resupplyCheck" exact="player.age + 30min" />
       </do_if>
       <!-- prepare group of subordinates to request fleet reinstate -->
@@ -1655,6 +1658,7 @@
               <param name="TimeOut" value="$idleDelay" />
               <param name="anchorpos_sector" value="$positionIdle" />
               <param name="MaxDistance" value="10km" />
+              <param name="debugchance" value="$debugchance" />
             </run_script>
             <do_if value="$idleTill gt player.age">
               <set_value name="$idleDelay" exact="$idleTill - player.age" />
@@ -1881,6 +1885,7 @@
             <param name="targetclasses" value="$classesAcceptableForAttack" />
             <param name="allowboost" value="not $shieldsPreserveOnFlight" />
             <param name="forceprimarytarget" value="true" />
+            <param name="debugchance" value="$debugchance" />
           </run_script>
 
           <set_value name="$targetDistanceTo" exact="this.assignedcontrolled.distanceto.{$target}" />
