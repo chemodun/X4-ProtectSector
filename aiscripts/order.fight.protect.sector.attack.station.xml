@@ -10,7 +10,7 @@
         comment="Leader of the  temporary formation">
         <input_param name="class" value="[class.ship_l]" />
       </param>
-      <param name="debugChance" type="bool" default="0" advanced="true" text="{1041, 10086}" comment="Print debug output">
+      <param name="debugchance" type="bool" default="0" advanced="true" text="{1041, 10086}" comment="Print debug output">
         <input_param name="truevalue" value="100" />
       </param>
     </params>
@@ -87,7 +87,7 @@
               <set_value name="$subordinate.pilot.$playerOwnedWorkaroundForRestock" exact="true" />
               <create_order id="'Resupply'" object="$subordinate" immediate="true">
                 <param name="internalorder" value="true" />
-                <param name="debugchance" value="$debugChance" />
+                <param name="debugchance" value="$debugchance" />
                 <param name="onlyuseresupplierships" value="false" />
                 <param name="urgent" value="$damagedComponents.count gt 0" />
                 <!-- <param name="playerOwnedWorkaround" value="true" /> -->
@@ -109,7 +109,7 @@
                   <create_order object="$subordinate" id="'AttackStationInSector'" immediate="true">
                     <param name="primaryTarget" value="$primaryTarget" />
                     <param name="formationLeader" value="@$formationLeader" />
-                    <param name="debugChance" value="$debugChance" />
+                    <param name="debugchance" value="$debugchance" />
                   </create_order>
                 </do_if>
                 <remove_from_group group="this.$escortgroup" object="$subordinate" />
@@ -154,9 +154,7 @@
           text="'AttackStationInSector [%s]: RotationCheck: Current %s. On Target: %s. Is Not Acceptable: %s. Delta: Yaw: %s. Pitch: %s. Roll: %s.'.
                         [this.assignedcontrolled.debugname, $rotationCurrent, $rotationOnTarget, $rotationsIsNotAcceptable,
                         abs($rotationCurrent.yaw - $rotationOnTarget.yaw), abs($rotationCurrent.pitch - $rotationOnTarget.pitch),
-                        abs($rotationCurrent.roll - $rotationOnTarget.roll)]"
-          chance="
-                $debugChance" />
+                        abs($rotationCurrent.roll - $rotationOnTarget.roll)]" />
         <remove_value name="$rotationCurrent" />
       </actions>
       <actions name="CheckIfPathCrossedUnsafeRadius">
@@ -2358,7 +2356,7 @@
               <param name="destination" value="$primaryTarget" />
               <param name="endintargetsector" value="true" />
               <param name="recallsubordinates" value="false" />
-              <param name="debugchance" value="$debugChance" />
+              <param name="debugchance" value="$debugchance" />
             </run_script>
             <do_if value="not $moveSuccess">
               <debug_text
@@ -2402,7 +2400,7 @@
         <set_value name="this.assignedcontrolled.pilot.$playerOwnedWorkaroundForRestock" exact="true" />
         <create_order id="'Resupply'" object="this.assignedcontrolled" immediate="true">
           <param name="internalorder" value="true" />
-          <param name="debugchance" value="$debugChance" />
+          <param name="debugchance" value="$debugchance" />
           <param name="onlyuseresupplierships" value="false" />
           <param name="urgent" value="$damagedComponents.count gt 0" />
         </create_order>
