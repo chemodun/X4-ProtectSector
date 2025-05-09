@@ -838,6 +838,13 @@
       <remove_value name="this.assignedcontrolled.aipilot.$targetInfo" />
     </do_if>
 
+    <do_if value="@this.assignedcontrolled.pilot.$protectSectorAbortedAt != null">
+      <do_if value="@this.assignedcontrolled.pilot.$protectSectorAbortedAt - player.age le 1s">
+        <set_value name="$isStartedByPlayer" exact="false" />
+      </do_if>
+      <remove_value name="this.assignedcontrolled.pilot.$protectSectorAbortedAt" />
+    </do_if>
+
     <set_value name="$target" exact="null" />
     <set_value name="$targetOnResponse" exact="null" />
 
@@ -1568,6 +1575,7 @@
       </do_if>
       <!-- prepare group of subordinates to request fleet reinstate -->
       <include_interrupt_actions ref="SubordinatesRefresh" />
+
       <do_if value="@$IdleAfterStationDestroy == true">
         <remove_value name="$IdleAfterStationDestroy" />
         <set_command command="command.patrol" />
@@ -1634,39 +1642,43 @@
         <do_if value="$idleDelay gt 0">
           <set_command command="command.patrol" />
           <set_command_action commandaction="commandaction.investigating" param="this.assignedcontrolled.sector" />
-          <do_if value="$homeSector.hashazardousregion or $idleDelay le $delayBetweenScansInSeconds">
-            <debug_text
-              text="'ProtectSector [%s at %s, %s]: Hazardous region - waiting for %s seconds'.
+          <do_if value="$idleDelay le $delayBetweenScansInSeconds">
+            <set_value name="$idleTill" exact="0" />
+            <wait exact="$idleDelay" />
+          </do_if>
+          <do_else>
+            <set_value name="$idleTill" exact="player.age + $idleDelay" />
+            <signal_objects object="this.assignedcontrolled" param="'ProtectSectorReScan'" delay="$delayBetweenScansInSeconds" />
+            <do_if value="$homeSector.hashazardousregion">
+              <debug_text
+                text="'ProtectSector [%s at %s, %s]: Hazardous region - waiting for %s seconds'.
                 [
                   this.assignedcontrolled.debugname,
                   this.assignedcontrolled.sector.knownname,
                   this.assignedcontrolled.fleet.name,
                   $idleDelay
                 ]" />
-            <wait exact="if $idleDelay gt $delayBetweenScansInSeconds then $delayBetweenScansInSeconds else [$idleDelay, 300ms].max" />
-          </do_if>
-          <do_else>
-            <set_value name="$idleTill" exact="player.age + $idleDelay" />
-            <signal_objects object="this.assignedcontrolled" param="'ProtectSectorReScan'" delay="$delayBetweenScansInSeconds" />
-            <!-- <move_to object="this.assignedcontrolled" destination="this.assignedcontrolled.sector" forceposition="true" uselocalhighways="false"
-            boost="true"
-              travel="true">
-              <position value="$positionIdle" />
-              <interrupt_after_time time="$idleDelay" />
-            </move_to> -->
-            <run_script name="'move.idle'">
-              <param name="TimeOut" value="$idleDelay" />
-              <param name="anchorpos_sector" value="$positionIdle" />
-              <param name="MaxDistance" value="10km" />
-              <param name="debugchance" value="$debugchance" />
-            </run_script>
+              <get_safe_pos result="$positionIdle" object="this.assignedcontrolled" sector="this.assignedcontrolled.sector" />
+              <run_script name="'move.idle'">
+                <param name="TimeOut" value="$idleDelay" />
+                <param name="anchorpos_sector" value="$positionIdle" />
+                <param name="MaxDistance" value="this.assignedcontrolled.size" />
+                <param name="debugchance" value="$debugchance" />
+              </run_script>
+            </do_if>
+            <do_else>
+              <run_script name="'move.idle'">
+                <param name="TimeOut" value="$idleDelay" />
+                <param name="anchorpos_sector" value="$positionIdle" />
+                <param name="MaxDistance" value="10km" />
+                <param name="debugchance" value="$debugchance" />
+              </run_script>
+            </do_else>
+            <set_value name="$idleTill" exact="0" />
             <do_if value="$idleTill gt player.age">
               <set_value name="$idleDelay" exact="$idleTill - player.age" />
               <resume label="goingIdle" />
             </do_if>
-            <do_else>
-              <set_value name="$idleTill" exact="0" />
-            </do_else>
           </do_else>
         </do_if>
         <do_else>
@@ -2000,6 +2012,7 @@
       <remove_value name="$subordinate.pilot.$playerOwnedWorkaroundForRestock" />
     </do_for_each>
     <remove_value name="this.assignedcontrolled.pilot.$playerOwnedWorkaroundForRestock" />
+    <set_value name="this.assignedcontrolled.pilot.$protectSectorAbortedAt" exact="player.age" />
     <debug_text
       text="'ProtectSector [%s at %s, %s]: Aborted. Commander: %s. Killed: %s.'.
           [
