@@ -43,9 +43,7 @@ It can be any known sector, even if it is not yours.
 
 [b]Disabled[/b] by default.
 
-If enabled, hostile stations in the protected sector will be attacked by ship and his squad.
-It uses the specific logic to attack stations - equal to "Coordinate Attack" from the context menu.
-With only one exception - the syncpoint will not be created. So, all squad ships will form the similar order but will not wait for each other.
+If enabled, hostile stations in the protected sector will be attacked by ship and fleet.
 
 [size=3][u]Use "Coordinate attack"[/u][/size]
 
