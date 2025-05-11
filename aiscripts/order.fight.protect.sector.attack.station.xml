@@ -540,14 +540,14 @@
             <set_value name="$formationLeader" exact="this.assignedcontrolled" />
             <clear_group group="$formationGroup" />
             <signal_objects object="$primaryTarget" param="'StationAttackSupportRequest'" param2="this.assignedcontrolled" delay="3ms" />
-            <signal_objects object="$primaryTarget" param="'StationAttackRecallRequest'" param2="this.assignedcontrolled" delay="10s" />
+            <signal_objects object="this.assignedcontrolled" param="'StationAttackRecallRequestInit'" delay="10s" />
           </do_if>
           <do_else>
             <debug_text
-              text="'AttackStationInSector [%s]: DronesAttack: RecallRequest to Formation. Shield: %s. Hull: %s. Drones Attack Count: %s (%s).'.
+              text="'AttackStationInSector [%s]: DronesAttack: RecallRequest to Formation. Shield: %s. Hull: %s. Drones Attack Count: %s (%s). Group count: %s.'.
                 [this.assignedcontrolled.debugname, this.assignedcontrolled.shieldpercentage, this.assignedcontrolled.hullpercentage, @$dronesAttacksCount,
-                @$dronesAttacksCountSaved]" />
-            <signal_objects object="$primaryTarget" param="'StationAttackRecallRequest'" param2="this.assignedcontrolled" />
+                @$dronesAttacksCountSaved, @$formationGroup.count]" />
+            <signal_objects object="this.assignedcontrolled" param="'StationAttackRecallRequestInit'" />
           </do_else>
           <do_if value="@$waypoints.count le 1">
             <include_interrupt_actions ref="PrepareFleeingPath" />
@@ -680,21 +680,65 @@
     </handler>
     <handler>
       <conditions>
-        <event_object_signalled object="$primaryTarget" param="'StationAttackRecallRequest'" check="false" />
-        <check_value value="(not $isXL)" />
+        <event_object_signalled object="this.assignedcontrolled" param="'StationAttackRecallRequestInit'" />
+      </conditions>
+      <actions>
+        <do_if value="@$formationGroup.count gt 0 and (@$lastRecallAt == null or (player.age - @$lastRecallAt) gt 5s)">
+          <create_group groupname="$formationGroupAsParam" />
+          <add_to_group groupname="$formationGroupAsParam" group="$formationGroup" />
+          <sort_group group="$formationGroupAsParam" sortbydistanceto="this.assignedcontrolled" sortdescending="true" />
+          <set_value name="$formationGroupFirstShip" exact="$formationGroupAsParam.{1}" />
+          <remove_from_group group="$formationGroupAsParam" object="$formationGroupFirstShip" />
+          <signal_objects object="$formationGroupFirstShip" param="'StationAttackRecallRequest'" param2="this.assignedcontrolled"
+            param3="$formationGroupAsParam" delay="10ms" />
+          <debug_text
+            text="'AttackStationInSector [%s]: DronesAttack: RecallRequest to %s. Group count: %s.'.
+            [this.assignedcontrolled.debugname, $formationGroupFirstShip.debugname, @$formationGroupAsParam.count]" />
+          <set_value name="$lastRecallAt" exact="player.age" />
+          <remove_value name="$formationGroupFirstShip" />
+          <remove_value name="$formationGroupAsParam" />
+        </do_if>
+      </actions>
+    </handler>
+    <handler>
+      <conditions>
+        <event_object_signalled object="this.assignedcontrolled" param="'StationAttackRecallRequest'" />
         <check_value value="@event.param2 != null and @event.param2 != this.assignedcontrolled and @event.param2 == @this.assignedcontrolled.formationleader" />
       </conditions>
       <actions>
         <debug_text
-          text="'AttackStationInSector [%s]: DronesAttack: RecallRequest from %s. Leader: Distance to: %s. Size: %s. In AntiDrone Mode: %s.'.
+          text="'AttackStationInSector [%s]: DronesAttack: RecallRequest Leader: %s. Distance to: %s. Size: %s. In AntiDrone Mode: %s. Is XL: %s. Group count: %s.'.
             [this.assignedcontrolled.debugname, @event.param2.debugname, @this.assignedcontrolled.bboxdistanceto.{@this.assignedcontrolled.formationleader},
-            @this.assignedcontrolled.formationleader.size, @$enemyDronesCountShare]" />
-        <do_if value="@this.assignedcontrolled.bboxdistanceto.{@this.assignedcontrolled.formationleader} gt @this.assignedcontrolled.formationleader.size * 2.5">
-          <force_wingmen_to_formation_offset leader="this.assignedcontrolled.formationleader" />
+            @this.assignedcontrolled.formationleader.size, @$enemyDronesCountShare, $isXL, @event.param3.count]" />
+        <do_if value="@$isXL" negate="true">
+          <do_if
+            value="@this.assignedcontrolled.bboxdistanceto.{@this.assignedcontrolled.formationleader} gt @this.assignedcontrolled.formationleader.size * 2.5">
+            <debug_text
+              text="'AttackStationInSector [%s]: DronesAttack: RecallRequest: Too far from leader. Distance: %s. Force wingmen to formation offset.'.
+                [this.assignedcontrolled.debugname, @this.assignedcontrolled.bboxdistanceto.{@this.assignedcontrolled.formationleader}]" />
+            <force_wingmen_to_formation_offset leader="this.assignedcontrolled.formationleader" />
+          </do_if>
+          <signal_objects object="this.assignedcontrolled" param="'StationAttackRecallRequestPost'" delay="10ms" />
         </do_if>
-        <do_if value="@$enemyDronesCountShare == true" negate="true">
-          <abort_called_scripts resume="UnderDroneAttack" />
+        <set_value name="$formationGroupAsParam" exact="@event.param3" />
+        <do_if value="@$formationGroupAsParam.count gt 0">
+          <set_value name="$formationGroupFirstShip" exact="$formationGroupAsParam.{1}" />
+          <remove_from_group group="$formationGroupAsParam" object="$formationGroupFirstShip" />
+          <signal_objects object="$formationGroupFirstShip" param="'StationAttackRecallRequest'" param2="this.assignedcontrolled.formationleader"
+            param3="$formationGroupAsParam" delay="10ms" />
+          <remove_value name="$formationGroupFirstShip" />
+          <remove_value name="$formationGroupAsParam" />
         </do_if>
+      </actions>
+    </handler>
+    <handler>
+      <conditions>
+        <event_object_signalled object="this.assignedcontrolled" param="'StationAttackRecallRequestPost'" />
+        <check_value value="@$isXL == true" negate="true" />
+        <check_value value="@$enemyDronesCountShare == true" negate="true" />
+      </conditions>
+      <actions>
+        <abort_called_scripts resume="UnderDroneAttack" />
       </actions>
     </handler>
     <handler>
@@ -718,7 +762,9 @@
         <check_value value="@$dronesAttack == true" />
       </conditions>
       <actions>
-        <add_to_group groupname="$formationGroup" object="event.param2" />
+        <do_if value="@$formationGroup.indexof.{event.param2} == 0">
+          <add_to_group groupname="$formationGroup" object="event.param2" />
+        </do_if>
         <debug_text
           text="'AttackStationInSector [%s]: DronesAttack: Formation: Successfully joined: %s. In total: %s. List: %s.'.
             [this.assignedcontrolled.debugname, @event.param2.debugname, @$formationGroup.count, @this.assignedcontrolled.currentformationwingmen]" />
@@ -948,7 +994,8 @@
         [this.assignedcontrolled.debugname, this.skill.piloting, this.skill.morale, $skillCoefficient, $safeDistanceCoefficient]" />
 
 
-      <!-- adjust $maxEffectiveCombatRange by the distance of the weapon farthest from the front of the ship only for Primary Weapon-->
+      <!--
+      adjust $maxEffectiveCombatRange by the distance of the weapon farthest from the front of the ship only for Primary Weapon-->
       <set_value name="$maxEffectiveCombatRange" exact="0m" />
       <set_value name="$weaponsList" exact="this.assignedcontrolled.weapons.operational.list" />
       <do_for_each name="$weaponItem" in="$weaponsList" reverse="true">
@@ -1019,7 +1066,8 @@
         </do_if>
         <resume label="finish" />
       </do_if>
-      <!-- <shuffle_list list="$components" /> -->
+      <!--
+      <shuffle_list list="$components" /> -->
       <set_value name="$getRandomStart" exact="1" />
       <set_value name="$getRandomEnd" exact="[$components.count, 5].min" />
       <set_value name="$getRandomStep" exact="1" />
@@ -1094,20 +1142,23 @@
       <include_interrupt_actions ref="CheckIfPathCrossedUnsafeRadius" />
       <clear_list list="$waypoints" />
       <do_if value="$pathCrossesUnSafeRadius">
-        <!-- Set safe distance (slightly larger than danger radius) -->
+        <!--
+        Set safe distance (slightly larger than danger radius) -->
         <set_value name="$safePathSafeDistance"
           exact="$safeDistanceToPrimary * $safeDistanceCoefficient" />
         <debug_text
           text="'AttackStationInSector [%s]: SafePath: Path crosses unsafe radius. Generating safe path with distance: %s'.
             [this.assignedcontrolled.debugname, $safePathSafeDistance]" />
 
-        <!-- Calculate magnitudes (distances from origin to points) -->
+        <!--
+        Calculate magnitudes (distances from origin to points) -->
         <set_value name="$startMagnitude"
           exact="sqrt($positionRelativeToPrimaryTarget.x^2 + $positionRelativeToPrimaryTarget.y^2 + $positionRelativeToPrimaryTarget.z^2)" />
         <set_value name="$endMagnitude"
           exact="sqrt($interimPositionRelativeToPrimaryTarget.x^2 + $interimPositionRelativeToPrimaryTarget.y^2 + $interimPositionRelativeToPrimaryTarget.z^2)" />
 
-        <!-- Calculate normalized vectors (unit directions from origin) -->
+        <!--
+        Calculate normalized vectors (unit directions from origin) -->
         <set_value name="$vectorStart"
           exact="[
                       $positionRelativeToPrimaryTarget.x / $startMagnitude,
@@ -1121,7 +1172,8 @@
                       $interimPositionRelativeToPrimaryTarget.y / $endMagnitude,
                       $interimPositionRelativeToPrimaryTarget.z / $endMagnitude
                   ]" />
-        <!-- Compute the rotation axis as the cross product of v1 and v2 -->
+        <!--
+        Compute the rotation axis as the cross product of v1 and v2 -->
         <set_value name="$rotationAxis"
           exact="[
                       $vectorStart.{2} * $vectorEnd.{3} - $vectorStart.{3} * $vectorEnd.{2},
@@ -1132,13 +1184,16 @@
         <set_value name="$rotationAxisMagnitude" exact="sqrt($rotationAxis.{1}^2 + $rotationAxis.{2}^2 + $rotationAxis.{3}^2)" />
         <set_value name="$rotationAxis"
           exact="[$rotationAxis.{1} / $rotationAxisMagnitude, $rotationAxis.{2} / $rotationAxisMagnitude, $rotationAxis.{3} / $rotationAxisMagnitude]" />
-        <!-- Calculate dot product and angle between vectors -->
+        <!--
+        Calculate dot product and angle between vectors -->
         <set_value name="$dotProduct" exact="$vectorStart.{1} * $vectorEnd.{1} + $vectorStart.{2} * $vectorEnd.{2} + $vectorStart.{3} * $vectorEnd.{3}" />
-        <!-- <set_value name="$dotProduct" exact="[$dotProduct, -1].max" />
+        <!--
+        <set_value name="$dotProduct" exact="[$dotProduct, -1].max" />
                     <set_value name="$dotProduct" exact="[$dotProduct, 1].min" /> -->
         <set_value name="$angleRad" exact="acos($dotProduct)" />
         <set_value name="$angleDeg" exact="$angleRad * 57.2957795" />
-        <!-- Determine rotation direction using sign of cross(vectorStart, axis) ⋅ v2 -->
+        <!--
+        Determine rotation direction using sign of cross(vectorStart, axis) ⋅ v2 -->
         <set_value name="$crossAxisVectorStart"
           exact="[
                       $rotationAxis.{2} * $vectorStart.{3} - $rotationAxis.{3} * $vectorStart.{2},
@@ -1148,12 +1203,15 @@
         <set_value name="$crossDotProduct"
           exact="$crossAxisVectorStart.{1} * $vectorEnd.{1} + $crossAxisVectorStart.{2} * $vectorEnd.{2} + $crossAxisVectorStart.{3} * $vectorEnd.{3}" />
         <set_value name="$pathDirection" exact="if $crossDotProduct gt 0 then 1 else -1" />
-        <!-- dot(axis, vectorStart) scalar projection -->
+        <!--
+        dot(axis, vectorStart) scalar projection -->
         <set_value name="$dotAxisVectorStart"
           exact="$rotationAxis.{1} * $vectorStart.{1} + $rotationAxis.{2} * $vectorStart.{2} + $rotationAxis.{3} * $vectorStart.{3}" />
-        <!-- Calculate number of waypoints based on angle (every 30 degrees) -->
+        <!--
+        Calculate number of waypoints based on angle (every 30 degrees) -->
         <set_value name="$numSegments" exact="($angleDeg / 30)i" />
-        <set_value name="$numWaypoints" exact="if ( ($numSegments gt 0) and ( ($angleDeg - $numSegments * 30) lt 5) ) then $numSegments - 1 else $numSegments" />
+        <set_value name="$numWaypoints"
+          exact="if ( ($numSegments gt 0) and ( ($angleDeg - $numSegments * 30) lt 5) ) then $numSegments - 1 else $numSegments" />
         <set_value name="$stepInRad" exact="pi / 6" />
 
         <debug_text
@@ -1173,21 +1231,25 @@
               [this.assignedcontrolled.debugname, $distanceToPrimaryTargetRaw, $safePathSafeDistance, $waypointZero]" />
           <append_to_list name="$waypoints" exact="$waypointZero" />
         </do_if>
-        <!-- Generate waypoints using spherical linear interpolation -->
+        <!--
+        Generate waypoints using spherical linear interpolation -->
         <do_all exact="$numWaypoints" counter="$i">
-          <!-- Calculate the angular fraction for this waypoint -->
+          <!--
+          Calculate the angular fraction for this waypoint -->
           <set_value name="$theta" exact="($i * $stepInRad * $pathDirection)rad" />
           <set_value name="$thetaCos" exact="cos($theta)" />
           <set_value name="$thetaSin" exact="sin($theta)" />
 
-          <!-- Rodrigues' rotation formula (manual vector math using 1-based index)-->
+          <!--
+          Rodrigues' rotation formula (manual vector math using 1-based index)-->
           <set_value name="$rodriguesRotated" exact="[0,0,0]" />
 
           <do_all exact="3" counter="$j">
             <set_value name="$rodriguesRotated.{$j}"
               exact="($vectorStart.{$j} * $thetaCos) + $crossAxisVectorStart.{$j} * $thetaSin + ($rotationAxis.{$j} * $dotAxisVectorStart * (1 - $thetaCos))" />
           </do_all>
-          <!-- Create waypoint at safe distance -->
+          <!--
+          Create waypoint at safe distance -->
           <create_position name="$waypoint"
             object="$primaryTarget"
             x="$rodriguesRotated.{1} * $safePathSafeDistance"
@@ -1249,7 +1311,8 @@
             y="$pathWaypoint.y"
             z="$pathWaypoint.z"
             space="$targetSector" />
-          <!-- Check if the position is already occupied by the other ship -->
+          <!--
+          Check if the position is already occupied by the other ship -->
         </do_if>
         <do_else>
           <create_position name="$positionToMovePreliminary" object="$primaryTarget"
@@ -1328,7 +1391,8 @@
               </wait>
               <remove_value name="this.assignedcontrolled.pilot.$StationAttackListeningForAnswer" />
             </do_if>
-            <!-- When position is blocked by another ship -->
+            <!--
+            When position is blocked by another ship -->
             <do_if
               value="$positionToMoveIsBlockedBy? and $positionToMoveIsBlockedBy.{1} != this.assignedcontrolled or @$positionSignalToCheck == false">
               <debug_text
@@ -1452,7 +1516,8 @@
           <remove_value name="$positionToCheck" />
           <do_if value="($i == 1 or $isAttackingPosition) and not (@$isFleeing == true or @$isGoOutRadius == true)">
             <wait exact="20ms" />
-            <!-- <set_value name="$subTargetToExclude" exact="$target" /> -->
+            <!--
+            <set_value name="$subTargetToExclude" exact="$target" /> -->
             <remove_value name="$positionIsSafe" />
             <remove_value name="$positionToMove" />
             <remove_value name="$positionForAttack" />
@@ -1876,7 +1941,7 @@
           <debug_text
             text="'AttackStationInSector [%s]: Preparing to move to Target. Conditions are met: Safety Indicator: %s.'.
               [this.assignedcontrolled.debugname, $safetyIndicator]" />
-          <do_if value="@$strafeOnAttack and $strafePositionRelative? ">
+          <do_if value="@$strafeOnAttack and $strafePositionRelative?">
             <create_position name="$positionForAttack"
               object="$target"
               x="$strafePositionRelative.x"
@@ -1974,7 +2039,8 @@
             <set_value name="$rotationGetOn" exact="$target" />
             <include_interrupt_actions ref="IsNotAcceptableRotation" />
             <do_if value="$rotationsIsNotAcceptable and $safetyIndicator gt 0">
-              <move_to destination="$targetSector" object="this.assignedcontrolled" finishonapproach="false" forceposition="false" forcerotation="true"
+              <move_to destination="$targetSector" object="this.assignedcontrolled" finishonapproach="false" forceposition="false"
+                forcerotation="true"
                 boost="false" travel="false">
                 <position object="this.assignedcontrolled" />
                 <rotation value="$rotationOnTarget" />
@@ -2101,7 +2167,8 @@
             <set_value name="$rotationGetOn" exact="$target" />
             <include_interrupt_actions ref="IsNotAcceptableRotation" />
             <do_if value="$rotationsIsNotAcceptable">
-              <move_to destination="$targetSector" object="this.assignedcontrolled" finishonapproach="false" forceposition="false" forcerotation="true"
+              <move_to destination="$targetSector" object="this.assignedcontrolled" finishonapproach="false" forceposition="false"
+                forcerotation="true"
                 boost="false" travel="false">
                 <position object="this.assignedcontrolled" />
                 <rotation value="$rotationOnTarget" />
@@ -2128,8 +2195,8 @@
                 <remove_from_list name="$accountAttacksStrength" exact="$accountAttacksStrength.{1}" multiple="false" />
               </do_if>
               <debug_text
-                text="'AttackStationInSector [%s]: Target is attacked count: %s. By Primary: %s. Average: %s. Target: %s. Primary: %s. Hull: %s.'.
-                [this.assignedcontrolled.debugname, $targetIsReallyAttacked, $targetIsReallyAttackedByPrimaryWeapon, @$accountAttacksStrength.average,
+                text="'AttackStationInSector [%s]: Target is attacked count: %s. By Primary: %s. Average: %s (%s). Target: %s. Primary: %s. Hull: %s.'.
+                [this.assignedcontrolled.debugname, $targetIsReallyAttacked, $targetIsReallyAttackedByPrimaryWeapon, @$accountAttacksStrength.average, @$accountAttacksStrength.count,
                 @$target.debugname, $primaryTarget.debugname, $primaryTarget.hullpercentage]" />
               <do_if
                 value="(($targetIsReallyAttackedByPrimaryWeapon lt 2 and $accountAttacksStrength.count == 1) or ($accountAttacksStrength.count gt 1 and $accountAttacksStrength.average lt 6)) and ($targetIsReallyAttacked lt ($updateTime / 2)f)">
@@ -2162,14 +2229,18 @@
       <remove_value name="$positionForAttackInitial" />
       <debug_text
         text="'AttackStationInSector [%s]: Target: %s is Destroyed. Primary Target: %s.'. [this.assignedcontrolled.debugname, $target.debugname, $primaryTarget.debugname]" />
-      <!-- To Update -->
+      <!--
+      To Update -->
       <apply_experience entity="this" experience="'protect_sector'" chance="80" />
       <apply_experience object="this.assignedcontrolled" role="entityrole.service" experience="'protect_sector'" chance="60" />
       <label name="problemWithTarget" />
-      <!-- To Update -->
+      <!--
+      To Update -->
       <remove_value name="$components" />
-      <find_object_component name="$components" object="$primaryTarget" checkoperational="false" integrated="false" indestructible="false" invulnerable="false"
-        sortbydistanceto="this.assignedcontrolled" excluded="$excludedComponents" append="true" multiple="true" recursive="true" sortdescending="false">
+      <find_object_component name="$components" object="$primaryTarget" checkoperational="false" integrated="false" indestructible="false"
+        invulnerable="false"
+        sortbydistanceto="this.assignedcontrolled" excluded="$excludedComponents" append="true" multiple="true" recursive="true"
+        sortdescending="false">
         <match module="true" />
         <match state="componentstate.wreck" negate="true" />
         <match_is_in_view_of object="this.assignedcontrolled" horizontal="270deg" vertical="270deg" />
@@ -2183,7 +2254,8 @@
         <set_value name="$positionRelativeFromOldToNewTarget" exact="$target.relativeposition.{$components.{1}}" />
         <!--
                 1. Calculate magnitudes of both position vectors -->
-        <set_value name="$magnitude1" exact="sqrt($positionRelativeToNewTarget.x ^ 2 + $positionRelativeToNewTarget.y ^ 2 + $positionRelativeToNewTarget.z ^ 2)" />
+        <set_value name="$magnitude1"
+          exact="sqrt($positionRelativeToNewTarget.x ^ 2 + $positionRelativeToNewTarget.y ^ 2 + $positionRelativeToNewTarget.z ^ 2)" />
         <set_value name="$magnitude2"
           exact="sqrt($positionRelativeFromOldToNewTarget.x ^ 2 + $positionRelativeFromOldToNewTarget.y ^ 2 + $positionRelativeFromOldToNewTarget.z ^ 2)" />
 
