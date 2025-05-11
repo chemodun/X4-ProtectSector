@@ -12,7 +12,7 @@
 ### Improved
 
 - Fully rewritten the logic of idling and scanning for enemy ships. Now it is more precise.
-- Implemented workaround for the repairing/restocking ships. By default Player owned ships can be repaired only in current sector.
+- Implemented workaround for the repairing/restocking ships. By default Player owned ships can be repaired only in current sector. Please be aware - after installing version `1.08` the ships controlled by this order can go to be repaired/restocked after some time. It is not a bug, but a feature :-).
 
 ### Fixed
 
