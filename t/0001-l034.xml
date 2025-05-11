@@ -7,6 +7,8 @@
       <t id="2">Proteger el Sector contra naves hostiles</t>
       <t id="101">Sector de origen</t>
       <t id="111">Atacar estaciones</t>
+      <t id="112"> - usa "{1041, 731}"</t>
+      <t id="113"> - usa experimental "{1972092401, 10001}". Si se selecciona, ¡se ignorará el anterior!</t>
       <t id="121">Atacar naves XL</t>
       <t id="122">Atacar naves L</t>
       <t id="123">Atacar naves M</t>
@@ -26,6 +28,7 @@
       <t id="182">Aparcar exactamente allí</t>
       <t id="191">Retraso entre escaneos, segundos</t>
       <t id="201">Distancia de ataque: porcentaje del alcance del radar</t>
+      <t id="211">Ignorar las amenazas de zonas peligrosas. Algunos sectores contienen zonas peligrosas, que pueden destruir naves. Las ignorarás...</t>
       <t id="901">Registrar en el libro de registro</t>
       <t id="1000">..: Proteger el Sector :..</t>
       <t id="1001">nave</t>
@@ -45,6 +48,9 @@
       <t id="1042">%s: %s en %s ha sido abandonado</t>
       <t id="1043">%s: %s ha sido dejado %s</t>
       <t id="1044">%s: %s en %s es demasiado rápido</t>
+      <t id="1101">%s: El %s contiene zonas \033Rpeligrosas\033X. Deteniéndose...</t>
+      <t id="10001">Atacar estación</t>
+      <t id="10011">Una orden experimental para atacar solo estaciones. Disponible solo para naves L y XL</t>
     </page>
   </add>
 </diff>

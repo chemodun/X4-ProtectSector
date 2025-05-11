@@ -7,6 +7,8 @@
       <t id="2">Sektor gegen feindliche Schiffe schützen</t>
       <t id="101">Heimatsektor</t>
       <t id="111">Stationen angreifen</t>
+      <t id="112"> - verwende "{1041, 731}"</t>
+      <t id="113"> - verwende experimentell "{1972092401, 10001}". Wenn ausgewählt - wird die vorherige ignoriert!</t>
       <t id="121">XL-Schiffe angreifen</t>
       <t id="122">L-Schiffe angreifen</t>
       <t id="123">M-Schiffe angreifen</t>
@@ -26,6 +28,7 @@
       <t id="182">Genau dort parken</t>
       <t id="191">Verzögerung zwischen Scans, Sekunden</t>
       <t id="201">Angriffsreichweite: Prozentsatz der Radarreichweite</t>
+      <t id="211">Gefahrenzonen ignorieren. Einige Sektoren enthalten Gefahrenzonen, die Schiffe zerstören können. Sie werden diese ignorieren...</t>
       <t id="901">Im Logbuch aufzeichnen</t>
       <t id="1000">..: Sektor schützen :..</t>
       <t id="1001">Schiff</t>
@@ -45,6 +48,9 @@
       <t id="1042">%s: %s in %s wurde aufgegeben</t>
       <t id="1043">%s: %s wurde %s zurückgelassen</t>
       <t id="1044">%s: %s in %s ist zu schnell</t>
+      <t id="1101">%s: Der %s enthält \033Rgefährliche\033X Zonen. Arbeit wird gestoppt...</t>
+      <t id="10001">Station angreifen</t>
+      <t id="10011">Ein experimenteller Befehl, um nur Stationen anzugreifen. Nur für L- und XL-Schiffe verfügbar</t>
     </page>
   </add>
 </diff>

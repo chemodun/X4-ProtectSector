@@ -7,6 +7,8 @@
       <t id="2">Protéger le Secteur contre les vaisseaux hostiles</t>
       <t id="101">Secteur d'origine</t>
       <t id="111">Attaquer les stations</t>
+      <t id="112"> - utiliser "{1041, 731}"</t>
+      <t id="113"> - utiliser expérimental "{1972092401, 10001}". Si sélectionné - le précédent sera ignoré !</t>
       <t id="121">Attaquer les vaisseaux XL</t>
       <t id="122">Attaquer les vaisseaux L</t>
       <t id="123">Attaquer les vaisseaux M</t>
@@ -26,6 +28,7 @@
       <t id="182">Se garer exactement là</t>
       <t id="191">Délai entre les scans, secondes</t>
       <t id="201">Distance d'attaque : pourcentage de la portée du radar</t>
+      <t id="211">Ignorer les menaces des zones dangereuses. Certains secteurs contiennent des zones dangereuses, qui peuvent détruire des vaisseaux. Vous les ignorerez...</t>
       <t id="901">Enregistrer dans le journal de bord</t>
       <t id="1000">..: Protéger le Secteur :..</t>
       <t id="1001">vaisseau</t>
@@ -45,6 +48,9 @@
       <t id="1042">%s : %s dans %s est abandonné</t>
       <t id="1043">%s : %s est laissé %s</t>
       <t id="1044">%s : %s dans %s est trop rapide</t>
+      <t id="1101">%s : Le %s contient des zones \033Rdangereuses\033X. Arrêt du travail...</t>
+      <t id="10001">Attaquer la Station</t>
+      <t id="10011">Un ordre expérimental pour attaquer uniquement les stations. Disponible uniquement pour les vaisseaux L et XL</t>
     </page>
   </add>
 </diff>
