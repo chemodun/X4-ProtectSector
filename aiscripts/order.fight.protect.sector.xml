@@ -1067,6 +1067,9 @@
     <set_value name="$idleTill" exact="0" />
     <set_value name="$lastStationScan" exact="player.age" />
     <include_interrupt_actions ref="HazardInSector" />
+    <do_if value="@$target == null and @$targetOnResponse == null">
+      <return />
+    </do_if>
   </patch>
   <attention min="unknown">
     <actions>
