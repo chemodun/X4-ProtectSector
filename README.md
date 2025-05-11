@@ -14,8 +14,9 @@ Compatible with `X4: Foundations 7.10` and upper. At least it written and tested
 - Not recommended to use single ship - the fleet is always better.
 - `Mimic` order in a fleet is fully supported. But, again, not set single ship to mimic mode - use the fleet instead.
 - The `Lost Ship Replacement` feature of version `7.50` is fully supported.
-- The own (`experimental`) oder for station attacks is available.
+- The own (`experimental`) order for station attacks is available.
 - The workaround for player ships repairing/restocking not only in current sector is implemented.
+- From version `1.08` have own icons for the `Protect Sector` and `Station attack` orders.
 
 ## Download
 

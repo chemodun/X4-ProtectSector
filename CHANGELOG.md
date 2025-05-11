@@ -7,6 +7,7 @@
 - Internal (`experimental`) station attack order. Written from scratch positioning ships against stations, including reaction on stations drones attacks in non OOS mode.
 - Possibility to select station attack order - by default it is `Coordinate attack`. Other possibilities are `usual` one and `experimental` one.
 - Additional confirmation for the working in hazardous regions, like `The Void`. Please be aware - the order will stop working in the sectors with the hazardous regions without the confirmation.
+- Own icons for the `Protect Sector` and `Station attack` orders.
 
 ### Improved
 
