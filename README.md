@@ -14,6 +14,8 @@ Compatible with `X4: Foundations 7.10` and upper. At least it written and tested
 - Not recommended to use single ship - the fleet is always better.
 - `Mimic` order in a fleet is fully supported. But, again, not set single ship to mimic mode - use the fleet instead.
 - The `Lost Ship Replacement` feature of version `7.50` is fully supported.
+- The own (`experimental`) oder for station attacks is available.
+- The workaround for player ships repairing/restocking not only in current sector is implemented.
 
 ## Download
 
@@ -44,16 +46,38 @@ If enabled, hostile stations in the protected sector will be attacked by ship an
 It uses the specific logic to attack stations - equal to "Coordinate Attack" from the context menu.
 With only one exception - the syncpoint will not be created. So, all squad ships will form the similar order but will not wait for each other.
 
+#### Use "Coordinate attack"
+
+`Enabled` by default.
+
+If enabled, the ship will use the "Coordinate Attack" order to attack the stations. It will be used for the stations only, not for the ships.
+If disabled, the ship will use the usual "Attack" order to attack the stations.
+
+#### Use experimental "Attack Station"
+
+`Disabled` by default.
+If enabled, the ship will use the experimental "Attack Station" order to attack the stations. It will be used for the stations only, not for the ships.
+Will work only if the ships in a fleet has `L` or `XL` classes only. Otherwise, the order will be ignored, and selection from previous parameter will be used.
+
+##### Important notice
+
+If Use experimental "Attack Station" selected, the ship will use the `experimental` order independently of the order type selected in the previous parameter.
+
+#### Common warning for station attacks
+
+In non-OOS mode, i.e. when the Player is in the same sector, the stations drones will attack the ships. The appropriate logic to react on this event is implemented in `experimental` order, and working not bad :-).
+But still not recommended to be in the same sector with the ship, independently of the order type selected.
+
 ### Attack Ships
 
 You can select exact ship types:
 
 - XL
 - L
-- M - `enabled` by default
-- S - `enabled` by default
+- M
+- S
 
-By default, the S and M ships are selected.
+By default are set depending on the player ship type.
 
 If it will find a hostile squad - it will not be attacked, if it contains at least one ship of the type higher than highest selected one.
 
@@ -157,6 +181,15 @@ If the sector, selected in this parameter, is not the same as the `Home Sector` 
 
 Default value is `4 seconds`.
 If you want - you can set it in between 1 and 90 seconds, with step 4 seconds. Bigger value will make less load on the CPU...
+
+### Ignore the threats of Hazardous zones
+
+`Disabled` by default.
+
+Please take in account, some sectors are not safe, even if the ship is not attacked. For example, the sectors with the hazardous zones, like `The Void`. If ship is in the hazardous zone it's shield and then hull will be continuously damaged.
+From version 1.08 `Protect Sector` order will automatically finished in such sectors. Appropriate message will be shown in the logbook.
+
+If you still want to use this order in the hazardous zone - you can enable this option. But please be aware - the ships can be destroyed in the hazardous zone, as there is no good solutions to avoid such zones.
 
 ### Record to logbook
 

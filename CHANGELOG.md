@@ -1,5 +1,23 @@
 # Changelog
 
+## [1.08] - 2025-05-11
+
+### Added
+
+- Internal (`experimental`) station attack order. Written from scratch positioning ships against stations, including reaction on stations drones attacks in non OOS mode.
+- Possibility to select station attack order - by default it is `Coordinate attack`. Other possibilities are `usual` one and `experimental` one.
+- Additional confirmation for the working in hazardous regions, like `The Void`. Please be aware - the order will stop working in the sectors with the hazardous regions without the confirmation.
+
+### Improved
+
+- Fully rewritten the logic of idling and scanning for enemy ships. Now it is more precise.
+- Implemented workaround for the repairing/restocking ships. By default Player owned ships can be repaired only in current sector.
+
+### Fixed
+
+- Fixed a reaction on attack on player's ships/stations by enemy drones.
+- Accidentally attacks from the non-enemies are not considered as an attack on the player ships/stations.
+
 ## [1.07] - 2025-03-16
 
 ### Added
@@ -10,7 +28,7 @@
 ### Improved
 
 - Idle flying when any parking is not set.
-- Attack of the stations via `Tactical attack` in now visible, as it is run not as a script, but as an order.
+- Attack of the stations via `Coordinate attack` in now visible, as it is run not as a script, but as an order.
 
 ## [1.06] - 2025-03-01
 
