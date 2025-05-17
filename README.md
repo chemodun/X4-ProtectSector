@@ -56,7 +56,9 @@ If disabled, the ship will use the usual "Attack" order to attack the stations.
 
 `Disabled` by default.
 If enabled, the ship will use the experimental "Attack Station" order to attack the stations. It will be used for the stations only, not for the ships.
-Will work only if the ships in a fleet has `L` or `XL` classes only. Otherwise, the order will be ignored, and selection from previous parameter will be used.
+
+Will work only if the ships in a fleet contains only `L` or `XL` classes only. Otherwise it will be de-selected together with "Attack stations" checkbox.
+
 For `L` only - four and more ships are recommended.
 
 ##### Important notice
