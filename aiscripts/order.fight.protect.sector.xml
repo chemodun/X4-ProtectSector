@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="iso-8859-1"?>
-<aiscript name="order.fight.protect.sector" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="aiscripts.xsd" version="108">
+<aiscript name="order.fight.protect.sector" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="aiscripts.xsd" version="109">
   <order id="ProtectSector" name="{1972092401, 1}" description="{1972092401, 2}" category="combat" infinite="true">
     <params>
       <param name="homeSector"
@@ -49,7 +49,7 @@
           comment="Added patch to set default value" />
       </param>
       <param name="shieldsPreserveOnFlight" type="bool" default="false" text="{1972092401, 161}">
-        <patch sinceversion="108" value="if player.gameversion ge 750 then false else $shieldsPreserveOnFlight"
+        <patch sinceversion="109" value="if player.gameversion ge 750 then false else $shieldsPreserveOnFlight"
           comment="From 7.50 has no dependency on shields" />
       </param>
       <param name="breakOnDestructionPercentage" type="number" default="0" text="{1972092401, 171}">
@@ -428,6 +428,21 @@
           <create_order object="this.assignedcontrolled" id="'Wait'" default="true" />
         </do_if>
       </actions>
+      <actions name="PatchToVersion108">
+        <include_interrupt_actions ref="ResupplyChecksInit" />
+        <include_interrupt_actions ref="ResupplyWorkaroundRefresh" />
+        <create_list name="$ships" />
+        <create_list name="$stations" />
+        <set_value name="$updateTime"
+          exact="if this.assignedcontrolled.isclass.ship_xl then 15min else (if this.assignedcontrolled.isclass.ship_l then 9min else 4min)" />
+        <set_value name="$idleDelay" exact="$updateTime" />
+        <set_value name="$idleTill" exact="0" />
+        <set_value name="$lastStationScan" exact="player.age" />
+        <include_interrupt_actions ref="HazardInSector" />
+        <do_if value="@$target == null and @$targetOnResponse == null">
+          <return />
+        </do_if>
+      </actions>
     </library>
     <handler ref="AttackHandler" />
     <handler ref="MissileLockHandler" />
@@ -790,7 +805,7 @@
     </handler>
   </interrupts>
   <init>
-    <set_value name="$scriptVersion" exact="108" />
+    <set_value name="$scriptVersion" exact="109" />
 
     <set_value name="$shieldsPreserveOnFlight" exact="if player.gameversion ge 750 then false else $shieldsPreserveOnFlight" />
 
@@ -919,6 +934,9 @@
       </do_if>
       <do_if value="$attackStationsInternalAcceptable" negate="true">
         <edit_order_param order="this.assignedcontrolled.order" param="'attackStationsInternal'" value="false" />
+        <do_if value="$attackStations">
+          <edit_order_param order="this.assignedcontrolled.order" param="'attackStations'" value="false" />
+        </do_if>
         <debug_text
           text="'ProtectSector [%s at %s, %s]: Attack stations internal mode can not be used. Reset to : %s.'
             .[
@@ -1012,15 +1030,7 @@
     <include_interrupt_actions ref="SubordinatesRefresh" />
 
     <set_value name="$positionIdleTime" exact="player.age" />
-
-    <include_interrupt_actions ref="ResupplyChecksInit" />
-    <create_list name="$ships" />
-    <create_list name="$stations" />
-    <set_value name="$updateTime"
-      exact="if this.assignedcontrolled.isclass.ship_xl then 15min else (if this.assignedcontrolled.isclass.ship_l then 9min else 4min)" />
-    <set_value name="$idleDelay" exact="$updateTime" />
-    <set_value name="$idleTill" exact="0" />
-    <set_value name="$lastStationScan" exact="player.age" />
+    <include_interrupt_actions ref="PatchToVersion108" />
   </init>
   <patch sinceversion="104">
     <set_value name="$idleDelay" exact="$delayBetweenScansInSeconds" />
@@ -1057,19 +1067,10 @@
     <set_value name="$scriptVersion" exact="107" />
   </patch>
   <patch sinceversion="108">
-    <include_interrupt_actions ref="ResupplyChecksInit" />
-    <include_interrupt_actions ref="ResupplyWorkaroundRefresh" />
-    <create_list name="$ships" />
-    <create_list name="$stations" />
-    <set_value name="$updateTime"
-      exact="if this.assignedcontrolled.isclass.ship_xl then 15min else (if this.assignedcontrolled.isclass.ship_l then 9min else 4min)" />
-    <set_value name="$idleDelay" exact="$updateTime" />
-    <set_value name="$idleTill" exact="0" />
-    <set_value name="$lastStationScan" exact="player.age" />
-    <include_interrupt_actions ref="HazardInSector" />
-    <do_if value="@$target == null and @$targetOnResponse == null">
-      <return />
-    </do_if>
+    <include_interrupt_actions ref="PatchToVersion08" />
+  </patch>
+  <patch sinceversion="109">
+    <set_value name="$scriptVersion" exact="109" />
   </patch>
   <attention min="unknown">
     <actions>
@@ -1092,7 +1093,7 @@
       <!-- SEARCH ******************************************************************************* -->
       <label name="targetSearching" />
 
-      <do_if value="$scriptVersion != 108">
+      <do_if value="$scriptVersion lt 108">
         <return />
       </do_if>
 
