@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.09] - 2025-05-18
+
+### Fixed
+
+- `Mimic` mode not started correctly.
+
+### Changed
+
+- If `experimental` order of `Attack Station` is selected but fleet has ships smaller than `L`- the both `experimental` and `Attack Station` options are disabled.
+
 ## [1.08] - 2025-05-11
 
 ### Added
