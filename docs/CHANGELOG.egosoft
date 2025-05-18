@@ -1,5 +1,15 @@
 [size=140][u]Changelog[/u][/size]
 
+[size=130][u][1.09] - 2025-05-18[/u][/size]
+
+[size=125][u]Fixed[/u][/size]
+[list]
+[*] [b]Mimic[/b] mode not started correctly.
+[/list]
+[size=125][u]Changed[/u][/size]
+[list]
+[*] If [b]experimental[/b] order of [b]Attack Station[/b] is selected but fleet has ships smaller than [b]L[/b]- the both [b]experimental[/b] and [b]Attack Station[/b] options are disabled.
+[/list]
 [size=130][u][1.08] - 2025-05-11[/u][/size]
 
 [size=125][u]Added[/u][/size]
