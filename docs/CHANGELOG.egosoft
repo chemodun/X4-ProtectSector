@@ -1,5 +1,15 @@
 [size=140][u]Changelog[/u][/size]
 
+[size=130][u][1.10] - 2025-08-07[/u][/size]
+
+[size=125][u]Fixed[/u][/size]
+[list]
+[*] Fixed possible incompatibility with [b]move_to[/b] command in the [b]X4: Foundations 8.00[/b] and upper.
+[/list]
+[size=125][u]Improved[/u][/size]
+[list]
+[*] Targets handling in non-shared mode.
+[/list]
 [size=130][u][1.09] - 2025-05-18[/u][/size]
 
 [size=125][u]Fixed[/u][/size]
