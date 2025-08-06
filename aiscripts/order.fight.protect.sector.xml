@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="iso-8859-1"?>
-<aiscript name="order.fight.protect.sector" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="aiscripts.xsd" version="109">
+<aiscript name="order.fight.protect.sector" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="aiscripts.xsd" version="110">
   <order id="ProtectSector" name="{1972092401, 1}" description="{1972092401, 2}" category="combat" infinite="true">
     <params>
       <param name="homeSector"
@@ -49,7 +49,7 @@
           comment="Added patch to set default value" />
       </param>
       <param name="shieldsPreserveOnFlight" type="bool" default="false" text="{1972092401, 161}">
-        <patch sinceversion="109" value="if player.gameversion ge 750 then false else $shieldsPreserveOnFlight"
+        <patch sinceversion="110" value="if player.gameversion ge 750 then false else $shieldsPreserveOnFlight"
           comment="From 7.50 has no dependency on shields" />
       </param>
       <param name="breakOnDestructionPercentage" type="number" default="0" text="{1972092401, 171}">
@@ -126,6 +126,21 @@
             <set_value name="$subordinatesToBeUpdatedAfter" exact="player.age + 60" />
           </do_if>
         </do_if>
+      </actions>
+      <actions name="SubordinatesResetOrders">
+        <do_for_each name="$subordinate" in="this.assignedcontrolled.allsubordinates">
+          <do_if value="@$subordinate.order.id == 'Attack'">
+            <cancel_all_orders object="$subordinate" />
+            <debug_text
+              text="'ProtectSector [%s at %s, %s]: Canceling Attack order for %s'
+                .[
+                  this.assignedcontrolled.debugname,
+                  this.assignedcontrolled.sector.knownname,
+                  this.assignedcontrolled.fleet.name,
+                  @$subordinate.debugname
+                ]" />
+          </do_if>
+        </do_for_each>
       </actions>
       <actions name="RelationsConversionList">
         <set_value name="$relationsConversionList"
@@ -212,7 +227,7 @@
         <remove_value name="$randomizeInitialResupply" />
       </actions>
       <actions name="ResupplyWorkaroundRefresh">
-        <do_for_each name="$subordinate" in="this.$escortgroup">
+        <do_for_each name="$subordinate" in="@this.assignedcontrolled.allsubordinates">
           <set_value name="$subordinate.pilot.$playerOwnedWorkaroundForRestock" exact="true" />
         </do_for_each>
         <set_value name="this.assignedcontrolled.pilot.$playerOwnedWorkaroundForRestock" exact="true" />
@@ -229,7 +244,7 @@
                 ]" /> -->
             <find_ship name="$ships" space="this.assignedcontrolled.sector" class="$classesForAttack" recursive="true" multiple="true" isinliveview="true"
               ishostileto="this.owner" checkoperational="true" docked="false"
-              sortbyvalue="(if @loop.element.pilot.$ignoreTime gt player.age then 1000km else 0km) +
+              sortbyvalue="(if loop.element.pilot.$targetedBy? and @loop.element.pilot.$targetedBy != this.assignedcontrolled.idcode and @loop.element.pilot.$ignoreTime gt player.age then 1000km else 0km) +
                 (if @loop.element.relationto.{this.owner} le $relationsThresholdInternal then 0km else 1000km) + loop.element.distanceto.{this.assignedcontrolled}"
               sortdescending="false">
               <match trueowner="faction.player" negate="true" />
@@ -248,7 +263,7 @@
                 ]" /> -->
             <find_ship name="$ships" space="this.assignedcontrolled.sector" class="$classesForAttack" recursive="true" multiple="true" isinliveview="true"
               checkoperational="true" docked="false"
-              sortbyvalue="(if @loop.element.pilot.$ignoreTime gt player.age then 1000km else 0km) +
+              sortbyvalue="(if loop.element.pilot.$targetedBy? and @loop.element.pilot.$targetedBy != this.assignedcontrolled.idcode and @loop.element.pilot.$ignoreTime gt player.age then 1000km else 0km) +
                 (if @loop.element.relationto.{this.owner} le $relationsThresholdInternal then 0km else 1000km) + loop.element.distanceto.{this.assignedcontrolled}"
               sortdescending="false">
               <match trueowner="faction.player" negate="true" />
@@ -269,7 +284,7 @@
                 ]" /> -->
             <find_ship name="$ships" space="this.assignedcontrolled.sector" class="$classesForAttack" recursive="true" multiple="true" ishostileto="this.owner"
               checkoperational="true" docked="false"
-              sortbyvalue="(if @loop.element.pilot.$ignoreTime gt player.age then 1000km else 0km) +
+              sortbyvalue="(if loop.element.pilot.$targetedBy? and @loop.element.pilot.$targetedBy != this.assignedcontrolled.idcode and @loop.element.pilot.$ignoreTime gt player.age then 1000km else 0km) +
                 (if @loop.element.relationto.{this.owner} le $relationsThresholdInternal then 0km else 1000km) + loop.element.distanceto.{this.assignedcontrolled}"
               sortdescending="false">
               <match trueowner="faction.player" negate="true" />
@@ -288,7 +303,7 @@
                 ]" /> -->
             <find_ship name="$ships" space="this.assignedcontrolled.sector" class="$classesForAttack" recursive="true" multiple="true" checkoperational="true"
               docked="false"
-              sortbyvalue="(if @loop.element.pilot.$ignoreTime gt player.age then 1000km else 0km) +
+              sortbyvalue="(if loop.element.pilot.$targetedBy? and @loop.element.pilot.$targetedBy != this.assignedcontrolled.idcode and @loop.element.pilot.$ignoreTime gt player.age then 1000km else 0km) +
                 (if @loop.element.relationto.{this.owner} le $relationsThresholdInternal then 0km else 1000km) + loop.element.distanceto.{this.assignedcontrolled}"
               sortdescending="false">
               <match trueowner="faction.player" negate="true" />
@@ -315,7 +330,7 @@
             <do_if value="$macrosToSkip.count == 1">
               <find_object name="$stations" space="this.assignedcontrolled.sector" class="[class.station, class.buildstorage]" recursive="true" multiple="true"
                 ishostileto="this.owner" known="true"
-                sortbyvalue="(if @loop.element.pilot.$ignoreTime gt player.age then 1000km else 0km) +
+                sortbyvalue="(if loop.element.pilot.$targetedBy? and @loop.element.pilot.$targetedBy != this.assignedcontrolled.idcode and @loop.element.pilot.$ignoreTime gt player.age then 1000km else 0km) +
                   (if @loop.element.relationto.{this.owner} le $relationsThresholdInternal then 0km else 1000km) + loop.element.distanceto.{this.assignedcontrolled}"
                 sortdescending="false">
                 <match macro="$macrosToSkip.{1}" negate="true" />
@@ -326,7 +341,7 @@
             <do_else>
               <find_object name="$stations" space="this.assignedcontrolled.sector" class="[class.station, class.buildstorage]" recursive="true" multiple="true"
                 ishostileto="this.owner" known="true"
-                sortbyvalue="(if @loop.element.pilot.$ignoreTime gt player.age then 1000km else 0km) +
+                sortbyvalue="(if loop.element.pilot.$targetedBy? and @loop.element.pilot.$targetedBy != this.assignedcontrolled.idcode and @loop.element.pilot.$ignoreTime gt player.age then 1000km else 0km) +
                   (if @loop.element.relationto.{this.owner} le $relationsThresholdInternal then 0km else 1000km) +
                   (if $macrosToSkip.indexof.{@loop.element.macro} == 0 then 0km else 1000km) + loop.element.distanceto.{this.assignedcontrolled}"
                 sortdescending="false">
@@ -339,7 +354,7 @@
             <do_if value="$macrosToSkip.count == 1">
               <find_object name="$stations" space="this.assignedcontrolled.sector" class="[class.station, class.buildstorage]" recursive="true" multiple="true"
                 known="true"
-                sortbyvalue="(if @loop.element.pilot.$ignoreTime gt player.age then 1000km else 0km) +
+                sortbyvalue="(if loop.element.pilot.$targetedBy? and @loop.element.pilot.$targetedBy != this.assignedcontrolled.idcode and @loop.element.pilot.$ignoreTime gt player.age then 1000km else 0km) +
                   (if @loop.element.relationto.{this.owner} le $relationsThresholdInternal then 0km else 1000km) + loop.element.distanceto.{this.assignedcontrolled}"
                 sortdescending="false">
                 <match_relation_to object="this.assignedcontrolled" relation="neutral" comparison="le" />
@@ -351,7 +366,7 @@
             <do_else>
               <find_object name="$stations" space="this.assignedcontrolled.sector" class="[class.station, class.buildstorage]" recursive="true" multiple="true"
                 known="true"
-                sortbyvalue="(if @loop.element.pilot.$ignoreTime gt player.age then 1000km else 0km) +
+                sortbyvalue="(if loop.element.pilot.$targetedBy? and @loop.element.pilot.$targetedBy != this.assignedcontrolled.idcode and @loop.element.pilot.$ignoreTime gt player.age then 1000km else 0km) +
                   (if @loop.element.relationto.{this.owner} le $relationsThresholdInternal then 0km else 1000km) +
                   (if $macrosToSkip.indexof.{@loop.element.macro} == 0 then 0km else 1000km) + loop.element.distanceto.{this.assignedcontrolled}"
                 sortdescending="false">
@@ -367,7 +382,7 @@
             <do_if value="$macrosToSkip.count == 1">
               <find_object name="$stations" space="this.assignedcontrolled.sector" class="[class.station, class.buildstorage]" recursive="true" multiple="true"
                 ishostileto="this.owner"
-                sortbyvalue="(if @loop.element.pilot.$ignoreTime gt player.age then 1000km else 0km) +
+                sortbyvalue="(if loop.element.pilot.$targetedBy? and @loop.element.pilot.$targetedBy != this.assignedcontrolled.idcode and @loop.element.pilot.$ignoreTime gt player.age then 1000km else 0km) +
                   (if @loop.element.relationto.{this.owner} le $relationsThresholdInternal then 0km else 1000km) + loop.element.distanceto.{this.assignedcontrolled}"
                 sortdescending="false">
                 <match macro="$macrosToSkip.{1}" negate="true" />
@@ -378,7 +393,7 @@
             <do_else>
               <find_object name="$stations" space="this.assignedcontrolled.sector" class="[class.station, class.buildstorage]" recursive="true" multiple="true"
                 ishostileto="this.owner"
-                sortbyvalue="(if @loop.element.pilot.$ignoreTime gt player.age then 1000km else 0km) +
+                sortbyvalue="(if loop.element.pilot.$targetedBy? and @loop.element.pilot.$targetedBy != this.assignedcontrolled.idcode and @loop.element.pilot.$ignoreTime gt player.age then 1000km else 0km) +
                   (if @loop.element.relationto.{this.owner} le $relationsThresholdInternal then 0km else 1000km) +
                   (if $macrosToSkip.indexof.{@loop.element.macro} == 0 then 0km else 1000km) + loop.element.distanceto.{this.assignedcontrolled}"
                 sortdescending="false">
@@ -390,7 +405,7 @@
           <do_else>
             <do_if value="$macrosToSkip.count == 1">
               <find_object name="$stations" space="this.assignedcontrolled.sector" class="[class.station, class.buildstorage]" recursive="true" multiple="true"
-                sortbyvalue="(if @loop.element.pilot.$ignoreTime gt player.age then 1000km else 0km) +
+                sortbyvalue="(if loop.element.pilot.$targetedBy? and @loop.element.pilot.$targetedBy != this.assignedcontrolled.idcode and @loop.element.pilot.$ignoreTime gt player.age then 1000km else 0km) +
                   (if @loop.element.relationto.{this.owner} le $relationsThresholdInternal then 0km else 1000km) + loop.element.distanceto.{this.assignedcontrolled}"
                 sortdescending="false">
                 <match_relation_to object="this.assignedcontrolled" relation="neutral" comparison="le" />
@@ -401,7 +416,7 @@
             </do_if>
             <do_else>
               <find_object name="$stations" space="this.assignedcontrolled.sector" class="[class.station, class.buildstorage]" recursive="true" multiple="true"
-                sortbyvalue="(if @loop.element.pilot.$ignoreTime gt player.age then 1000km else 0km) +
+                sortbyvalue="(if loop.element.pilot.$targetedBy? and @loop.element.pilot.$targetedBy != this.assignedcontrolled.idcode and @loop.element.pilot.$ignoreTime gt player.age then 1000km else 0km) +
                   (if @loop.element.relationto.{this.owner} le $relationsThresholdInternal then 0km else 1000km) +
                   (if $macrosToSkip.indexof.{@loop.element.macro} == 0 then 0km else 1000km) + loop.element.distanceto.{this.assignedcontrolled}"
                 sortdescending="false">
@@ -442,6 +457,9 @@
         <do_if value="@$target == null and @$targetOnResponse == null">
           <return />
         </do_if>
+      </actions>
+      <actions name="SetVersion">
+        <set_value name="$scriptVersion" exact="110" />
       </actions>
     </library>
     <handler ref="AttackHandler" />
@@ -593,7 +611,6 @@
           <event_object_destroyed group="$targets" />
           <event_object_abandoned group="$targets" />
           <event_object_changed_sector group="$targets" />
-          <event_object_target_invalid object="this.assignedcontrolled" />
         </check_any>
       </conditions>
       <actions>
@@ -649,6 +666,7 @@
               <set_value name="$targetDestroyedBy" exact="event.param" />
               <include_interrupt_actions ref="ApplyExperience" />
             </do_if>
+            <include_interrupt_actions ref="SubordinatesResetOrders" />
             <abort_called_scripts resume="targetSearching" />
           </do_else>
         </do_if>
@@ -749,7 +767,7 @@
             ]" /> -->
         <include_interrupt_actions ref="ScanForEnemyShips" />
         <do_if
-          value="@$ships.count gt 0 and @$ships.{1}.relationto.{this.owner} le $relationsThresholdInternal and (@$ships.{1}.pilot.$ignoreTime == null or @$ships.{1}.pilot.$ignoreTime le player.age)">
+          value="@$ships.count gt 0 and @$ships.{1}.relationto.{this.owner} le $relationsThresholdInternal and (@$ships.{1}.pilot.$ignoreTime == null or @$ships.{1}.pilot.$targetedBy == this.assignedcontrolled.idcode or @$ships.{1}.pilot.$ignoreTime le player.age)">
           <debug_text
             text="'ProtectSector [%s at %s, %s]: ReScan result. Target found: %s. Relation: %s. Threshold: %s. Distance: %s. Idle till: %s'.
             [
@@ -805,7 +823,7 @@
     </handler>
   </interrupts>
   <init>
-    <set_value name="$scriptVersion" exact="109" />
+    <include_interrupt_actions ref="SetVersion" />
 
     <set_value name="$shieldsPreserveOnFlight" exact="if player.gameversion ge 750 then false else $shieldsPreserveOnFlight" />
 
@@ -1067,10 +1085,13 @@
     <set_value name="$scriptVersion" exact="107" />
   </patch>
   <patch sinceversion="108">
-    <include_interrupt_actions ref="PatchToVersion08" />
+    <include_interrupt_actions ref="PatchToVersion108" />
   </patch>
   <patch sinceversion="109">
     <set_value name="$scriptVersion" exact="109" />
+  </patch>
+  <patch sinceversion="110">
+    <include_interrupt_actions ref="SetVersion" />
   </patch>
   <attention min="unknown">
     <actions>
@@ -1181,13 +1202,14 @@
 
           <do_if value="(not $ship.iswreck) and ($ship.isoperational) and ($ship.pilot.exists)">
             <do_if value="$ship.pilot.$ignoreTime?">
-              <do_if value="player.age gt $ship.pilot.$ignoreTime">
+              <do_if value="player.age ge $ship.pilot.$ignoreTime">
                 <remove_value name="$ship.pilot.$ignoreTime" />
+                <remove_value name="$ship.pilot.$targetedBy" />
               </do_if>
             </do_if>
             <set_value name="$relation" exact="$ship.relationto.{this.owner}" />
             <debug_text
-              text="'ProtectSector [%s at %s, %s]: %s - Target to check: %s {%s}, distance - %s, relation - %s, threshold: %s, share targets: %s, to skip - %s, ignore time: %s, player age: %s'
+              text="'ProtectSector [%s at %s, %s]: %s - Target to check: %s {%s}, distance - %s, relation - %s, threshold: %s, share targets: %s, targeted by - %s, to skip - %s, ignore time: %s, player age: %s'
                 .[
                   this.assignedcontrolled.debugname,
                   this.assignedcontrolled.sector.knownname,
@@ -1199,12 +1221,15 @@
                   $relation,
                   $relationsThresholdInternal,
                   $shareTargetsBetweenFleets,
-                  $ship.pilot.$ignoreTime?,
+                  @$ship.pilot.$targetedBy,
+                  $ship.pilot.$targetedBy? and @$ship.pilot.$targetedBy != this.assignedcontrolled.idcode and $ship.pilot.$ignoreTime? and not $shareTargetsBetweenFleets,
                   @$ship.pilot.$ignoreTime,
                   player.age
                 ]" />
             <do_if value="$relation le $relationsThresholdInternal">
-              <do_if value="$ship.pilot.$ignoreTime? and not $shareTargetsBetweenFleets" negate="true">
+              <do_if
+                value="$ship.pilot.$ignoreTime? and $ship.pilot.$targetedBy? and @$ship.pilot.$targetedBy != this.assignedcontrolled.idcode and not $shareTargetsBetweenFleets"
+                negate="true">
                 <set_value name="$target" exact="$ship" />
                 <set_value name="$targetClassIsAllowed" exact="true" />
                 <do_while
@@ -1365,14 +1390,16 @@
 
           <do_if value="$target.exists and $target.pilot.exists and not $shareTargetsBetweenFleets">
             <set_value name="$target.pilot.$ignoreTime" exact="player.age + 300" />
+            <set_value name="$target.pilot.$targetedBy" exact="this.assignedcontrolled.idcode" />
             <debug_text
-              text="'ProtectSector [%s at %s, %s]: Target marked to ignore: %s {%s}, ignore time: %s, player age: %s'
+              text="'ProtectSector [%s at %s, %s]: Target marked to ignore: %s {%s} by %s, ignore time: %s, player age: %s'
                 .[
                   this.assignedcontrolled.debugname,
                   this.assignedcontrolled.sector.knownname,
                   this.assignedcontrolled.fleet.name,
                   $target.debugname,
                   $target.class,
+                  @$target.pilot.$targetedBy,
                   $ship.pilot.$ignoreTime?,
                   @$ship.pilot.$ignoreTime,
                   player.age
@@ -1560,6 +1587,7 @@
           </do_if>
 
           <set_value name="this.assignedcontrolled.aipilot.$targetInfo" exact="$targetInfo" />
+          <include_interrupt_actions ref="SubordinatesResetOrders" />
           <do_if value="@$attackStationsInternal">
             <create_order id="'AttackStationInSector'" object="this.assignedcontrolled" immediate="true">
               <param name="primaryTarget" value="$target" />
@@ -1740,6 +1768,9 @@
 
       <do_if value="$target? and $target != null and $target.exists and not $target.iswreck and $target.sector == $homeSector">
 
+
+        <include_interrupt_actions ref="SubordinatesResetOrders" />
+
         <remove_value name="$positionIdle" />
 
         <set_value name="$targetDistanceTo" exact="this.assignedcontrolled.distanceto.{$target}" />
@@ -1818,25 +1849,34 @@
           <set_value name="$parkedAtPosition" exact="false" />
           <set_command command="command.patrol" />
           <set_command_action commandaction="commandaction.flyingto" param="$target" />
-
-          <get_safe_pos object="$target" zone="$target.zone" radius="this.assignedcontrolled.size / 2" allowyaxis="true"
-            result="$destination"
-            ignored="this.assignedcontrolled" sector="$homeSector" />
-
+          <get_safe_pos result="$destination" object="$target" space="$homeSector" radius="$target.maxcombatrange.all * 2"
+            allowyaxis="true" ignored="this.assignedcontrolled" sector="$homeSector" />
           <set_value name="$targetPreviousDistanceTo" exact="$targetDistanceTo" />
-
-          <move_to object="this.assignedcontrolled" destination="$target.zone" boost="not $shieldsPreserveOnFlight" travel="true"
-            forceposition="false"
-            finishonapproach="true" commandaction="false">
-            <position value="$destination" max="this.assignedcontrolled.size + $target.size" />
+          <debug_text
+            text="'ProtectSector [%s at %s, %s]: moving to target: %s {%s} at position: %s (%s), distance - %s, acceptable distance - %s, position to target - %s (%s)'
+              .[
+                this.assignedcontrolled.debugname,
+                this.assignedcontrolled.sector.knownname,
+                this.assignedcontrolled.fleet.name,
+                $target.debugname,
+                $target.class,
+                $destination,
+                @$target.relativeposition.{$homeSector},
+                $targetDistanceTo,
+                $targetOptimalDistanceForAttack,
+                $target.distanceto.[$homeSector, $destination],
+                $target.maxcombatrange.all * 2
+              ]" />
+          <move_to object="this.assignedcontrolled" destination="$homeSector" boost="not $shieldsPreserveOnFlight" travel="true"
+            forceposition="false" finishonapproach="true" radius="$targetOptimalDistanceForAttack / 3">
+            <position value="$destination" max="$targetOptimalDistanceForAttack / 4" space="$homeSector" />
             <interrupt>
               <conditions>
                 <check_any>
-                  <event_object_changed_zone group="$targets" />
-                  <event_object_destroyed group="$targets" />
-                  <event_object_abandoned group="$targets" />
-                  <event_object_changed_sector group="$targets" />
-                  <event_object_target_invalid group="$targets" />
+                  <event_object_changed_zone object="$target" check="false" />
+                  <event_object_destroyed object="$target" check="false" />
+                  <event_object_abandoned object="$target" check="false" />
+                  <event_object_changed_sector object="$target" check="false" />
                 </check_any>
               </conditions>
               <actions>
@@ -1926,6 +1966,7 @@
             <write_to_logbook category="general" title="$textTitle" text="{1972092401, 1032}.[$textUnit, $textEnemy, $textHomeSector]"
               interaction="showonmap" object="this.assignedcontrolled" />
           </do_if>
+          <include_interrupt_actions ref="SubordinatesResetOrders" />
           <set_command command="command.patrol" />
           <set_command_action commandaction="commandaction.attackingto" param="$target" />
           <run_script name="'order.fight.attack.object'">
@@ -1970,6 +2011,7 @@
           <resume label="targetApproaching" />
         </do_else>
       </do_if>
+      <include_interrupt_actions ref="SubordinatesResetOrders" />
 
       <resume label="goingIdle" />
 
@@ -2052,7 +2094,7 @@
     </actions>
   </attention>
   <on_abort>
-    <do_for_each name="$subordinate" in="this.$escortgroup">
+    <do_for_each name="$subordinate" in="this.assignedcontrolled.allsubordinates">
       <remove_value name="$subordinate.pilot.$playerOwnedWorkaroundForRestock" />
     </do_for_each>
     <remove_value name="this.assignedcontrolled.pilot.$playerOwnedWorkaroundForRestock" />

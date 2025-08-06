@@ -3,6 +3,9 @@
   <add sel="//do_elseif[@value=&quot;$orderdef.$id == 'Follow'&quot;]" pos="after">
     <do_elseif value="$orderdef.$id == 'ProtectSector'">
       <set_value name="$added" />
+      <do_if value="@this.assignedcontrolled.order.isrunning">
+        <clear_order_failure order="this.assignedcontrolled.order"/>
+      </do_if>
       <do_if value="$createdefaultorder?">
         <create_order id="$orderdef.$id" object="this.assignedcontrolled" default="true">
           <param name="homeSector" value="$orderdef.$homeSector" />

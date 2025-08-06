@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.10] - 2025-08-07
+
+### Fixed
+
+- Fixed possible incompatibility with `move_to` command in the `X4: Foundations 8.00` and upper.
+
+### Improved
+
+- Targets handling in non-shared mode.
+
 ## [1.09] - 2025-05-18
 
 ### Fixed
