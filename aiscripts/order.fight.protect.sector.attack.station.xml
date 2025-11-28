@@ -888,7 +888,6 @@
         </do_else>
       </actions>
     </handler>
-    <handler ref="DisengageHandler" />
     <handler ref="TargetInvalidHandler" />
   </interrupts>
   <init>
