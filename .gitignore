@@ -2,3 +2,4 @@
 *.original
 *.modified
 dist
+_patch_check
