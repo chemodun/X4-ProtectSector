@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="iso-8859-1"?>
 <aiscript name="order.fight.protect.sector.attack.station" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="aiscripts.xsd"
-  version="109">
+  version="111">
   <order id="AttackStationInSector" name="{1972092401, 10001}" description="{1972092401, 10011}" category="combat" allowinloop="false">
     <params>
       <param name="primaryTarget" required="true" type="object" text="{1041, 10126}" comment="Target. The object to fight with">
