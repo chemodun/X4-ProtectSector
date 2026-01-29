@@ -1,5 +1,12 @@
 [h1]Changelog[/h1]
 
+[h2][b][1.12] - 2026-01=30[/b][/h2]
+[list]
+[*] Fixed
+[list]
+[*] Order breaks attack "dangerous" enemy ships when [b]KUDA AI tweaks[/b] installed.
+[/list]
+[/list]
 [h2][b][1.11] - 2025-12-06[/b][/h2]
 [list]
 [*] Fixed
