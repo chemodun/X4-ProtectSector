@@ -1981,21 +1981,50 @@
           <include_interrupt_actions ref="SubordinatesResetOrders" />
           <set_command command="command.patrol" />
           <set_command_action commandaction="commandaction.attackingto" param="$target" />
-          <run_script name="'order.fight.attack.object'">
-            <param name="primarytarget" value="$target" />
-            <param name="pursuetargets" value="false" />
-            <param name="allowothertargets" value="true" />
-            <param name="checkrelation" value="$attackHostileOnly" />
-            <param name="disable" value="$breakOnDestructionPercentage gt 0" />
-            <param name="disablehullpercentagethreshold" value="$breakOnDestructionPercentage" />
-            <param name="maintaindistance" value="true" />
-            <param name="squad_attack" value="true" />
-            <param name="uncover" value="true" />
-            <param name="targetclasses" value="$classesAcceptableForAttack" />
-            <param name="allowboost" value="not $shieldsPreserveOnFlight" />
-            <param name="forceprimarytarget" value="true" />
-            <param name="debugchance" value="$debugchance" />
-          </run_script>
+          <do_if value="@global.$kAAIT_Data != null">
+            <debug_text
+              text="'ProtectSector [%s at %s, %s]: KUDA AI tweaks detected, applying avoiding code to attack the target: %s {%s} '
+                .[
+                  this.assignedcontrolled.debugname,
+                  this.assignedcontrolled.sector.knownname,
+                  this.assignedcontrolled.fleet.name,
+                  $target.debugname,
+                  $target.class
+                ]" />
+            <run_script name="'order.fight.attack.object'">
+              <param name="primarytarget" value="$target" />
+              <param name="pursuetargets" value="false" />
+              <param name="allowothertargets" value="true" />
+              <param name="checkrelation" value="$attackHostileOnly" />
+              <param name="disable" value="$breakOnDestructionPercentage gt 0" />
+              <param name="disablehullpercentagethreshold" value="$breakOnDestructionPercentage" />
+              <param name="maintaindistance" value="true" />
+              <param name="squad_attack" value="true" />
+              <param name="uncover" value="true" />
+              <param name="targetclasses" value="$classesAcceptableForAttack" />
+              <param name="allowboost" value="not $shieldsPreserveOnFlight" />
+              <param name="forceprimarytarget" value="true" />
+              <param name="kAAITParam_isAvoidHighRisk" value="false" />
+              <param name="debugchance" value="$debugchance" />
+            </run_script>
+          </do_if>
+          <do_else>
+            <run_script name="'order.fight.attack.object'">
+              <param name="primarytarget" value="$target" />
+              <param name="pursuetargets" value="false" />
+              <param name="allowothertargets" value="true" />
+              <param name="checkrelation" value="$attackHostileOnly" />
+              <param name="disable" value="$breakOnDestructionPercentage gt 0" />
+              <param name="disablehullpercentagethreshold" value="$breakOnDestructionPercentage" />
+              <param name="maintaindistance" value="true" />
+              <param name="squad_attack" value="true" />
+              <param name="uncover" value="true" />
+              <param name="targetclasses" value="$classesAcceptableForAttack" />
+              <param name="allowboost" value="not $shieldsPreserveOnFlight" />
+              <param name="forceprimarytarget" value="true" />
+              <param name="debugchance" value="$debugchance" />
+            </run_script>
+          </do_else>
 
           <set_value name="$targetDistanceTo" exact="this.assignedcontrolled.distanceto.{$target}" />
 
