@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="iso-8859-1"?>
-<aiscript name="order.fight.protect.sector" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="aiscripts.xsd" version="111">
+<aiscript name="order.fight.protect.sector" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="aiscripts.xsd" version="112">
   <order id="ProtectSector" name="{1972092401, 1}" description="{1972092401, 2}" category="combat" infinite="true" allowinloop="false">
     <params>
       <param name="homeSector"
@@ -49,7 +49,7 @@
           comment="Added patch to set default value" />
       </param>
       <param name="shieldsPreserveOnFlight" type="bool" default="false" text="{1972092401, 161}">
-        <patch sinceversion="110" value="if player.gameversion ge 750 then false else $shieldsPreserveOnFlight"
+        <patch sinceversion="112" value="if player.gameversion ge 750 then false else $shieldsPreserveOnFlight"
           comment="From 7.50 has no dependency on shields" />
       </param>
       <param name="breakOnDestructionPercentage" type="number" default="0" text="{1972092401, 171}">
@@ -468,7 +468,7 @@
         <include_interrupt_actions ref="HazardInSector" />
       </actions>
       <actions name="SetVersion">
-        <set_value name="$scriptVersion" exact="111" />
+        <set_value name="$scriptVersion" exact="112" />
       </actions>
     </library>
     <handler ref="AttackHandler" />
@@ -1109,7 +1109,7 @@
   <patch sinceversion="109">
     <set_value name="$scriptVersion" exact="109" />
   </patch>
-  <patch sinceversion="111">
+  <patch sinceversion="112">
     <include_interrupt_actions ref="SetVersion" />
   </patch>
   <attention min="unknown">
