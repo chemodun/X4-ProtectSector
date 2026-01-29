@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Czech -->
+<diff>
+  <add sel="/language">
+    <page id="1972092401" voice="no" title="Protect Sector" descr="Text for Protect Sector">
+      <t id="1">Chránit sektor</t>
+      <t id="2">Chránit sektor před nepřátelskými loděmi</t>
+      <t id="101">Domovský sektor</t>
+      <t id="111">Útok na stanice</t>
+      <t id="112"> - použít "{1041, 731}"</t>
+      <t id="113"> - použít experimentální "{1972092401, 10001}". Pokud je vybráno - předchozí bude ignorováno!</t>
+      <t id="121">Útok na XL lodě</t>
+      <t id="122">Útok na L lodě</t>
+      <t id="123">Útok na M lodě</t>
+      <t id="124">Útok na S lodě</t>
+      <t id="129">Útok dále od stanic - pokud bude nepřátelská loď blíže než vybraná hodnota k nepřátelské stanici - nebude napadena</t>
+      <t id="131">Útok pouze na viditelné cíle</t>
+      <t id="132">Útok pouze na nepřátelské cíle</t>
+      <t id="133">Pronásledovat prchající cíle</t>
+      <t id="134">Chránit naše lodě a stanice v sektoru</t>
+      <t id="135"> - kromě vojenských lodí</t>
+      <t id="141">Sdílet cíl s ostatními - pokud je nastaveno, umožní útok na jeden cíl různými ochránci sektoru</t>
+      <t id="151">Vlastní max. vztah</t>
+      <t id="152"> - přesnou "-" reputací. Tj. lodě s reputací/rasovým vztahem mezi vybranou hodnotou (s "-") a -30 budou považovány za nepřátelské</t>
+      <t id="161">Vyhnout se použití zesilovačů</t>
+      <t id="171">Opustit cíl s procentem trupu</t>
+      <t id="181">Zaparkovat v jádru sektoru</t>
+      <t id="182">Zaparkovat přesně tam</t>
+      <t id="191">Zpoždění mezi skenováními, sekundy</t>
+      <t id="201">Vzdálenost útoku: procento dosahu radaru</t>
+      <t id="211">Ignorovat hrozby nebezpečných zón. Některé sektory obsahují nebezpečné zóny, které mohou zničit lodě. Budete je ignorovat...</t>
+      <t id="901">Zaznamenat do lodního deníku</t>
+      <t id="1000">..: Chránit sektor :..</t>
+      <t id="1001">loď</t>
+      <t id="1002">stanice</t>
+      <t id="1003">\033Y%s\033X</t>
+      <t id="1011">\033C%s \(%s\)\033X</t>
+      <t id="1012">Flotila \033B%s\033X s velitelem %s</t>
+      <t id="1013">nepřítel %s \033R%s \(%s\)\033X</t>
+      <t id="1014">\033G%s \(%s\)\033X</t>
+      <t id="1015">\033O%s \(%s\)\033X</t>
+      <t id="1021">%s: přiřazeno k práci v %s</t>
+      <t id="1022">%s: směřuje na domovskou lokaci v %s</t>
+      <t id="1031">%s: na cestě do %s v %s</t>
+      <t id="1032">%s: začíná útočit na %s v %s</t>
+      <t id="1033">%s: jde chránit %s v %s proti %s</t>
+      <t id="1041">%s: %s v %s byl zničen %s</t>
+      <t id="1042">%s: %s v %s byl opuštěn</t>
+      <t id="1043">%s: %s zůstal %s</t>
+      <t id="1044">%s: %s v %s je příliš rychlý</t>
+      <t id="1101">%s: %s obsahuje \033Rnebezpečné\033X zóny. Zastavuji práci...</t>
+      <t id="10001">Útok na stanici</t>
+      <t id="10011">Experimentální příkaz k útoku pouze na stanice. K dispozici pouze pro L a XL lodě</t>
+      <t id="20001">Inteligentní útok na stanici</t>
+      <t id="20011">Příkaz k útoku pouze na stanice pomocí inteligentních manévrů. K dispozici pouze pro L a XL lodě</t>
+    </page>
+  </add>
+</diff>

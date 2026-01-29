@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Polish -->
+<diff>
+  <add sel="/language">
+    <page id="1972092401" voice="no" title="Protect Sector" descr="Text for Protect Sector">
+      <t id="1">Chroń sektor</t>
+      <t id="2">Chroń sektor przed wrogimi statkami</t>
+      <t id="101">Sektor macierzysty</t>
+      <t id="111">Atakuj stacje</t>
+      <t id="112"> - użyj "{1041, 731}"</t>
+      <t id="113"> - użyj eksperymentalnego "{1972092401, 10001}". Jeśli wybrano - poprzedni zostanie zignorowany!</t>
+      <t id="121">Atakuj statki XL</t>
+      <t id="122">Atakuj statki L</t>
+      <t id="123">Atakuj statki M</t>
+      <t id="124">Atakuj statki S</t>
+      <t id="129">Atakuj dalej od stacji - jeśli wrogi statek będzie bliżej niż wybrana wartość do wrogiej stacji - nie zostanie zaatakowany</t>
+      <t id="131">Atakuj tylko widoczne cele</t>
+      <t id="132">Atakuj tylko wrogie cele</t>
+      <t id="133">Ścigaj uciekające cele</t>
+      <t id="134">Chroń nasze statki i stacje w sektorze</t>
+      <t id="135"> - z wyjątkiem statków wojskowych</t>
+      <t id="141">Udostępnij cel innym - jeśli ustawione, umożliwi atakowanie jednego celu przez różnych ochroniarzy sektora</t>
+      <t id="151">Własny maks. stosunek</t>
+      <t id="152"> - przez dokładną "-" reputację. Tj. statki z reputacją/stosunkiem rasowym między wybraną wartością (z "-") a -30 będą uznawane za wrogie</t>
+      <t id="161">Unikaj używania dopalacza</t>
+      <t id="171">Opuść cel z procentem kadłuba</t>
+      <t id="181">Parkuj w centrum sektora</t>
+      <t id="182">Parkuj dokładnie tam</t>
+      <t id="191">Opóźnienie między skanowaniami, sekundy</t>
+      <t id="201">Dystans ataku: procent zasięgu radaru</t>
+      <t id="211">Ignoruj zagrożenia stref niebezpiecznych. Niektóre sektory zawierają strefy niebezpieczne, które mogą zniszczyć statki. Będziesz je
+        ignorować...</t>
+      <t id="901">Zapisz do dziennika pokładowego</t>
+      <t id="1000">..: Chroń sektor :..</t>
+      <t id="1001">statek</t>
+      <t id="1002">stacja</t>
+      <t id="1003">\033Y%s\033X</t>
+      <t id="1011">\033C%s \(%s\)\033X</t>
+      <t id="1012">Flota \033B%s\033X z dowódcą %s</t>
+      <t id="1013">wróg %s \033R%s \(%s\)\033X</t>
+      <t id="1014">\033G%s \(%s\)\033X</t>
+      <t id="1015">\033O%s \(%s\)\033X</t>
+      <t id="1021">%s: przydzielony do pracy w %s</t>
+      <t id="1022">%s: kieruje się do lokalizacji macierzystej w %s</t>
+      <t id="1031">%s: w drodze do %s w %s</t>
+      <t id="1032">%s: rozpoczyna atak na %s w %s</t>
+      <t id="1033">%s: idzie chronić %s w %s przeciwko %s</t>
+      <t id="1041">%s: %s w %s został zniszczony przez %s</t>
+      <t id="1042">%s: %s w %s został opuszczony</t>
+      <t id="1043">%s: %s został pozostawiony %s</t>
+      <t id="1044">%s: %s w %s jest za szybki</t>
+      <t id="1101">%s: %s zawiera \033Rniebezpieczne\033X strefy. Zatrzymywanie pracy...</t>
+      <t id="10001">Atakuj stację</t>
+      <t id="10011">Eksperymentalny rozkaz atakowania tylko stacji. Dostępne tylko dla statków L i XL</t>
+      <t id="20001">Inteligentny atak na stację</t>
+      <t id="20011">Rozkaz atakowania tylko stacji przy użyciu inteligentnych manewrów. Dostępne tylko dla statków L i XL</t>
+    </page>
+  </add>
+</diff>

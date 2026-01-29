@@ -50,6 +50,8 @@
       <t id="1101">%s: The %s contains a \033Rhazardous\033X zones. Stopping to work...</t>
       <t id="10001">Attack Station</t>
       <t id="10011">An experimental order to attack only stations. Available only for L and XL ships</t>
+      <t id="20001">Smart Station Attack</t>
+      <t id="20011">An order to attack only stations using smart maneuvers. Available only for L and XL ships</t>
     </page>
   </add>
 </diff>

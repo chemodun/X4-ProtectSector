@@ -2,7 +2,7 @@
 <!-- Korean -->
 <diff>
   <add sel="/language">
-    <page id="1972092401" voice="no" title="Protect Sector" descr="Text for Protect Sector" >
+    <page id="1972092401" voice="no" title="Protect Sector" descr="Text for Protect Sector">
       <t id="1">섹터 보호</t>
       <t id="2">적대적인 함선으로부터 섹터 보호</t>
       <t id="101">홈 섹터</t>
@@ -51,6 +51,8 @@
       <t id="1101">%s: %s는 \033R위험한\033X 구역을 포함하고 있습니다. 작업을 중단합니다...</t>
       <t id="10001">스테이션 공격</t>
       <t id="10011">스테이션만 공격하는 실험적 명령입니다. L 및 XL 함선에서만 사용 가능합니다</t>
+      <t id="20001">스마트 스테이션 공격</t>
+      <t id="20011">스마트 기동을 사용하여 스테이션만 공격하는 명령입니다. L 및 XL 함선에서만 사용 가능합니다</t>
     </page>
   </add>
 </diff>

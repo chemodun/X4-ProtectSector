@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Spain -->
+<!-- Spanish -->
 <diff>
   <add sel="/language">
-    <page id="1972092401" voice="no" title="Protect Sector" descr="Text for Protect Sector" >
+    <page id="1972092401" voice="no" title="Protect Sector" descr="Text for Protect Sector">
       <t id="1">Proteger el Sector</t>
       <t id="2">Proteger el Sector contra naves hostiles</t>
       <t id="101">Sector de origen</t>
@@ -51,6 +51,8 @@
       <t id="1101">%s: El %s contiene zonas \033Rpeligrosas\033X. Deteniéndose...</t>
       <t id="10001">Atacar estación</t>
       <t id="10011">Una orden experimental para atacar solo estaciones. Disponible solo para naves L y XL</t>
+      <t id="20001">Ataque Inteligente a Estación</t>
+      <t id="20011">Una orden para atacar solo estaciones usando maniobras inteligentes. Disponible solo para naves L y XL</t>
     </page>
   </add>
 </diff>

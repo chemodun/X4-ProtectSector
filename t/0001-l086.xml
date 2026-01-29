@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Chinese -->
+<!-- Chinese Simplified -->
 <diff>
   <add sel="/language">
-    <page id="1972092401" voice="no" title="Protect Sector" descr="Text for Protect Sector" >
+    <page id="1972092401" voice="no" title="Protect Sector" descr="Text for Protect Sector">
       <t id="1">保护区域</t>
       <t id="2">保护区域免受敌对舰船的攻击</t>
       <t id="101">母星区</t>
@@ -51,6 +51,8 @@
       <t id="1101">%s: %s 包含一个 \033R危险\033X 区域。停止工作...</t>
       <t id="10001">攻击空间站</t>
       <t id="10011">一个仅攻击空间站的实验性命令。仅适用于大型和超大型舰船</t>
+      <t id="20001">智能空间站攻击</t>
+      <t id="20011">一个使用智能机动仅攻击空间站的命令。仅适用于大型和超大型舰船</t>
     </page>
   </add>
 </diff>
