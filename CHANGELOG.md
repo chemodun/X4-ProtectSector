@@ -1,6 +1,6 @@
 # Changelog
 
-## [1.12] - 2026-01=30
+## [1.12] - 2026-01-30
 
 - Fixed
   - Order breaks attack "dangerous" enemy ships when `KUDA AI tweaks` installed.
