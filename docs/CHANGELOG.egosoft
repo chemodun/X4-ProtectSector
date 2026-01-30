@@ -6,6 +6,11 @@
 [list]
 [*] Order breaks attack "dangerous" enemy ships when [b]KUDA AI tweaks[/b] installed.
 [/list]
+[*] Improved
+[list]
+[*] Added [b]Protect Sector[/b] options menu in the [b]Extension Options[/b] if the [b]Mod Support APIs[/b] extension is installed.
+[*] Added [b]Enable debug log[/b] option to log detailed information to the debug log.
+[/list]
 [/list]
 [size=130][u][1.11] - 2025-12-06[/u][/size]
 [list]
