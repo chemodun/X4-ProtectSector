@@ -877,7 +877,7 @@
         </do_else>
       </actions>
     </handler>
-    <handler>
+    <handler consume="false">
       <conditions>
         <event_object_signalled object="player.entity" param="'ProtectSectorGlobalReScan'" />
       </conditions>
