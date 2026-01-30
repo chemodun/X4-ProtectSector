@@ -485,17 +485,19 @@
             @global.$chemODun.$protectSector.$debugLog,
             @$debugchance
           ]" />
-        <set_value name="$debugchance" exact="0" />
-        <do_if value="@global.$chemODun.$protectSector.$debugLog == true">
-          <set_value name="$debugchance" exact="100" />
-          <debug_text
-            text="'ProtectSector [%s at %s, %s]: Debug enabled.'.
+        <do_if value="@$isInit == null or @$isInit != true">
+          <set_value name="$debugchance" exact="0" />
+          <do_if value="@global.$chemODun.$protectSector.$debugLog == true">
+            <set_value name="$debugchance" exact="100" />
+            <debug_text
+              text="'ProtectSector [%s at %s, %s]: Debug enabled.'.
             [
               this.assignedcontrolled.debugname,
               this.assignedcontrolled.sector.knownname,
               this.assignedcontrolled.fleet.name
             ]"
-            chance="$debugchance" />
+              chance="$debugchance" />
+          </do_if>
         </do_if>
       </actions>
     </library>
@@ -894,6 +896,7 @@
     </handler>
   </interrupts>
   <init>
+    <set_value name="$isInit" exact="true" />
     <include_interrupt_actions ref="SetVersion" />
 
     <set_value name="$shieldsPreserveOnFlight" exact="if player.gameversion ge 750 then false else $shieldsPreserveOnFlight" />
@@ -1125,6 +1128,7 @@
     <set_value name="$positionIdleTime" exact="player.age" />
     <include_interrupt_actions ref="PatchToVersion108" />
     <include_interrupt_actions ref="ProtectSectorGlobalApply" />
+    <remove_value name="$isInit" />
   </init>
   <patch sinceversion="104">
     <set_value name="$idleDelay" exact="$delayBetweenScansInSeconds" />
@@ -1169,7 +1173,6 @@
   </patch>
   <patch sinceversion="112">
     <include_interrupt_actions ref="SetVersion" />
-    <include_interrupt_actions ref="ProtectSectorGlobalApply" />
   </patch>
   <attention min="unknown">
     <actions>
