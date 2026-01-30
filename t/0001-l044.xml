@@ -53,6 +53,7 @@
       <t id="10011">An experimental order to attack only stations. Available only for L and XL ships</t>
       <t id="20001">Smart Station Attack</t>
       <t id="20011">An order to attack only stations using smart maneuvers. Available only for L and XL ships</t>
+      <t id="90001">Enable debug log</t>
     </page>
   </add>
 </diff>

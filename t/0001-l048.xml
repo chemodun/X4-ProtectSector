@@ -54,6 +54,7 @@
       <t id="10011">Eksperymentalny rozkaz atakowania tylko stacji. Dostępne tylko dla statków L i XL</t>
       <t id="20001">Inteligentny atak na stację</t>
       <t id="20011">Rozkaz atakowania tylko stacji przy użyciu inteligentnych manewrów. Dostępne tylko dla statków L i XL</t>
+      <t id="90001">Włącz dziennik debugowania</t>
     </page>
   </add>
 </diff>

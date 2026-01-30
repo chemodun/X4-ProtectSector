@@ -53,6 +53,7 @@
       <t id="10011">Un ordine sperimentale per attaccare solo le stazioni. Disponibile solo per navi L e XL</t>
       <t id="20001">Attacco Intelligente alla Stazione</t>
       <t id="20011">Un ordine per attaccare solo le stazioni usando manovre intelligenti. Disponibile solo per navi L e XL</t>
+      <t id="90001">Abilita registro di debug</t>
     </page>
   </add>
 </diff>

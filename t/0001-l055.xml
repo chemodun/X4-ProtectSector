@@ -53,6 +53,7 @@
       <t id="10011">Uma ordem experimental para atacar apenas estações. Disponível apenas para naves L e XL</t>
       <t id="20001">Ataque Inteligente à Estação</t>
       <t id="20011">Uma ordem para atacar apenas estações usando manobras inteligentes. Disponível apenas para naves L e XL</t>
+      <t id="90001">Ativar registro de depuração</t>
     </page>
   </add>
 </diff>

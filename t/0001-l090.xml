@@ -54,6 +54,7 @@
       <t id="10011">Sadece istasyonlara saldırmak için deneysel emir. Sadece L ve XL gemiler için kullanılabilir</t>
       <t id="20001">Akıllı İstasyon Saldırısı</t>
       <t id="20011">Akıllı manevralar kullanarak sadece istasyonlara saldırmak için emir. Sadece L ve XL gemiler için kullanılabilir</t>
+      <t id="90001">Hata ayıklama günlüğünü etkinleştir</t>
     </page>
   </add>
 </diff>

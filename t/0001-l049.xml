@@ -54,6 +54,7 @@
       <t id="10011">Ein experimenteller Befehl, um nur Stationen anzugreifen. Nur für L- und XL-Schiffe verfügbar</t>
       <t id="20001">Intelligenter Stationsangriff</t>
       <t id="20011">Ein Befehl, um nur Stationen mit intelligenten Manövern anzugreifen. Nur für L- und XL-Schiffe verfügbar</t>
+      <t id="90001">Debug-Protokoll aktivieren</t>
     </page>
   </add>
 </diff>

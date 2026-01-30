@@ -53,6 +53,7 @@
       <t id="10011">Experimentální příkaz k útoku pouze na stanice. K dispozici pouze pro L a XL lodě</t>
       <t id="20001">Inteligentní útok na stanici</t>
       <t id="20011">Příkaz k útoku pouze na stanice pomocí inteligentních manévrů. K dispozici pouze pro L a XL lodě</t>
+      <t id="90001">Povolit protokol ladění</t>
     </page>
   </add>
 </diff>

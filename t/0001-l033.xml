@@ -55,6 +55,7 @@
       <t id="10011">Un ordre expérimental pour attaquer uniquement les stations. Disponible uniquement pour les vaisseaux L et XL</t>
       <t id="20001">Attaque Intelligente de Station</t>
       <t id="20011">Un ordre pour attaquer uniquement les stations en utilisant des manœuvres intelligentes. Disponible uniquement pour les vaisseaux L et XL</t>
+      <t id="90001">Activer le journal de débogage</t>
     </page>
   </add>
 </diff>

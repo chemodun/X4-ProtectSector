@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mdscript name="Protect_Sector_Options_Menu" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <cues>
+    <cue name="Init" instantiate="false">
+      <actions>
+      </actions>
+      <cues>
+        <library name="Ensure_Variables" purpose="include_actions">
+          <actions>
+            <do_if value="@global.$chemODun == null">
+              <set_value name="global.$chemODun" exact="table[]" />
+            </do_if>
+            <do_if value="@global.$chemODun.$protectSector == null">
+              <set_value name="global.$chemODun.$protectSector" exact="table[]" />
+            </do_if>
+            <do_if value="@global.$chemODun.$protectSector.$debugLog == null">
+              <set_value name="global.$chemODun.$protectSector.$debugLog" exact="false" />
+            </do_if>
+            <debug_text
+              text="'ProtectSector Options: Ensured variables are initialized: %s, %s, %s.' .
+              [@global.$chemODun, @global.$chemODun.$protectSector, @global.$chemODun.$protectSector.$debugLog]"
+              context="false" filter="scripts" />
+          </actions>
+        </library>
+
+        <cue name="Register_Menu" instantiate="true">
+          <conditions>
+            <event_cue_signalled cue="md.Simple_Menu_API.Reloaded" />
+          </conditions>
+          <actions>
+            <debug_text text="'ProtectSector Options: Registering Options Menus'" context="false" filter="scripts" />
+            <signal_cue_instantly cue="md.Simple_Menu_API.Register_Options_Menu"
+              param="table[
+                $id      = 'protect_sector_options_menu',
+                $columns = 8,
+                $title   = {1972092401, 1},
+                $onOpen  = Protect_Sector_Options_Menu,
+              ]" />
+          </actions>
+        </cue>
+
+        <cue name="Protect_Sector_Options_Menu" instantiate="true">
+          <conditions>
+            <event_cue_signalled />
+          </conditions>
+          <actions>
+            <debug_text text="'ProtectSector Options: Opening ProtectSector Options Menu'" context="false" filter="scripts" />
+            <include_actions ref="Ensure_Variables" />
+            <signal_cue_instantly cue="md.Simple_Menu_API.Add_Row" />
+            <signal_cue_instantly cue="md.Simple_Menu_API.Make_CheckBox"
+              param="table[
+                $id = 'protect_sector_debug_log',
+                $checked = global.$chemODun.$protectSector.$debugLog,
+                $col = 1,
+                $width = 'Helper.standardButtonHeight',
+                $height = 'Helper.standardButtonHeight',
+                $onClick = Protect_Sector_On_Checkbox_Change
+              ]" />
+            <signal_cue_instantly cue="md.Simple_Menu_API.Make_Text"
+              param="table[
+                $col = 2,
+                $colSpan = 7,
+                $text = {1972092401, 90001},
+              ]" />
+          </actions>
+        </cue>
+
+
+        <cue name="Protect_Sector_On_Checkbox_Change" instantiate="true">
+          <conditions>
+            <event_cue_signalled />
+          </conditions>
+          <actions>
+            <include_actions ref="Ensure_Variables" />
+            <debug_text text="'ProtectSector Options: CheckBox %s changed to %s' .[event.param.$id, event.param.$checked]" context="false" filter="scripts" />
+            <do_if value="event.param.$id == 'protect_sector_debug_log'">
+              <set_value name="global.$chemODun.$protectSector.$debugLog" exact="if event.param.$checked then true else false" />
+            </do_if>
+            <signal_objects object="player.entity" param="'ProtectSectorGlobalReScan'" />
+          </actions>
+        </cue>
+
+      </cues>
+    </cue>
+
+
+  </cues>
+</mdscript>
