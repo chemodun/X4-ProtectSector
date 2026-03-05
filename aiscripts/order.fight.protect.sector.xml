@@ -2087,6 +2087,7 @@
               <param name="allowboost" value="not $shieldsPreserveOnFlight" />
               <param name="forceprimarytarget" value="true" />
               <param name="kAAITParam_isAvoidHighRisk" value="false" />
+              <param name="kAAITParam_isStepForwardWithdraw" value="false" />
               <param name="debugchance" value="$debugchance" />
             </run_script>
           </do_if>
