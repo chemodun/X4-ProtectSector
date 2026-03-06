@@ -80,7 +80,7 @@
       <param name="recordActionsToLogBook" type="bool" default="true" text="{1972092401, 901}" />
       <param name="isStartedByPlayer" type="internal" default="true" text="Started by Player" />
       <param name="debugchance" type="bool" advanced="true" text="{1041, 10086}" comment="Print debug output"
-        default="if @global.$chemODun.$protectSector.$debugLog == true then 100 else 0">
+        default="if @global.$chemODun.$protectSector.$debugLog then 100 else 0">
         <input_param name="truevalue" value="100" />
         <editable />
       </param>
@@ -897,6 +897,9 @@
   </interrupts>
   <init>
     <set_value name="$isInit" exact="true" />
+    <do_if value="@global.$chemODun.$protectSector.$debugLog">
+      <set_value name="$debugchance" exact="100" />
+    </do_if>
     <include_interrupt_actions ref="SetVersion" />
 
     <set_value name="$shieldsPreserveOnFlight" exact="if player.gameversion ge 750 then false else $shieldsPreserveOnFlight" />
@@ -908,7 +911,7 @@
     <include_interrupt_actions ref="RelationsConversionList" />
 
     <debug_text
-      text="'ProtectSector [%s at %s, %s]: Version: %s. Home Sector: %s. Attack Stations: %s (Tactical: %s, Internal: %s). Attack Ships XL: %s. Attack Ships L: %s. Attack Ships M: %s. Attack Ships S: %s. Attack Ships Out Of Stations Distance: %s. Attack Visible Only: %s. Attack Hostile Only: %s. Relation Threshold: %s. Protect Player Ships In Sector: %s. Protect Only Non Military Ships: %s. Pursue Fleeing Target: %s. Share Targets Between Fleets: %s. Shields Preserve On Flight: %s. Break On Destruction Percentage: %s. Park In Center Of Sector: %s. Desired Parking Position: %s at %s. Delay Between Scans: %s, in seconds: %s. Ignore Hazard Threat: %s. Record Actions To Log Book: %s.'
+      text="'ProtectSector [%s at %s, %s]: Version: %s. Home Sector: %s. Attack Stations: %s (Tactical: %s, Internal: %s). Attack Ships XL: %s. Attack Ships L: %s. Attack Ships M: %s. Attack Ships S: %s. Attack Ships Out Of Stations Distance: %s. Attack Visible Only: %s. Attack Hostile Only: %s. Relation Threshold: %s. Protect Player Ships In Sector: %s. Protect Only Non Military Ships: %s. Pursue Fleeing Target: %s. Share Targets Between Fleets: %s. Shields Preserve On Flight: %s. Break On Destruction Percentage: %s. Park In Center Of Sector: %s. Desired Parking Position: %s at %s. Delay Between Scans: %s, in seconds: %s. Ignore Hazard Threat: %s. Record Actions To Log Book: %s. By Player: %s.'
         .[
           this.assignedcontrolled.debugname,
           this.assignedcontrolled.sector.knownname,
@@ -938,7 +941,8 @@
           $delayBetweenScans,
           $delayBetweenScansInSeconds,
           $ignoreHazardThreat,
-          $recordActionsToLogBook
+          $recordActionsToLogBook,
+          $isStartedByPlayer
         ]"
       chance="$debugchance" />
 
@@ -1939,11 +1943,19 @@
           <set_value name="$parkedAtPosition" exact="false" />
           <set_command command="command.patrol" />
           <set_command_action commandaction="commandaction.flyingto" param="$target" />
-          <get_safe_pos result="$destination" object="$target" space="$homeSector" radius="$target.maxcombatrange.all * 2"
-            allowyaxis="true" ignored="this.assignedcontrolled" sector="$homeSector" />
+          <set_value name="$radius" exact="$target.maxcombatrange.all * 1.2" />
+          <create_position name="$targetPos" space="$target.sector" object="$target" />
+          <create_position name="$ourPos" space="$target.sector" object="this.assignedcontrolled" />
+          <do_if value="$targetPos.y gt $ourPos.y">
+            <set_value name="$destY" exact="$targetPos.y - ($target.size / 2 + $radius)" />
+          </do_if>
+          <do_else>
+            <set_value name="$destY" exact="$targetPos.y + ($target.size / 2 + $radius)" />
+          </do_else>
+          <create_position name="$destination" space="$target.sector" x="$targetPos.x" z="$targetPos.z" y="$destY" />
           <set_value name="$targetPreviousDistanceTo" exact="$targetDistanceTo" />
           <debug_text
-            text="'ProtectSector [%s at %s, %s]: moving to target: %s {%s} at position: %s (%s), distance - %s, acceptable distance - %s, position to target - %s (%s)'
+            text="'ProtectSector [%s at %s, %s]: moving to target: %s {%s} at position: %s (%s), distance - %s, acceptable distance - %s, position to target - %s, target size: %s, radius: %s, pos: %s, delta: %s'
               .[
                 this.assignedcontrolled.debugname,
                 this.assignedcontrolled.sector.knownname,
@@ -1955,7 +1967,10 @@
                 $targetDistanceTo,
                 $targetOptimalDistanceForAttack,
                 $target.distanceto.[$homeSector, $destination],
-                $target.maxcombatrange.all * 2
+                $target.size, 
+                $radius, 
+                $targetPos,
+                $target.size / 2 + $radius
               ]"
             chance="$debugchance" />
           <move_to object="this.assignedcontrolled" destination="$homeSector" boost="not $shieldsPreserveOnFlight" travel="true"
@@ -2237,4 +2252,5 @@
           ]"
       chance="$debugchance" />
   </on_abort>
+
 </aiscript>
