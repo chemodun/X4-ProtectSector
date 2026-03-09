@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="iso-8859-1"?>
-<aiscript name="order.fight.protect.sector" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="aiscripts.xsd" version="112">
+<aiscript name="order.fight.protect.sector" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="aiscripts.xsd" version="113">
   <order id="ProtectSector" name="{1972092401, 1}" description="{1972092401, 2}" category="combat" infinite="true" allowinloop="false">
     <params>
       <param name="homeSector"
@@ -443,7 +443,7 @@
         </do_else>
       </actions>
       <actions name="HazardInSector">
-        <do_if value="$homeSector.hashazardousregion and @$ignoreHazardThreat != true and @$hazardWarningIssued == nill">
+        <do_if value="$homeSector.hashazardousregion and @$ignoreHazardThreat != true and @$hazardWarningIssued == null">
           <show_notification text="'%s\n%s'.[$textTitle, {1972092401, 1101}.[$textUnit, $textHomeSector]]" priority="2" sound="notification_warning"
             timeout="20s" />
           <write_to_logbook category="general" title="$textTitle" text="{1972092401, 1101}.[$textUnit, $textHomeSector]"
@@ -473,7 +473,7 @@
         <include_interrupt_actions ref="HazardInSector" />
       </actions>
       <actions name="SetVersion">
-        <set_value name="$scriptVersion" exact="112" />
+        <set_value name="$scriptVersion" exact="113" />
       </actions>
       <actions name="ProtectSectorGlobalApply">
         <debug_text
@@ -1178,6 +1178,12 @@
   <patch sinceversion="112">
     <include_interrupt_actions ref="SetVersion" />
   </patch>
+  <patch sinceversion="113">
+    <include_interrupt_actions ref="SetVersion" />
+    <set_value name="$oneSecond" exact="1s" />
+    <set_value name="$delayBetweenScansInSeconds" exact="if @$delayBetweenScans then != null $oneSecond * $delayBetweenScans else 4s" />
+    <set_value name="$macrosToSkip" exact="[macro.asteroid_turret_m_01_macro]" />
+  </patch>
   <attention min="unknown">
     <actions>
       <!-- START ******************************************************************************* -->
@@ -1868,7 +1874,7 @@
         <set_value name="$targetDistanceTo" exact="this.assignedcontrolled.distanceto.{$target}" />
 
         <set_value name="$targetOptimalDistanceForAttack"
-          exact="this.assignedcontrolled.size + this.assignedcontrolled.maxradarrange * $attackDistanceAsPercentageOfRadarRange * 0.01 + $target.size" />
+          exact="this.assignedcontrolled.size / 2 + this.assignedcontrolled.maxradarrange * $attackDistanceAsPercentageOfRadarRange * 0.01 + $target.size / 2" />
 
         <debug_text
           text="'ProtectSector [%s at %s, %s]: move iteration : %s {%s} status: iswreck: %s, isoperational: %s,  pilot: %s (%s), distance - %s, radar percentage: %s, acceptable distance - %s'
@@ -1944,6 +1950,9 @@
           <set_command command="command.patrol" />
           <set_command_action commandaction="commandaction.flyingto" param="$target" />
           <set_value name="$radius" exact="$target.maxcombatrange.all * 1.2" />
+          <do_if value="$radius gt ($targetOptimalDistanceForAttack - this.assignedcontrolled.size / 2)">
+            <set_value name="$radius" exact="$targetOptimalDistanceForAttack - this.assignedcontrolled.size / 2" />
+          </do_if>
           <create_position name="$targetPos" space="$target.sector" object="$target" />
           <create_position name="$ourPos" space="$target.sector" object="this.assignedcontrolled" />
           <do_if value="$targetPos.y gt $ourPos.y">
@@ -1967,8 +1976,8 @@
                 $targetDistanceTo,
                 $targetOptimalDistanceForAttack,
                 $target.distanceto.[$homeSector, $destination],
-                $target.size, 
-                $radius, 
+                $target.size,
+                $radius,
                 $targetPos,
                 $target.size / 2 + $radius
               ]"
@@ -2095,7 +2104,7 @@
               <param name="checkrelation" value="$attackHostileOnly" />
               <param name="disable" value="$breakOnDestructionPercentage gt 0" />
               <param name="disablehullpercentagethreshold" value="$breakOnDestructionPercentage" />
-              <param name="maintaindistance" value="true" />
+              <param name="maintaindistance" value="false" />
               <param name="squad_attack" value="true" />
               <param name="uncover" value="true" />
               <param name="targetclasses" value="$classesAcceptableForAttack" />
