@@ -2401,12 +2401,15 @@
         @this.assignedcontrolled.orders.count,
         @this.assignedcontrolled.nextorder
       ]" chance="$debugchance" />
-    <do_if value="@this.assignedcontrolled.allsubordinates">
-      <do_for_each name="$subordinate" in="@this.assignedcontrolled.allsubordinates">
-        <remove_value name="$subordinate.pilot.$playerOwnedWorkaroundForRestock" />
-      </do_for_each>
+    <do_if value="@this.assignedcontrolled != null">
+      <do_if value="@this.assignedcontrolled.allsubordinates != null">
+        <do_for_each name="$subordinate" in="@this.assignedcontrolled.allsubordinates">
+          <remove_value name="$subordinate.pilot.$playerOwnedWorkaroundForRestock" />
+        </do_for_each>
+      </do_if>
+      <remove_value name="this.assignedcontrolled.pilot.$playerOwnedWorkaroundForRestock" />
+      <set_value name="this.assignedcontrolled.pilot.$protectSectorAbortedAt" exact="player.age" />
     </do_if>
-    <remove_value name="this.assignedcontrolled.pilot.$playerOwnedWorkaroundForRestock" />
-    <set_value name="this.assignedcontrolled.pilot.$protectSectorAbortedAt" exact="player.age" />
   </on_abort>
+
 </aiscript>
