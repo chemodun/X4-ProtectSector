@@ -1,0 +1,12 @@
+﻿<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<diff>
+  <add sel="/aiscript/attention[@min='unknown']/actions/do_elseif[@value='not $commander.isoperational']/do_else" pos="prepend">
+    <include_interrupt_actions ref="ProtectSectorRestoreOrderParamsOnNewCommander" />
+    <do_if value="@$object.defaultorder.id != null">
+      <resume label="finish" />
+    </do_if>
+  </add>
+  <add sel="/aiscript/attention[@min='unknown']/actions/do_else" pos="after">
+    <label name="finish" />
+  </add>
+</diff>
