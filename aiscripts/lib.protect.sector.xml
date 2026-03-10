@@ -3,34 +3,22 @@
   <interrupts>
     <library>
       <actions name="ProtectSectorRestoreOrderParamsOnNewCommander">
-        <debug_text
-          text="'ProtectSector [%s at %s, %s]: ProtectSectorRestoreOrderParamsOnNewCommander: %s. Conditions: not null: %s, time delta: %s, lower then: %s, total: %s. Debug: %s. '.
-            [
-              this.assignedcontrolled.debugname,
-              this.assignedcontrolled.sector.knownname,
-              this.assignedcontrolled.fleet.name,
-              @this.$protectSectorParams,
-              @this.$protectSectorParams != null,
-              (player.age - @this.$protectSectorParams.$timeStamp),
-              (player.age - @this.$protectSectorParams.$timeStamp) le 1200s,
-              @this.$protectSectorParams != null and (player.age - @this.$protectSectorParams.$timeStamp) le 1200s,
-              @this.$protectSectorParams.$debugchance
-            ]" />
         <do_if value="@this.$protectSectorParams != null and (player.age - @this.$protectSectorParams.$timeStamp) le 1200s">
           <debug_text
-            text="'ProtectSector [%s at %s, %s]: Restoring parameters from previous commander: %s. Version: %s'.
+            text="'ProtectSector [%s at %s, %s]: Restoring parameters %s on %s. Version: %s'.
               [
                 this.assignedcontrolled.debugname,
                 this.assignedcontrolled.sector.knownname,
                 this.assignedcontrolled.fleet.name,
                 @this.$protectSectorParams,
+                @$object.debugname,
                 @this.$protectSectorParams.$version
               ]" chance="@this.$protectSectorParams.$debugchance" />
           <set_value name="$orderParams" exact="@this.$protectSectorParams" />
           <do_if value="@$orderParams.$version ge 114">
-            <create_order object="this.assignedcontrolled" id="'ProtectSector'" default="true">
+            <create_order object="$object" id="'ProtectSector'" default="true">
               <param name="homeSector" value="$orderParams.$homeSector" />
-              <param name="attackStations" value="$orderParams.$attackHostileOnly" />
+              <param name="attackStations" value="$orderParams.$attackStations" />
               <param name="attackStationsTactical" value="$orderParams.$attackStationsTactical" />
               <param name="attackStationsInternal" value="$orderParams.$attackStationsInternal" />
               <param name="attackShipsXL" value="$orderParams.$attackShipsXL" />
