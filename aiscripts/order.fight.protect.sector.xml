@@ -231,21 +231,29 @@
         <remove_value name="$randomizeInitialResupply" />
       </actions>
       <actions name="ResupplyWorkaroundRefresh">
-        <debug_text
-          text="'ProtectSector [%s at %s, %s]: Resupply check'
+        <do_if value="player.age gt @$resupplyCheck or
+          this.assignedcontrolled.isclass.ship_xl and this.assignedcontrolled.hullpercentage lt 85 or
+          not this.assignedcontrolled.isclass.ship_xl and this.assignedcontrolled.hullpercentage lt 100">
+          <debug_text
+            text="'ProtectSector [%s at %s, %s]: Resupply check'
             .[
               this.assignedcontrolled.debugname,
               this.assignedcontrolled.sector.knownname,
               this.assignedcontrolled.fleet.name
             ]"
-          chance="$debugchance" />
-        <do_for_each name="$subordinate" in="@this.assignedcontrolled.allsubordinates">
-          <set_value name="$subordinate.pilot.$playerOwnedWorkaroundForRestock" exact="true" />
-          <signal_objects object="$subordinate" param="'resupply'" param2="[$subordinate.hullpercentage lt 100]" param3="$debugchance" />
-        </do_for_each>
-        <set_value name="this.assignedcontrolled.pilot.$playerOwnedWorkaroundForRestock" exact="true" />
-        <signal_objects object="this.assignedcontrolled" param="'resupply'" param2="[this.assignedcontrolled.hullpercentage lt 100]" param3="$debugchance" />
-        <set_value name="$resupplyCheck" exact="player.age + 10min" />
+            chance="$debugchance" />
+          <do_for_each name="$subordinate" in="@this.assignedcontrolled.allsubordinates">
+            <set_value name="$subordinate.pilot.$playerOwnedWorkaroundForRestock" exact="true" />
+            <signal_objects object="$subordinate" param="'resupply'" param2="[$subordinate.hullpercentage lt 100]" param3="$debugchance" />
+          </do_for_each>
+          <set_value name="this.assignedcontrolled.pilot.$playerOwnedWorkaroundForRestock" exact="true" />
+          <signal_objects object="this.assignedcontrolled" param="'resupply'" param2="[this.assignedcontrolled.hullpercentage lt 100]" param3="$debugchance" />
+          <set_value name="$resupplyCheck" exact="player.age + 10min" />
+          <do_if value="this.assignedcontrolled.isclass.ship_xl and this.assignedcontrolled.hullpercentage lt 85 or
+            not this.assignedcontrolled.isclass.ship_xl and this.assignedcontrolled.hullpercentage lt 100">
+            <resume label="goingIdle" />
+          </do_if>
+        </do_if>
       </actions>
       <actions name="ScanForEnemyShips">
         <clear_list list="$ships" />
@@ -1341,6 +1349,8 @@
 
       <set_value name="$target" exact="null" />
 
+      <include_interrupt_actions ref="ResupplyWorkaroundRefresh" />
+
       <do_if value="not $targets? or $targets == null">
         <create_group groupname="$targets" />
       </do_if>
@@ -1870,9 +1880,7 @@
       <!-- prepare group of subordinates to request fleet reinstate -->
       <include_interrupt_actions ref="SubordinatesRefresh" />
 
-      <do_if value="player.age gt @$resupplyCheck">
-        <include_interrupt_actions ref="ResupplyWorkaroundRefresh" />
-      </do_if>
+      <include_interrupt_actions ref="ResupplyWorkaroundRefresh" />
 
       <do_if value="@$IdleAfterStationDestroy == true">
         <remove_value name="$IdleAfterStationDestroy" />
