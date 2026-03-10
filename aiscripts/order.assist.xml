@@ -4,7 +4,7 @@
     <do_elseif value="$orderdef.$id == 'ProtectSector'">
       <set_value name="$added" />
       <do_if value="@this.assignedcontrolled.order.isrunning">
-        <clear_order_failure order="this.assignedcontrolled.order"/>
+        <clear_order_failure order="this.assignedcontrolled.order" />
       </do_if>
       <do_if value="$createdefaultorder?">
         <create_order id="$orderdef.$id" object="this.assignedcontrolled" default="true">
@@ -20,11 +20,11 @@
           <param name="attackVisibleOnly" value="$orderdef.$attackVisibleOnly" />
           <param name="attackHostileOnly" value="$orderdef.$attackHostileOnly" />
           <param name="relationsThreshold" value="$orderdef.$relationsThreshold" />
-          <param name="pursueFleeingTarget" value="$orderdef.$pursueFleeingTarget" />
           <param name="protectPlayerShipsInSector" value="$orderdef.$protectPlayerShipsInSector" />
           <param name="protectOnlyNonMilitaryShips" value="$orderdef.$protectOnlyNonMilitaryShips" />
+          <param name="pursueFleeingTarget" value="$orderdef.$pursueFleeingTarget" />
           <param name="shareTargetsBetweenFleets" value="$orderdef.$shareTargetsBetweenFleets" />
-          <param name="shieldsPreserveOnFlight" value="$orderdef.$shieldsPreserveOnFlight" />
+          <param name="attackDistanceAsPercentageOfRadarRange" value="$orderdef.$attackDistanceAsPercentageOfRadarRange" />
           <param name="breakOnDestructionPercentage" value="$orderdef.$breakOnDestructionPercentage" />
           <param name="parkInCenterOfSector" value="$orderdef.$parkInCenterOfSector" />
           <param name="desiredParkingPosition" value="$orderdef.$desiredParkingPosition" />
@@ -51,7 +51,7 @@
         <set_value name="$orderdef.$protectPlayerShipsInSector" exact="$order.$protectPlayerShipsInSector" />
         <set_value name="$orderdef.$protectOnlyNonMilitaryShips" exact="$order.$protectOnlyNonMilitaryShips" />
         <set_value name="$orderdef.$shareTargetsBetweenFleets" exact="$order.$shareTargetsBetweenFleets" />
-        <set_value name="$orderdef.$shieldsPreserveOnFlight" exact="$order.$shieldsPreserveOnFlight" />
+        <set_value name="$orderdef.$attackDistanceAsPercentageOfRadarRange" exact="$order.$attackDistanceAsPercentageOfRadarRange" />
         <set_value name="$orderdef.$breakOnDestructionPercentage" exact="$order.$breakOnDestructionPercentage" />
         <set_value name="$orderdef.$parkInCenterOfSector" exact="$order.$parkInCenterOfSector" />
         <set_value name="$orderdef.$desiredParkingPosition" exact="$order.$desiredParkingPosition" />
@@ -75,8 +75,8 @@
           <param name="protectPlayerShipsInSector" value="$orderdef.$protectPlayerShipsInSector" />
           <param name="protectOnlyNonMilitaryShips" value="$orderdef.$protectOnlyNonMilitaryShips" />
           <param name="shareTargetsBetweenFleets" value="$orderdef.$shareTargetsBetweenFleets" />
-          <param name="shieldsPreserveOnFlight" value="$orderdef.$shieldsPreserveOnFlight" />
           <param name="breakOnDestructionPercentage" value="$orderdef.$breakOnDestructionPercentage" />
+          <param name="attackDistanceAsPercentageOfRadarRange" value="$orderdef.$attackDistanceAsPercentageOfRadarRange" />
           <param name="parkInCenterOfSector" value="$orderdef.$parkInCenterOfSector" />
           <param name="desiredParkingPosition" value="$orderdef.$desiredParkingPosition" />
           <param name="delayBetweenScans" value="$orderdef.$delayBetweenScans" />
