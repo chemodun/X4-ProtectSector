@@ -222,35 +222,44 @@
         </do_if>
         <remove_value name="$targetDestroyedBy" />
       </actions>
-      <actions name="ResupplyChecksInit">
-        <create_list name="$randomizeInitialResupply" />
-        <do_all exact="10" counter="$r">
-          <append_to_list name="$randomizeInitialResupply" exact="$r + 2" />
-        </do_all>
-        <set_value name="$resupplyCheck" exact="player.age + $randomizeInitialResupply.random * 5min" />
-        <remove_value name="$randomizeInitialResupply" />
-      </actions>
       <actions name="ResupplyWorkaroundRefresh">
-        <do_if value="player.age gt @$resupplyCheck or
+        <debug_text
+          text="'ProtectSector [%s at %s, %s]: Resupply check. Last check time: %s, Ship class: %s, Hull: %s.'
+          .[
+            this.assignedcontrolled.debugname,
+            this.assignedcontrolled.sector.knownname,
+            this.assignedcontrolled.fleet.name,
+            $resupplyCheckLast,
+            this.assignedcontrolled.class,
+            this.assignedcontrolled.hullpercentage
+          ]"
+          chance="$debugchance" />
+        <do_if value="(player.age - @$resupplyCheckLast) gt 180s or
           this.assignedcontrolled.isclass.ship_xl and this.assignedcontrolled.hullpercentage lt 85 or
           not this.assignedcontrolled.isclass.ship_xl and this.assignedcontrolled.hullpercentage lt 100">
-          <debug_text
-            text="'ProtectSector [%s at %s, %s]: Resupply check'
+          <do_for_each name="$subordinate" in="@this.assignedcontrolled.allsubordinates">
+            <set_value name="$subordinate.pilot.$playerOwnedWorkaroundForRestock" exact="true" />
+            <signal_objects object="$subordinate" param="'resupply'" param2="[$subordinate.hullpercentage lt 100]" param3="$debugchance" />
+          </do_for_each>
+          <set_value name="this.assignedcontrolled.pilot.$playerOwnedWorkaroundForRestock" exact="true" />
+          <signal_objects object="this.assignedcontrolled" param="'resupply'" param2="[this.assignedcontrolled.hullpercentage lt 100]" param3="$debugchance" delay="100ms" />
+          <set_value name="$resupplyCheckLast" exact="player.age" />
+          <debug_text text="'ProtectSector [%s at %s, %s]: Resupply check. Signal sent.'
             .[
               this.assignedcontrolled.debugname,
               this.assignedcontrolled.sector.knownname,
               this.assignedcontrolled.fleet.name
             ]"
             chance="$debugchance" />
-          <do_for_each name="$subordinate" in="@this.assignedcontrolled.allsubordinates">
-            <set_value name="$subordinate.pilot.$playerOwnedWorkaroundForRestock" exact="true" />
-            <signal_objects object="$subordinate" param="'resupply'" param2="[$subordinate.hullpercentage lt 100]" param3="$debugchance" />
-          </do_for_each>
-          <set_value name="this.assignedcontrolled.pilot.$playerOwnedWorkaroundForRestock" exact="true" />
-          <signal_objects object="this.assignedcontrolled" param="'resupply'" param2="[this.assignedcontrolled.hullpercentage lt 100]" param3="$debugchance" />
-          <set_value name="$resupplyCheck" exact="player.age + 10min" />
           <do_if value="this.assignedcontrolled.isclass.ship_xl and this.assignedcontrolled.hullpercentage lt 85 or
-            not this.assignedcontrolled.isclass.ship_xl and this.assignedcontrolled.hullpercentage lt 100">
+          not this.assignedcontrolled.isclass.ship_xl and this.assignedcontrolled.hullpercentage lt 100">
+            <debug_text text="'ProtectSector [%s at %s, %s]: Resupply check. Ship is damaged, going idle.'
+            .[
+              this.assignedcontrolled.debugname,
+              this.assignedcontrolled.sector.knownname,
+              this.assignedcontrolled.fleet.name
+            ]"
+              chance="$debugchance" />
             <resume label="goingIdle" />
           </do_if>
         </do_if>
@@ -471,7 +480,6 @@
         </do_if>
       </actions>
       <actions name="PatchToVersion108">
-        <include_interrupt_actions ref="ResupplyChecksInit" />
         <create_list name="$ships" />
         <create_list name="$stations" />
         <set_value name="$updateTime"
@@ -608,10 +616,9 @@
         <check_value value="@event.object.sector == this.assignedcontrolled.sector and $homeSector == this.assignedcontrolled.sector" />
         <check_value value="@event.object.isclass.ship or event.object.isclass.station" />
         <check_value value="@event.object != this.assignedcontrolled" />
-        <check_value value="@event.object.order.id != 'ProtectSector'" />
-        <check_value value="@event.object.toplevelcommander != 'ProtectSector'" />
-        <check_value value="@event.object.assignedcontrolled.defaultorder.id != 'ProtectSector'" />
-        <check_value value="@event.object.assignedcontrolled.toplevelcommander.defaultorder.id != 'ProtectSector'" />
+        <check_value value="@this.assignedcontrolled.order.id != 'Resupply'" />
+        <check_value value="@event.object.defaultorder.id != 'ProtectSector'" />
+        <check_value value="@event.object.toplevelcommander.defaultorder.id != 'ProtectSector'" />
         <check_value value="@event.param.isclass.{$classesForAttack}" />
         <check_value value="@$target == null" />
         <check_value value="@$targetOnResponse == null" />
@@ -819,17 +826,23 @@
         <check_value value="@$idleTill gt player.age" />
         <check_value value="@$target == null" />
         <check_value value="@$targetOnResponse == null" />
+        <check_value value="this.assignedcontrolled.sector == $homeSector" />
+        <check_value value="this.assignedcontrolled.order == null" />
       </conditions>
       <actions>
-        <!-- <debug_text
-          text="'ProtectSector [%s at %s, %s]: ReScan requested. Finish after: %s. ReScan delay: %s.'.
+        <do_if value="$reScanCount % 10 == 0">
+          <debug_text
+            text="'ProtectSector [%s at %s, %s]: ReScan requested, count: %s. Finish after: %s. ReScan delay: %s.'.
             [
               @this.assignedcontrolled.debugname,
               @this.assignedcontrolled.sector.knownname,
               @this.assignedcontrolled.fleet.name,
+              $reScanCount,
               @$idleTill - player.age,
               $delayBetweenScansInSeconds
-            ]" /> -->
+            ]" />
+        </do_if>
+        <set_value name="$reScanCount" operation="add" />
         <include_interrupt_actions ref="ScanForEnemyShips" />
         <do_if
           value="@$ships.count gt 0 and @$ships.{1}.relationto.{this.owner} le $relationsThresholdInternal and (@$ships.{1}.pilot.$ignoreTime == null or @$ships.{1}.pilot.$targetedBy == this.assignedcontrolled.idcode or @$ships.{1}.pilot.$ignoreTime le player.age)">
@@ -1259,6 +1272,8 @@
     <include_interrupt_actions ref="ProtectSectorGlobalApply" />
     <set_value name="$isAttackingNow" exact="false" />
     <include_interrupt_actions ref="ProtectSectorPrepareOrderParams" />
+    <set_value name="$reScanCount" exact="0" />
+    <set_value name="$resupplyCheckLast" exact="player.age" />
     <remove_value name="$isInit" />
   </init>
   <patch sinceversion="104">
@@ -1315,6 +1330,8 @@
     <include_interrupt_actions ref="SetVersion" />
     <set_value name="$isAttackingNow" exact="false" />
     <include_interrupt_actions ref="ProtectSectorPrepareOrderParams" />
+    <set_value name="$reScanCount" exact="0" />
+    <set_value name="$resupplyCheckLast" exact="player.age" />
   </patch>
   <attention min="unknown">
     <actions>
@@ -1331,13 +1348,21 @@
 
       <do_if value="@$IdleAfterStationDestroy == true">
         <set_value name="$idleDelay" exact="if this.assignedcontrolled.isclass.ship_xl then 1min else 30s" />
-        <set_value name="$resupplyCheck" exact="player.age - 1" />
+        <set_value name="$resupplyCheckLast" exact="player.age - 185s" />
         <resume label="goingIdle" />
       </do_if>
 
       <!-- SEARCH ******************************************************************************* -->
       <label name="targetSearching" />
       <set_value name="$isAttackingNow" exact="false" />
+      <debug_text text="'ProtectSector [%s at %s, %s]: Starting target search. Shield: %s. Hull: %s.'.
+        [
+          this.assignedcontrolled.debugname,
+          this.assignedcontrolled.sector.knownname,
+          this.assignedcontrolled.fleet.name,
+          this.assignedcontrolled.shieldpercentage,
+          this.assignedcontrolled.hullpercentage
+        ]" />
 
       <do_if value="$scriptVersion lt 108">
         <return />
@@ -1898,7 +1923,18 @@
           <set_value name="$parkingTimestamp" exact="player.age" />
 
           <set_value name="$idleTill" exact="player.age + $idleDelay" />
+          <debug_text
+            text="'ProtectSector [%s at %s, %s]: Going idle till: %s, idle delay: %s, re-scan delay: %s'.
+            [
+              this.assignedcontrolled.debugname,
+              this.assignedcontrolled.sector.knownname,
+              this.assignedcontrolled.fleet.name,
+              $idleTill,
+              $idleDelay,
+              $delayBetweenScansInSeconds
+            ]" />
           <signal_objects object="this.assignedcontrolled" param="'ProtectSectorReScan'" delay="$delayBetweenScansInSeconds" />
+          <set_value name="$reScanCount" exact="0" />
 
           <move_to object="this.assignedcontrolled" destination="this.assignedcontrolled.sector" abortpath="true" forcerotation="true" forceposition="true"
             uselocalhighways="false" boost="true" travel="true">
@@ -2419,5 +2455,6 @@
       <set_value name="this.assignedcontrolled.pilot.$protectSectorAbortedAt" exact="player.age" />
     </do_if>
   </on_abort>
+
 
 </aiscript>
