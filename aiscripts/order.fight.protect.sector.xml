@@ -224,24 +224,25 @@
       </actions>
       <actions name="ResupplyWorkaroundRefresh">
         <debug_text
-          text="'ProtectSector [%s at %s, %s]: Resupply check. Last check time: %s, Ship class: %s, Hull: %s.'
+          text="'ProtectSector [%s at %s, %s]: Resupply check. Last check time: %s, delta: %s, Ship class: %s, Hull: %s.'
           .[
             this.assignedcontrolled.debugname,
             this.assignedcontrolled.sector.knownname,
             this.assignedcontrolled.fleet.name,
-            $resupplyCheckLast,
+            @$resupplyCheckLast,
+            player.age - @$resupplyCheckLast,
             this.assignedcontrolled.class,
             this.assignedcontrolled.hullpercentage
           ]"
           chance="$debugchance" />
-        <do_if value="(player.age - @$resupplyCheckLast) gt 180s or
+        <do_if value="(player.age - @$resupplyCheckLast) gt 3s or
           this.assignedcontrolled.isclass.ship_xl and this.assignedcontrolled.hullpercentage lt 85 or
           not this.assignedcontrolled.isclass.ship_xl and this.assignedcontrolled.hullpercentage lt 100">
           <do_for_each name="$subordinate" in="@this.assignedcontrolled.allsubordinates">
-            <set_value name="$subordinate.pilot.$playerOwnedWorkaroundForRestock" exact="true" />
+            <set_value name="$subordinate.pilot.$playerOwnedWorkaroundForRestock" exact="player.age" />
             <signal_objects object="$subordinate" param="'resupply'" param2="[$subordinate.hullpercentage lt 100]" param3="$debugchance" />
           </do_for_each>
-          <set_value name="this.assignedcontrolled.pilot.$playerOwnedWorkaroundForRestock" exact="true" />
+          <set_value name="this.assignedcontrolled.pilot.$playerOwnedWorkaroundForRestock" exact="player.age" />
           <signal_objects object="this.assignedcontrolled" param="'resupply'" param2="[this.assignedcontrolled.hullpercentage lt 100]" param3="$debugchance" delay="100ms" />
           <set_value name="$resupplyCheckLast" exact="player.age" />
           <debug_text text="'ProtectSector [%s at %s, %s]: Resupply check. Signal sent.'
@@ -764,62 +765,6 @@
         <signal_objects object="player.entity" param="'reconstitute_fleet'" param2="this.assignedcontrolled" param3="this.assignedcontrolled.fleetunits" />
       </actions>
     </handler>
-    <handler consume="false">
-      <conditions>
-        <event_object_subordinate_removed object="this.assignedcontrolled" />
-      </conditions>
-      <actions>
-        <debug_text
-          text="'ProtectSector [%s at %s, %s]: SubordinateRemovedHandler: subordinate %s was removed.'.
-            [
-              @this.assignedcontrolled.debugname,
-              @this.assignedcontrolled.sector.knownname,
-              @this.assignedcontrolled.fleet.name,
-              @event.param.debugname
-            ]"
-          chance="$debugchance" />
-        <set_value name="$subordinate" exact="event.param" />
-        <do_if value="@$subordinate.pilot != null">
-          <do_if value="@$subordinate.pilot.$escortgroup != null">
-            <do_for_each name="$escortShip" in="$subordinate.pilot.$escortgroup">
-              <remove_value name="$escortShip.pilot.$playerOwnedWorkaroundForRestock" />
-            </do_for_each>
-          </do_if>
-          <do_for_each name="$escortShip" in="$subordinate.subordinates">
-            <remove_value name="$escortShip.pilot.$playerOwnedWorkaroundForRestock" />
-          </do_for_each>
-          <remove_value name="$subordinate.pilot.$playerOwnedWorkaroundForRestock" />
-        </do_if>
-        <remove_value name="$subordinate" />
-      </actions>
-    </handler>
-    <handler consume="false">
-      <conditions>
-        <event_object_subordinate_added object="this.assignedcontrolled" />
-      </conditions>
-      <actions>
-        <debug_text
-          text="'ProtectSector [%s at %s, %s]: SubordinateAddedHandler: subordinate %s is added.'.
-          [
-            @this.assignedcontrolled.debugname,
-            @this.assignedcontrolled.sector.knownname,
-            @this.assignedcontrolled.fleet.name,
-            @event.param.debugname
-          ]"
-          chance="$debugchance" />
-        <set_value name="$subordinate" exact="event.param" />
-        <do_if value="@$subordinate.pilot.$escortgroup != null">
-          <do_for_each name="$escortShip" in="$subordinate.pilot.$escortgroup">
-            <set_value name="$escortShip.pilot.$playerOwnedWorkaroundForRestock" exact="true" />
-          </do_for_each>
-        </do_if>
-        <do_for_each name="$escortShip" in="$subordinate.subordinates">
-          <set_value name="$escortShip.pilot.$playerOwnedWorkaroundForRestock" exact="true" />
-        </do_for_each>
-        <set_value name="$subordinate.pilot.$playerOwnedWorkaroundForRestock" exact="true" />
-        <remove_value name="$subordinate" />
-      </actions>
-    </handler>
     <handler>
       <conditions>
         <event_object_signalled object="this.assignedcontrolled" param="'ProtectSectorReScan'" />
@@ -937,9 +882,23 @@
           chance="$debugchance" />
         <include_interrupt_actions ref="ProtectSectorPrepareOrderParams" />
         <do_for_each name="$subordinate" in="this.assignedcontrolled.subordinates">
-          <do_if value="@$subordinate.pilot != null and @$subordinate.exists and not @$subordinate.iswreck and @$subordinate.isoperational">
-            <do_if value="@$subordinate.defaultorder.id == 'Escort' and @$subordinate.defaultorder.$target == this.assignedcontrolled and not $subordinate.subordinategroupdockoverride">
-              <debug_text text="'ProtectSector [%s at %s, %s]: CheckSubordinatesAttack: Checking subordinate %s with default order %s and target %s and with order %s on distance %s to target %s and to us %s.'.
+          <do_if value="$subordinate.isclass.ship_xl and $subordinate.hullpercentage lt 70 or
+            $subordinate.isclass.ship_l and $subordinate.hullpercentage lt 80 or
+            $subordinate.hullpercentage lt 90">
+            <debug_text text="'ProtectSector [%s at %s, %s]: Subordinate %s is damaged, signalling for repair.'
+            .[
+              this.assignedcontrolled.debugname,
+              this.assignedcontrolled.sector.knownname,
+              this.assignedcontrolled.fleet.name,
+              $subordinate.debugname
+            ]"
+              chance="$debugchance" />
+            <signal_objects object="$subordinate" param="'resupply'" param2="[$subordinate.hullpercentage lt 100]" param3="$debugchance" delay="100ms" />
+          </do_if>
+          <do_else>
+            <do_if value="@$subordinate.pilot != null and @$subordinate.exists and not @$subordinate.iswreck and @$subordinate.isoperational">
+              <do_if value="@$subordinate.defaultorder.id == 'Escort' and @$subordinate.defaultorder.$target == this.assignedcontrolled and not $subordinate.subordinategroupdockoverride">
+                <debug_text text="'ProtectSector [%s at %s, %s]: CheckSubordinatesAttack: Checking subordinate %s with default order %s and target %s and with order %s on distance %s to target %s and to us %s.'.
                 [
                   @this.assignedcontrolled.debugname,
                   @this.assignedcontrolled.sector.knownname,
@@ -952,14 +911,14 @@
                   @$target.debugname,
                   $subordinate.distanceto.{this.assignedcontrolled}
                 ]"
-                chance="$debugchance" />
-              <set_value name="$subordinate.aipilot.$protectSectorParams" exact="$protectSectorParams" />
-              <do_if value="@$subordinate.order.id != 'Attack' and @$subordinate.order.id != 'Resupply' or
+                  chance="$debugchance" />
+                <set_value name="$subordinate.aipilot.$protectSectorParams" exact="$protectSectorParams" />
+                <do_if value="@$subordinate.order.id != 'Attack' and @$subordinate.order.id != 'Resupply' or
                     ($target != $subordinate.order.$primarytarget and ($subordinate.distanceto.{this.assignedcontrolled} gt this.assignedcontrolled.maxradarrange * 0.6))">
-                <do_if value="@$subordinate.order.id != 'Escort'">
-                  <cancel_all_orders object="$subordinate" />
-                  <debug_text
-                    text="'ProtectSector [%s at %s, %s]: Canceling order %s for %s '.
+                  <do_if value="@$subordinate.order.id != 'Escort'">
+                    <cancel_all_orders object="$subordinate" />
+                    <debug_text
+                      text="'ProtectSector [%s at %s, %s]: Canceling order %s for %s '.
                           [
                             this.assignedcontrolled.debugname,
                             this.assignedcontrolled.sector.knownname,
@@ -967,10 +926,10 @@
                             @$subordinate.order.id,
                             @$subordinate.debugname
                           ]"
-                    chance="$debugchance" />
-                </do_if>
-                <debug_text
-                  text="'ProtectSector [%s at %s, %s]: Restarting the attack order for %s with target %s.'.
+                      chance="$debugchance" />
+                  </do_if>
+                  <debug_text
+                    text="'ProtectSector [%s at %s, %s]: Restarting the attack order for %s with target %s.'.
                       [
                         this.assignedcontrolled.debugname,
                         this.assignedcontrolled.sector.knownname,
@@ -978,47 +937,60 @@
                         @$subordinate.debugname,
                         @$target.debugname
                       ]"
-                  chance="$debugchance" />
-                <do_if value="@global.$kAAIT_Data != null">
-                  <create_order object="$subordinate" id="'Attack'">
-                    <param name="primarytarget" value="$target" />
-                    <param name="pursuetargets" value="false" />
-                    <param name="allowothertargets" value="true" />
-                    <param name="checkrelation" value="$attackHostileOnly" />
-                    <param name="disable" value="$breakOnDestructionPercentage gt 0" />
-                    <param name="disablehullpercentagethreshold" value="$breakOnDestructionPercentage" />
-                    <param name="maintaindistance" value="false" />
-                    <param name="squad_attack" value="true" />
-                    <param name="uncover" value="true" />
-                    <param name="targetclasses" value="$classesAcceptableForAttack" />
-                    <param name="allowboost" value="not $shieldsPreserveOnFlight" />
-                    <param name="forceprimarytarget" value="true" />
-                    <param name="kAAITParam_isAvoidHighRisk" value="false" />
-                    <param name="kAAITParam_isStepForwardWithdraw" value="false" />
-                    <param name="debugchance" value="$debugchance" />
-                  </create_order>
+                    chance="$debugchance" />
+                  <do_if value="@global.$kAAIT_Data != null">
+                    <create_order object="$subordinate" id="'Attack'">
+                      <param name="primarytarget" value="$target" />
+                      <param name="pursuetargets" value="false" />
+                      <param name="allowothertargets" value="true" />
+                      <param name="checkrelation" value="$attackHostileOnly" />
+                      <param name="disable" value="$breakOnDestructionPercentage gt 0" />
+                      <param name="disablehullpercentagethreshold" value="$breakOnDestructionPercentage" />
+                      <param name="maintaindistance" value="false" />
+                      <param name="squad_attack" value="true" />
+                      <param name="uncover" value="true" />
+                      <param name="targetclasses" value="$classesAcceptableForAttack" />
+                      <param name="allowboost" value="not $shieldsPreserveOnFlight" />
+                      <param name="forceprimarytarget" value="true" />
+                      <param name="kAAITParam_isAvoidHighRisk" value="false" />
+                      <param name="kAAITParam_isStepForwardWithdraw" value="false" />
+                      <param name="debugchance" value="$debugchance" />
+                    </create_order>
+                  </do_if>
+                  <do_else>
+                    <create_order object="$subordinate" id="'Attack'">
+                      <param name="primarytarget" value="$target" />
+                      <param name="pursuetargets" value="false" />
+                      <param name="allowothertargets" value="true" />
+                      <param name="checkrelation" value="$attackHostileOnly" />
+                      <param name="disable" value="$breakOnDestructionPercentage gt 0" />
+                      <param name="disablehullpercentagethreshold" value="$breakOnDestructionPercentage" />
+                      <param name="maintaindistance" value="false" />
+                      <param name="squad_attack" value="true" />
+                      <param name="uncover" value="true" />
+                      <param name="targetclasses" value="$classesAcceptableForAttack" />
+                      <param name="allowboost" value="not $shieldsPreserveOnFlight" />
+                      <param name="forceprimarytarget" value="true" />
+                      <param name="debugchance" value="$debugchance" />
+                    </create_order>
+                  </do_else>
                 </do_if>
-                <do_else>
-                  <create_order object="$subordinate" id="'Attack'">
-                    <param name="primarytarget" value="$target" />
-                    <param name="pursuetargets" value="false" />
-                    <param name="allowothertargets" value="true" />
-                    <param name="checkrelation" value="$attackHostileOnly" />
-                    <param name="disable" value="$breakOnDestructionPercentage gt 0" />
-                    <param name="disablehullpercentagethreshold" value="$breakOnDestructionPercentage" />
-                    <param name="maintaindistance" value="false" />
-                    <param name="squad_attack" value="true" />
-                    <param name="uncover" value="true" />
-                    <param name="targetclasses" value="$classesAcceptableForAttack" />
-                    <param name="allowboost" value="not $shieldsPreserveOnFlight" />
-                    <param name="forceprimarytarget" value="true" />
-                    <param name="debugchance" value="$debugchance" />
-                  </create_order>
-                </do_else>
               </do_if>
             </do_if>
-          </do_if>
+          </do_else>
         </do_for_each>
+        <do_if value="this.assignedcontrolled.isclass.ship_xl and this.assignedcontrolled.hullpercentage lt 70 or
+            this.assignedcontrolled.isclass.ship_l and this.assignedcontrolled.hullpercentage lt 80 or
+            this.assignedcontrolled.hullpercentage lt 90">
+          <debug_text text="'ProtectSector [%s at %s, %s]: Ship is damaged, signalling for repair.'
+            .[
+              this.assignedcontrolled.debugname,
+              this.assignedcontrolled.sector.knownname,
+              this.assignedcontrolled.fleet.name
+            ]"
+            chance="$debugchance" />
+          <signal_objects object="this.assignedcontrolled" param="'resupply'" param2="[this.assignedcontrolled.hullpercentage lt 100]" param3="$debugchance" delay="100ms" />
+        </do_if>
         <set_value name="$signalDelay" min="10s" max="20s" />
         <signal_objects object="this.assignedcontrolled" param="'ProtectSector.CheckSubordinatesAttack'" delay="$signalDelay" />
         <debug_text
@@ -1348,7 +1320,7 @@
 
       <do_if value="@$IdleAfterStationDestroy == true">
         <set_value name="$idleDelay" exact="if this.assignedcontrolled.isclass.ship_xl then 1min else 30s" />
-        <set_value name="$resupplyCheckLast" exact="player.age - 185s" />
+        <set_value name="$resupplyCheckLast" exact="player.age - 15s" />
         <resume label="goingIdle" />
       </do_if>
 
@@ -2445,15 +2417,6 @@
         @this.assignedcontrolled.orders.count,
         @this.assignedcontrolled.nextorder
       ]" chance="$debugchance" />
-    <do_if value="@this.assignedcontrolled != null">
-      <do_if value="@this.assignedcontrolled.allsubordinates != null">
-        <do_for_each name="$subordinate" in="@this.assignedcontrolled.allsubordinates">
-          <remove_value name="$subordinate.pilot.$playerOwnedWorkaroundForRestock" />
-        </do_for_each>
-      </do_if>
-      <remove_value name="this.assignedcontrolled.pilot.$playerOwnedWorkaroundForRestock" />
-      <set_value name="this.assignedcontrolled.pilot.$protectSectorAbortedAt" exact="player.age" />
-    </do_if>
   </on_abort>
 
 
