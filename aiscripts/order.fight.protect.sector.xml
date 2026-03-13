@@ -223,6 +223,7 @@
         <remove_value name="$targetDestroyedBy" />
       </actions>
       <actions name="ResupplyWorkaroundRefresh">
+        <set_value name="$isDamaged" exact="false" />
         <debug_text
           text="'ProtectSector [%s at %s, %s]: Resupply check. Last check time: %s, delta: %s, Ship class: %s, Hull: %s.'
           .[
@@ -261,7 +262,7 @@
               this.assignedcontrolled.fleet.name
             ]"
               chance="$debugchance" />
-            <resume label="goingIdle" />
+            <set_value name="$isDamaged" exact="true" />
           </do_if>
         </do_if>
       </actions>
@@ -882,6 +883,7 @@
           chance="$debugchance" />
         <include_interrupt_actions ref="ProtectSectorPrepareOrderParams" />
         <do_for_each name="$subordinate" in="this.assignedcontrolled.subordinates">
+          <set_value name="$subordinate.pilot.$playerOwnedWorkaroundForRestock" exact="player.age" />
           <do_if value="$subordinate.isclass.ship_xl and $subordinate.hullpercentage lt 70 or
             $subordinate.isclass.ship_l and $subordinate.hullpercentage lt 80 or
             $subordinate.hullpercentage lt 90">
@@ -979,6 +981,7 @@
             </do_if>
           </do_else>
         </do_for_each>
+        <set_value name="this.assignedcontrolled.pilot.$playerOwnedWorkaroundForRestock" exact="player.age" />
         <do_if value="this.assignedcontrolled.isclass.ship_xl and this.assignedcontrolled.hullpercentage lt 70 or
             this.assignedcontrolled.isclass.ship_l and this.assignedcontrolled.hullpercentage lt 80 or
             this.assignedcontrolled.hullpercentage lt 90">
@@ -1347,6 +1350,10 @@
       <set_value name="$target" exact="null" />
 
       <include_interrupt_actions ref="ResupplyWorkaroundRefresh" />
+      <do_if value="$isDamaged">
+        <set_value name="$idleDelay" exact="if this.assignedcontrolled.isclass.ship_xl then 1min else 30s" />
+        <resume label="goingIdle" />
+      </do_if>
 
       <do_if value="not $targets? or $targets == null">
         <create_group groupname="$targets" />
