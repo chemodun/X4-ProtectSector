@@ -1,5 +1,21 @@
 [size=4][u]Changelog[/u][/size]
 
+[size=3][u][b][1.13] - 2026-03-14[/b][/u][/size]
+[list]
+[*] Fixed
+[list]
+[*] Avoidance of targets in some circumstances when the target is [b]L[/b] or [b]XL[/b] and the ship is [b]M[/b] or [b]S[/b].
+[/list]
+[*] Improved
+[list]
+[*] Implemented extra [b]push[/b] on subordinates to attack the desired target.
+[*] Checking and sending ships to [b]repair[/b] for ships under this order's control and their subordinates.
+[/list]
+[*] Implemented
+[list]
+[*] Reassigning the order and its parameters in case the primary ship was destroyed and replaced by game mechanics. Previously, the order was just stopped in this case.
+[/list]
+[/list]
 [size=3][u][b][1.12] - 2026-01-30[/b][/u][/size]
 [list]
 [*] Fixed
