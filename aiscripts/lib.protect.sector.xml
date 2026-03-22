@@ -95,6 +95,32 @@
               ]" chance="$debugchance" />
         </do_if>
       </actions>
+      <actions name="PlayerShipsRestockWorkaround">
+        <do_if value="(@$resupplystations_interrupt.count le 0) and not @$onlyuseresupplierships and this.isplayerowned and (player.age - @this.$playerOwnedWorkaroundForRestock) le 10s">
+          <set_value name="$blacklistGroup" exact="blacklistgroup.military" />
+          <find_station name="$resupplyStationsByWorkaround" canequipclass="this.assignedcontrolled.class" canbuildclass="$buildclass_interrupt" canbuildships="$buildclass_interrupt != null" canbuildfor="this.owner" hascontrolentity="controlpost.shiptrader" space="player.galaxy" knownto="faction.player" multiple="true" append="true" sortbydistanceto="this.assignedcontrolled" sortdescending="false">
+            <match_use_blacklist group="$blacklistGroup" type="blacklisttype.objectactivity" object="this.assignedcontrolled" />
+            <match_use_blacklist group="$blacklistGroup" type="blacklisttype.sectoractivity" object="this.assignedcontrolled" />
+            <match_use_blacklist group="$blacklistGroup" type="blacklisttype.sectortravel" object="this.assignedcontrolled" />
+            <match_relation_to object="this.assignedcontrolled" relation="enemy" comparison="not" />
+          </find_station>
+          <debug_text text="'PlayerRestockWorkaround[%s]: found %s resupply station(s) in the galaxy.'.[this.ship.debugname, $resupplyStationsByWorkaround.count]" chance="if @global.$chemODun.$protectSector.$debugLog then 100 else 0" />
+          <do_all exact="$resupplyStationsByWorkaround.count" counter="$counterOfResupplyStationsByWorkaround" reverse="true">
+            <do_if value="this.assignedcontrolled.gatedistance.{$resupplyStationsByWorkaround.{$counterOfResupplyStationsByWorkaround}}.{$blacklistGroup}.{this.assignedcontrolled} lt 0">
+              <remove_value name="$resupplyStationsByWorkaround.{$counterOfResupplyStationsByWorkaround}" />
+              <debug_text text="'PlayerRestockWorkaround[%s]: removed resupply station %s from the list because of impossible to reach.'.
+                  [this.ship.debugname, $resupplyStationsByWorkaround.{$counterOfResupplyStationsByWorkaround}.debugname]" chance="if @global.$chemODun.$protectSector.$debugLog then 100 else 0" />
+            </do_if>
+          </do_all>
+          <do_if value="$resupplyStationsByWorkaround.count gt 0">
+            <set_value name="$resupplystations_interrupt" exact="$resupplyStationsByWorkaround" />
+            <debug_text text="'PlayerRestockWorkaround[%s]: found %s resupply station(s) to the interrupt variable.'.
+              [this.ship.debugname, $resupplystations_interrupt.count]" chance="if @global.$chemODun.$protectSector.$debugLog then 100 else 0" />
+          </do_if>
+          <remove_value name="$resupplyStationsByWorkaround" />
+          <remove_value name="$blacklistGroup" />
+        </do_if>
+      </actions>
     </library>
   </interrupts>
 </aiscript>
