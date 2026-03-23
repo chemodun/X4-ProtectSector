@@ -1,13 +1,12 @@
 <?xml version="1.0" encoding="iso-8859-1"?>
-<aiscript name="order.fight.protect.sector" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="aiscripts.xsd" version="114">
+<aiscript name="order.fight.protect.sector" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="aiscripts.xsd" version="115">
   <order id="ProtectSector" name="{1972092401, 1}" description="{1972092401, 2}" category="combat" infinite="true" allowinloop="false">
     <params>
       <param name="homeSector"
-        default="if @$desiredParkingPosition.{1} != null then @$desiredParkingPosition.{1} else this.assignedcontrolled.sector"
+        default="this.assignedcontrolled.sector"
         type="sector"
         required="true" text="{1972092401, 101}">
-        <input_param name="startvalue"
-          value="if @$desiredParkingPosition.{1} != null then @$desiredParkingPosition.{1} else this.assignedcontrolled.sector" />
+        <input_param name="startvalue" value="this.assignedcontrolled.sector" />
         <patch sinceversion="102" early="true" setvariable="true"
           value="if $homeSector.isclass.sector then $homeSector else $homeSector.sector" comment="Added patch to set default value" />
       </param>
@@ -48,10 +47,6 @@
         <patch sinceversion="105" early="true" setvariable="true" value="70" condition="@$attackDistanceAsPercentageOfRadarRange == null"
           comment="Added patch to set default value" />
       </param>
-      <param name="shieldsPreserveOnFlight" type="bool" default="false" text="{1972092401, 161}">
-        <patch sinceversion="112" value="if player.gameversion ge 750 then false else $shieldsPreserveOnFlight"
-          comment="From 7.50 has no dependency on shields" />
-      </param>
       <param name="breakOnDestructionPercentage" type="number" default="0" text="{1972092401, 171}">
         <input_param name="min" value="0" />
         <input_param name="max" value="100" />
@@ -60,10 +55,12 @@
           value="if $breakOnDestructionPercentage == 40 then 0 else $breakOnDestructionPercentage"
           comment="Added patch to disable break on destruction" />
       </param>
-      <param name="parkInCenterOfSector" type="bool" default="false" text="{1972092401, 181}" />
-      <param name="desiredParkingPosition" type="position" default="null" required="false" text="{1972092401, 182}">
+      <param name="parkInSector" type="bool" default="false" text="{1972092401, 181}">
+        <patch sinceversion="115" early="true" setvariable="true" value="@$desiredParkingPosition != null or @$parkInCenterOfSector == true" comment="Added patch to set default value" />
+      </param>
+      <param name="desiredParkingPosition" type="position" default="[$homeSector, $homeSector.coreposition]" required="false" text="{1972092401, 182}">
         <input_param name="class" value="class.sector" />
-        <patch sinceversion="107" early="true" setvariable="true" value="null" comment="Added patch to set default value" />
+        <patch sinceversion="115" early="true" setvariable="true" value="if @$desiredParkingPosition != null and @$desiredParkingPosition.{1}.isclass.sector and @$desiredParkingPosition.{1} == $homeSector then @$desiredParkingPosition else [$homeSector, $homeSector.coreposition]" comment="Added patch to set default value" />
       </param>
       <param name="delayBetweenScans" type="number" default="4" text="{1972092401, 191}">
         <input_param name="startvalue" value="4" />
@@ -90,9 +87,10 @@
       <match shiptype="shiptype.lasertower" negate="true" />
       <match class="class.spacesuit" negate="true" />
     </requires>
-    <location object="$homeSector" condition="$homeSector.zone.exists" />
+    <location object="@$target" condition="@$target.exists and @$target.isoperational and not @$target.iswreck" />
     <location object="@$desiredParkingPosition.{1}" position="@$desiredParkingPosition.{2}"
       condition="@$desiredParkingPosition.{1} and @$desiredParkingPosition.{2}" />
+    <location object="$homeSector" condition="$homeSector.zone.exists" />
   </order>
   <interrupts>
     <library>
@@ -463,11 +461,8 @@
         </do_else>
       </actions>
       <actions name="HazardInSector">
-        <do_if value="$homeSector.hashazardousregion and @$ignoreHazardThreat != true and @$hazardWarningIssued == null">
-          <show_notification text="'%s\n%s'.[$textTitle, {1972092401, 1101}.[$textUnit, $textHomeSector]]" priority="2" sound="notification_warning"
-            timeout="20s" />
-          <write_to_logbook category="general" title="$textTitle" text="{1972092401, 1101}.[$textUnit, $textHomeSector]"
-            interaction="showonmap" object="this.assignedcontrolled" />
+        <do_if value="$homeSector.hashazardousregion and @$ignoreHazardThreat != true">
+          <set_value name="$stoppingToWorkMessage" exact="{1972092401, 1101}.[$textUnit, $textHomeSector]" />
           <debug_text
             text="'ProtectSector [%s at %s, %s]: HazardInSector: Hazard in sector %s. Stopping to work...'.
             [
@@ -477,9 +472,10 @@
               $homeSector.knownname
             ]"
             chance="$debugchance" />
-          <set_value name="$hazardWarningIssued" exact="true" />
-          <create_order object="this.assignedcontrolled" id="'Wait'" default="true" />
         </do_if>
+        <do_else>
+          <remove_value name="$stoppingToWorkMessage" />
+        </do_else>
       </actions>
       <actions name="PatchToVersion108">
         <create_list name="$ships" />
@@ -492,7 +488,7 @@
         <include_interrupt_actions ref="HazardInSector" />
       </actions>
       <actions name="SetVersion">
-        <set_value name="$scriptVersion" exact="114" />
+        <set_value name="$scriptVersion" exact="115" />
       </actions>
       <actions name="ProtectSectorGlobalApply">
         <debug_text
@@ -518,6 +514,13 @@
               chance="$debugchance" />
           </do_if>
         </do_if>
+      </actions>
+      <actions name="CreateParkingPosition">
+        <set_value name="$dx" min="-5" max="5" />
+        <set_value name="$dy" min="-5" max="5" />
+        <set_value name="$dz" min="-5" max="5" />
+        <create_position name="$parkingPosition" x="$homeSector.coreposition.x + $dx * 1km" y="$homeSector.coreposition.y + 30km + $dy * 1km"
+          z="$homeSector.coreposition.z + $dz * 1km" space="$homeSector.sector" />
       </actions>
     </library>
     <handler ref="AttackHandler" />
@@ -567,6 +570,7 @@
           ]"
           chance="$debugchance" />
         <do_if value="@$scriptVersion lt 101">
+          <include_interrupt_actions ref="CreateParkingPosition" />
           <create_order object="this.assignedcontrolled" id="'ProtectSector'" default="true">
             <param name="homeSector" value="if $ps_space.isclass.sector then $ps_space else $ps_space.sector" />
             <param name="attackStations" value="$ps_attack_stations" />
@@ -585,10 +589,9 @@
             <param name="protectOnlyNonMilitaryShips" value="true" />
             <param name="shareTargetsBetweenFleets" value="if $ps_target_share? then $ps_target_share else $target_share" />
             <param name="attackDistanceAsPercentageOfRadarRange" value="70" />
-            <param name="shieldsPreserveOnFlight" value="if player.gameversion ge 750 then false else $ps_noboost" />
             <param name="breakOnDestructionPercentage" value="0" />
-            <param name="parkInCenterOfSector" value="$ps_park" />
-            <param name="desiredParkingPosition" value="null" />
+            <param name="parkInSector" value="$ps_park" />
+            <param name="desiredParkingPosition" value="[if $ps_space.isclass.sector then $ps_space else $ps_space.sector, $parkingPosition]" />
             <param name="delayBetweenScans" value="4" />
             <param name="ignoreHazardThreat" value="false" />
             <param name="recordActionsToLogBook" value="true" />
@@ -952,7 +955,7 @@
                       <param name="squad_attack" value="true" />
                       <param name="uncover" value="true" />
                       <param name="targetclasses" value="$classesAcceptableForAttack" />
-                      <param name="allowboost" value="not $shieldsPreserveOnFlight" />
+                      <param name="allowboost" value="true" />
                       <param name="forceprimarytarget" value="true" />
                       <param name="kAAITParam_isAvoidHighRisk" value="false" />
                       <param name="kAAITParam_isStepForwardWithdraw" value="false" />
@@ -971,7 +974,7 @@
                       <param name="squad_attack" value="true" />
                       <param name="uncover" value="true" />
                       <param name="targetclasses" value="$classesAcceptableForAttack" />
-                      <param name="allowboost" value="not $shieldsPreserveOnFlight" />
+                      <param name="allowboost" value="true" />
                       <param name="forceprimarytarget" value="true" />
                       <param name="debugchance" value="$debugchance" />
                     </create_order>
@@ -1015,8 +1018,6 @@
     </do_if>
     <include_interrupt_actions ref="SetVersion" />
 
-    <set_value name="$shieldsPreserveOnFlight" exact="if player.gameversion ge 750 then false else $shieldsPreserveOnFlight" />
-
     <set_value name="$oneSecond" exact="1s" />
     <set_value name="$delayBetweenScansInSeconds" exact="$oneSecond * $delayBetweenScans" />
     <set_value name="$macrosToSkip" exact="[macro.asteroid_turret_m_01_macro]" />
@@ -1024,7 +1025,7 @@
     <include_interrupt_actions ref="RelationsConversionList" />
 
     <debug_text
-      text="'ProtectSector [%s at %s, %s]: Version: %s. Home Sector: %s. Attack Stations: %s (Tactical: %s, Internal: %s). Attack Ships XL: %s. Attack Ships L: %s. Attack Ships M: %s. Attack Ships S: %s. Attack Ships Out Of Stations Distance: %s. Attack Visible Only: %s. Attack Hostile Only: %s. Relation Threshold: %s. Protect Player Ships In Sector: %s. Protect Only Non Military Ships: %s. Pursue Fleeing Target: %s. Share Targets Between Fleets: %s. Shields Preserve On Flight: %s. Break On Destruction Percentage: %s. Park In Center Of Sector: %s. Desired Parking Position: %s at %s. Delay Between Scans: %s, in seconds: %s. Ignore Hazard Threat: %s. Record Actions To Log Book: %s. By Player: %s.'
+      text="'ProtectSector [%s at %s, %s]: Version: %s. Home Sector: %s. Attack Stations: %s (Tactical: %s, Internal: %s). Attack Ships XL: %s. Attack Ships L: %s. Attack Ships M: %s. Attack Ships S: %s. Attack Ships Out Of Stations Distance: %s. Attack Visible Only: %s. Attack Hostile Only: %s. Relation Threshold: %s. Protect Player Ships In Sector: %s. Protect Only Non Military Ships: %s. Pursue Fleeing Target: %s. Share Targets Between Fleets: %s. Break On Destruction Percentage: %s. Park In Sector: %s (Old: %s). Desired Parking Position: %s at %s. Delay Between Scans: %s, in seconds: %s. Ignore Hazard Threat: %s. Record Actions To Log Book: %s. By Player: %s.'
         .[
           this.assignedcontrolled.debugname,
           this.assignedcontrolled.sector.knownname,
@@ -1046,9 +1047,9 @@
           $protectOnlyNonMilitaryShips,
           $pursueFleeingTarget,
           $shareTargetsBetweenFleets,
-          $shieldsPreserveOnFlight,
           $breakOnDestructionPercentage,
-          $parkInCenterOfSector,
+          @$parkInSector,
+          @$parkInCenterOfSector,
           @$desiredParkingPosition.{2},
           @$desiredParkingPosition.{1}.name,
           $delayBetweenScans,
@@ -1115,13 +1116,40 @@
 
     <create_group groupname="$targets" />
 
-    <do_if value="$parkInCenterOfSector and $desiredParkingPosition != null">
-      <edit_order_param order="this.assignedcontrolled.order" param="'desiredParkingPosition'" value="null" />
+    <debug_text
+      text="'ProtectSector [%s at %s, %s]: Going to check parking position. Park in sector: %s, desired parking position: %s at %s.'
+        .[
+          this.assignedcontrolled.debugname,
+          this.assignedcontrolled.sector.knownname,
+          this.assignedcontrolled.fleet.name,
+          @$parkInSector,
+          @$desiredParkingPosition.{2},
+          @$desiredParkingPosition.{1}.name
+        ]"
+      chance="$debugchance" />
+
+    <do_if value="@$desiredParkingPosition == null or @$desiredParkingPosition.{1}.isclass.sector and @$desiredParkingPosition.{1} != $homeSector">
+      <include_interrupt_actions ref="CreateParkingPosition" />
+      <edit_order_param order="this.assignedcontrolled.order" param="'desiredParkingPosition'" value="[$homeSector, $parkingPosition]" />
+      <set_value name="$desiredParkingPosition" exact="[$homeSector, $parkingPosition]" />
     </do_if>
-    <do_elseif
-      value="$desiredParkingPosition != null and @$desiredParkingPosition.{1}.isclass.sector and @$desiredParkingPosition.{1} != $homeSector">
-      <edit_order_param order="this.assignedcontrolled.order" param="'homeSector'" value="$desiredParkingPosition.{1}" />
-    </do_elseif>
+    <set_value name="$parkingPosition" exact="null" />
+    <do_if value="@$parkInSector">
+      <set_value name="$parkingPosition" exact="@$desiredParkingPosition.{2}" />
+    </do_if>
+
+    <debug_text
+      text="'ProtectSector [%s at %s, %s]: Parking position set. Park in sector: %s, desired parking position: %s at %s.'
+        .[
+          this.assignedcontrolled.debugname,
+          this.assignedcontrolled.sector.knownname,
+          this.assignedcontrolled.fleet.name,
+          @$parkInSector,
+          @$desiredParkingPosition.{2},
+          @$desiredParkingPosition.{1}.name
+        ]"
+      chance="$debugchance" />
+
 
     <do_if value="@$attackStationsInternal == true">
       <set_value name="$attackStationsInternalAcceptable"
@@ -1184,20 +1212,6 @@
         ]"
       chance="$debugchance" />
 
-
-    <set_value name="$parkingPosition" exact="null" />
-
-    <do_if value="$parkInCenterOfSector">
-      <set_value name="$dx" min="-5" max="5" />
-      <set_value name="$dy" min="-5" max="5" />
-      <set_value name="$dz" min="-5" max="5" />
-      <create_position name="$parkingPosition" x="$homeSector.coreposition.x + $dx * 1km" y="$homeSector.coreposition.y + 30km + $dy * 1km"
-        z="$homeSector.coreposition.z + $dz * 1km" space="$homeSector.sector" />
-    </do_if>
-    <do_elseif value="@$desiredParkingPosition != null and @$desiredParkingPosition.{2} != null">
-      <set_value name="$parkingPosition" exact="@$desiredParkingPosition.{2}" />
-    </do_elseif>
-
     <set_value name="$textUnit" exact="{1972092401, 1011}.[this.assignedcontrolled.name, this.assignedcontrolled.idcode]" />
     <do_if
       value="@this.assignedcontrolled.subordinates.count gt 0 and @this.assignedcontrolled.toplevelcommander == this.assignedcontrolled">
@@ -1249,6 +1263,8 @@
     <include_interrupt_actions ref="ProtectSectorPrepareOrderParams" />
     <set_value name="$reScanCount" exact="0" />
     <set_value name="$resupplyCheckLast" exact="player.age" />
+    <set_value name="$stoppingToWorkMessage" exact="null" />
+    <set_value name="$blacklistGroup" exact="blacklistgroup.military" />
     <remove_value name="$isInit" />
   </init>
   <patch sinceversion="104">
@@ -1308,13 +1324,27 @@
     <set_value name="$reScanCount" exact="0" />
     <set_value name="$resupplyCheckLast" exact="player.age" />
   </patch>
+  <patch sinceversion="115">
+    <include_interrupt_actions ref="SetVersion" />
+    <set_value name="$stoppingToWorkMessage" exact="null" />
+    <set_value name="$blacklistGroup" exact="blacklistgroup.military" />
+    <include_interrupt_actions ref="ProtectSectorPrepareOrderParams" />
+    <do_if value="@$parkInSector">
+      <set_value name="$parkingPosition" exact="@$desiredParkingPosition.{2}" />
+    </do_if>
+  </patch>
   <attention min="unknown">
     <actions>
       <!-- START ******************************************************************************* -->
 
       <label name="start" />
 
+      <clear_order_failure order="this.assignedcontrolled.order" />
+
       <include_interrupt_actions ref="HazardInSector" />
+      <do_if value="$stoppingToWorkMessage? and @$stoppingToWorkMessage != null">
+        <resume label="stoppingToWork" />
+      </do_if>
 
       <do_if value="this.assignedcontrolled.sector != $homeSector">
         <wait min="500ms" max="1s" />
@@ -2170,7 +2200,7 @@
                 $target.size / 2 + $radius
               ]"
             chance="$debugchance" />
-          <move_to object="this.assignedcontrolled" destination="$homeSector" boost="not $shieldsPreserveOnFlight" travel="true"
+          <move_to object="this.assignedcontrolled" destination="$homeSector" boost="true" travel="true"
             forceposition="false" finishonapproach="true" radius="$targetOptimalDistanceForAttack / 3">
             <position value="$destination" max="$targetOptimalDistanceForAttack / 4" space="$homeSector" />
             <interrupt>
@@ -2298,7 +2328,7 @@
               <param name="squad_attack" value="true" />
               <param name="uncover" value="true" />
               <param name="targetclasses" value="$classesAcceptableForAttack" />
-              <param name="allowboost" value="not $shieldsPreserveOnFlight" />
+              <param name="allowboost" value="true" />
               <param name="forceprimarytarget" value="true" />
               <param name="kAAITParam_isAvoidHighRisk" value="false" />
               <param name="kAAITParam_isStepForwardWithdraw" value="false" />
@@ -2317,7 +2347,7 @@
               <param name="squad_attack" value="true" />
               <param name="uncover" value="true" />
               <param name="targetclasses" value="$classesAcceptableForAttack" />
-              <param name="allowboost" value="not $shieldsPreserveOnFlight" />
+              <param name="allowboost" value="true" />
               <param name="forceprimarytarget" value="true" />
               <param name="debugchance" value="$debugchance" />
             </run_script>
@@ -2363,7 +2393,19 @@
         <resume label="start" />
       </do_if>
 
-      <get_jump_path component="$jumpPath" multiple="true" uselocalhighways="true" refobject="this.assignedcontrolled"
+      <do_if value="this.assignedcontrolled.gatedistance.{$homeSector}.{$blacklistGroup}.{this.assignedcontrolled} lt 0">
+        <debug_text text="'ProtectSector [%s at %s, %s]: ERROR: we are not at the target sector %s, but gate distance is negative. aborting.'.[
+            this.assignedcontrolled.debugname,
+            this.assignedcontrolled.sector.knownname,
+            this.assignedcontrolled.fleet.name,
+            $homeSector.knownname,
+          ]" chance="$debugchance" />
+        <set_value name="$stoppingToWorkMessage" exact="{1972092401, 1102}.[$textUnit, $textHomeSector]" />
+        <resume label="stoppingToWork" />
+      </do_if>
+      <remove_value name="$stoppingToWorkMessage" />
+
+      <get_jump_path component="$jumpPath" multiple="true" uselocalhighways="true" refobject="this.assignedcontrolled" useblacklist="$blacklistGroup"
         useknownpath="this.isplayerowned">
         <start object="this.assignedcontrolled" />
         <end object="$homeSector" />
@@ -2386,8 +2428,10 @@
           <debug_text text="'jumpPath entry %s: %s %s %s'.[$pathIndex, $jumpPath.{$pathIndex}.class, $jumpPath.{$pathIndex}.knownname, $jumpPath.{$pathIndex}]"
             chance="$debugchance" />
         </do_all>
-        <resume label="cleanup" />
+        <set_value name="$stoppingToWorkMessage" exact="{1972092401, 1102}.[$textUnit, $textHomeSector]" />
+        <resume label="stoppingToWork" />
       </do_if>
+      <remove_value name="$stoppingToWorkMessage" />
 
       <do_if value="@$jumpPath.last.zone != null">
         <set_value name="$homeLocation" exact="$jumpPath.last.zone" />
@@ -2432,6 +2476,25 @@
       <wait min="5ms" max="15ms" profile="flat" />
 
       <resume label="targetSearching" />
+
+      <label name="stoppingToWork" />
+      <do_if value="$stoppingToWorkMessage?">
+        <show_notification text="'%s\n%s'.[$textTitle, $stoppingToWorkMessage]" priority="2" sound="notification_warning"
+          timeout="20s" />
+        <write_to_logbook category="general" title="$textTitle" text="$stoppingToWorkMessage"
+          interaction="showonmap" object="this.assignedcontrolled" />
+        <debug_text text="'ProtectSector [%s at %s, %s]: Stopping to work. Going to set order %s (%s) failed with message: %s'.[
+            this.assignedcontrolled.debugname,
+            this.assignedcontrolled.sector.knownname,
+            this.assignedcontrolled.fleet.name,
+            @this.assignedcontrolled.order.id,
+            @this.assignedcontrolled.defaultorder.id,
+            $stoppingToWorkMessage
+          ]" chance="$debugchance" />
+        <set_order_failed order="this.assignedcontrolled.order" text="$stoppingToWorkMessage" />
+        <wait min="2s * $updateTime" max="3s * $updateTime" profile="flat" />
+      </do_if>
+      <resume label="start" />
 
       <label name="cleanup" />
     </actions>

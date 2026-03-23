@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<aiscript name="lib.protect.sector" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="aiscripts.xsd">
+<aiscript name="lib.protect.sector" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="aiscripts.xsd" version="115">
   <interrupts>
     <library>
       <actions name="ProtectSectorRestoreOrderParamsOnNewCommander">
@@ -15,7 +15,7 @@
                 @this.$protectSectorParams.$version
               ]" chance="@this.$protectSectorParams.$debugchance" />
           <set_value name="$orderParams" exact="@this.$protectSectorParams" />
-          <do_if value="@$orderParams.$version ge 114">
+          <do_if value="@$orderParams.$version == 114">
             <create_order object="$object" id="'ProtectSector'" default="true">
               <param name="homeSector" value="$orderParams.$homeSector" />
               <param name="attackStations" value="$orderParams.$attackStations" />
@@ -35,7 +35,36 @@
               <param name="shareTargetsBetweenFleets" value="$orderParams.$shareTargetsBetweenFleets" />
               <param name="attackDistanceAsPercentageOfRadarRange" value="$orderParams.$attackDistanceAsPercentageOfRadarRange" />
               <param name="breakOnDestructionPercentage" value="$orderParams.$breakOnDestructionPercentage" />
-              <param name="parkInCenterOfSector" value="$orderParams.$parkInCenterOfSector" />
+              <param name="parkInSector" value="$orderParams.$parkInCenterOfSector or @$orderParams.$desiredParkingPosition != null" />
+              <param name="desiredParkingPosition" value="if @$orderParams.$desiredParkingPosition != null then @$orderParams.$desiredParkingPosition else [$orderParams.$homeSector, $orderParams.$homeSector.coreposition]" />
+              <param name="delayBetweenScans" value="$orderParams.$delayBetweenScans" />
+              <param name="ignoreHazardThreat" value="$orderParams.$ignoreHazardThreat" />
+              <param name="recordActionsToLogBook" value="$orderParams.$recordActionsToLogBook" />
+              <param name="isStartedByPlayer" value="false" />
+              <param name="debugchance" value="$orderParams.$debugchance" />
+            </create_order>
+          </do_if>
+          <do_if value="@$orderParams.$version ge 115">
+            <create_order object="$object" id="'ProtectSector'" default="true">
+              <param name="homeSector" value="$orderParams.$homeSector" />
+              <param name="attackStations" value="$orderParams.$attackStations" />
+              <param name="attackStationsTactical" value="$orderParams.$attackStationsTactical" />
+              <param name="attackStationsInternal" value="$orderParams.$attackStationsInternal" />
+              <param name="attackShipsXL" value="$orderParams.$attackShipsXL" />
+              <param name="attackShipsL" value="$orderParams.$attackShipsL" />
+              <param name="attackShipsM" value="$orderParams.$attackShipsM" />
+              <param name="attackShipsS" value="$orderParams.$attackShipsS" />
+              <param name="attackShipsOutOfStationsDistance" value="$orderParams.$attackShipsOutOfStationsDistance" />
+              <param name="attackVisibleOnly" value="$orderParams.$attackVisibleOnly" />
+              <param name="attackHostileOnly" value="$orderParams.$attackHostileOnly" />
+              <param name="relationsThreshold" value="$orderParams.$relationsThreshold" />
+              <param name="pursueFleeingTarget" value="$orderParams.$pursueFleeingTarget" />
+              <param name="protectPlayerShipsInSector" value="$orderParams.$protectPlayerShipsInSector" />
+              <param name="protectOnlyNonMilitaryShips" value="$orderParams.$protectOnlyNonMilitaryShips" />
+              <param name="shareTargetsBetweenFleets" value="$orderParams.$shareTargetsBetweenFleets" />
+              <param name="attackDistanceAsPercentageOfRadarRange" value="$orderParams.$attackDistanceAsPercentageOfRadarRange" />
+              <param name="breakOnDestructionPercentage" value="$orderParams.$breakOnDestructionPercentage" />
+              <param name="parkInSector" value="$orderParams.$parkInSector" />
               <param name="desiredParkingPosition" value="$orderParams.$desiredParkingPosition" />
               <param name="delayBetweenScans" value="$orderParams.$delayBetweenScans" />
               <param name="ignoreHazardThreat" value="$orderParams.$ignoreHazardThreat" />
@@ -66,7 +95,7 @@
           $shareTargetsBetweenFleets = $shareTargetsBetweenFleets,
           $attackDistanceAsPercentageOfRadarRange = $attackDistanceAsPercentageOfRadarRange,
           $breakOnDestructionPercentage = $breakOnDestructionPercentage,
-          $parkInCenterOfSector = $parkInCenterOfSector,
+          $parkInSector = $parkInSector,
           $desiredParkingPosition = $desiredParkingPosition,
           $delayBetweenScans = $delayBetweenScans,
           $ignoreHazardThreat = $ignoreHazardThreat,

@@ -39,6 +39,6 @@
   <text language="90" name="Sektörü Koru" description="Sektörü düşman gemilerden koru"></text>
   <!-- Ukrainian -->
   <text language="380" name="Захист сектора" description="Захистити сектор від ворожих кораблів"></text>
-  <dependency version="710"></dependency>
+  <dependency version="750"></dependency>
   <dependency id="ws_2042901274" optional="true" name="SirNukes Mod Support APIs"></dependency>
 </content>
