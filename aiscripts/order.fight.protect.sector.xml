@@ -1116,18 +1116,6 @@
 
     <create_group groupname="$targets" />
 
-    <debug_text
-      text="'ProtectSector [%s at %s, %s]: Going to check parking position. Park in sector: %s, desired parking position: %s at %s.'
-        .[
-          this.assignedcontrolled.debugname,
-          this.assignedcontrolled.sector.knownname,
-          this.assignedcontrolled.fleet.name,
-          @$parkInSector,
-          @$desiredParkingPosition.{2},
-          @$desiredParkingPosition.{1}.name
-        ]"
-      chance="$debugchance" />
-
     <do_if value="@$desiredParkingPosition == null or @$desiredParkingPosition.{1}.isclass.sector and @$desiredParkingPosition.{1} != $homeSector">
       <include_interrupt_actions ref="CreateParkingPosition" />
       <edit_order_param order="this.assignedcontrolled.order" param="'desiredParkingPosition'" value="[$homeSector, $parkingPosition]" />
@@ -2465,8 +2453,8 @@
         <set_value name="$destinationAtHome" exact="@$desiredParkingPosition.{2}" />
       </do_if>
 
-      <move_to object="this.assignedcontrolled" destination="$homeLocation" travel="true" forceposition="false" finishonapproach="true"
-        commandaction="false">
+      <move_to object="this.assignedcontrolled" destination="$homeLocation" travel="true" forceposition="false" finishonapproach="true" useblacklist="$blacklistGroup" boost="true" uselocalhighways="true"
+        useknownpath="true" commandaction="false">
         <position value="$destinationAtHome" min="5km" max="6km" />
       </move_to>
 
@@ -2474,6 +2462,16 @@
       <remove_value name="$destinationAtHome" />
 
       <wait min="5ms" max="15ms" profile="flat" />
+      <do_if value="this.assignedcontrolled.sector != $homeSector">
+        <debug_text text="'ProtectSector [%s at %s, %s]: We should be at home sector %s, but we are at %s. Resuming flying home.'.[
+            this.assignedcontrolled.debugname,
+            this.assignedcontrolled.sector.knownname,
+            this.assignedcontrolled.fleet.name,
+            $homeSector.knownname,
+            this.assignedcontrolled.sector.knownname
+          ]" chance="$debugchance" />
+        <resume label="flightToHomeSector" />
+      </do_if>
 
       <resume label="targetSearching" />
 
