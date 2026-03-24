@@ -128,17 +128,56 @@
         </do_if>
       </actions>
       <actions name="ProtectSectorCheckAndSignalForDamage">
-        <set_value name="$hullPercentages" exact="if $isAttackingNow then @global.$chemODun.$protectSector.$hullPercentages.$attack else @global.$chemODun.$protectSector.$hullPercentages.$idle" />
-        <do_if value="@$hullPercentages != null and typeof $hullPercentages == datatype.table">
-          <do_for_each name="$shipClass" in="$hullPercentages.keys.list">
+        <set_value name="$hullPercentages" exact="@global.$chemODun.$protectSector.$hullPercentages" />
+        <set_value name="$stateId" exact="if $isAttackingNow then '$attack' else '$idle'" />
+        <set_value name="$shipIsDamaged" exact="false" />
+        <debug_text text="'ProtectSector [%s at %s, %s]: CheckAndSignalForDamage: Checking and signaling for damage for ship %s. Hull: %s. Attacking now: %s. State ID: %s. Received damage sensitivity: %s. Percentages: %s.' .
+          [
+            this.assignedcontrolled.debugname,
+            this.assignedcontrolled.sector.knownname,
+            this.assignedcontrolled.fleet.name,
+            $shipForDamageCheck.debugname,
+            $shipForDamageCheck.hullpercentage,
+            $isAttackingNow,
+            $stateId,
+            $receivedDamageSensitivity,
+            $hullPercentages
+          ]" chance="$debugchance" />
+        <do_if value="$shipForDamageCheck.hullpercentage lt 100 and @$hullPercentages != null and typeof $hullPercentages == datatype.table">
+          <do_for_each name="$shipClassId" in="$hullPercentages.keys.list">
+            <substitute_text text="$shipClass" source="$shipClassId">
+              <replace string="'$'" with="''" />
+            </substitute_text>
+            <debug_text text="'ProtectSector [%s at %s, %s]: CheckAndSignalForDamage: Checking ship class %s, id: %s, enum: %s for ship %s.' .
+              [
+                this.assignedcontrolled.debugname,
+                this.assignedcontrolled.sector.knownname,
+                this.assignedcontrolled.fleet.name,
+                $shipClass,
+                $shipClassId,
+                class.{$shipClass},
+                $shipForDamageCheck.debugname
+              ]" chance="$debugchance" />
             <do_if value="$shipForDamageCheck.isclass.{class.{$shipClass}}">
-              <set_value name="$damageThresholds" exact="$hullPercentages.{$shipClass}" />
+              <set_value name="$damageThresholds" exact="$hullPercentages.{$shipClassId}.{$stateId}" />
               <break />
             </do_if>
           </do_for_each>
-          <set_value name="$inAttackModifier" exact="if $isAttackingNow then $isInAttackModifier else 0" />
+          <debug_text text="'ProtectSector [%s at %s, %s]: CheckAndSignalForDamage: Checking damage for ship %s with hull percentage %s and damage threshold %s for class %s and state %s and sensitivity %s. Thresholds: %s.'
+            .[
+              this.assignedcontrolled.debugname,
+              this.assignedcontrolled.sector.knownname,
+              this.assignedcontrolled.fleet.name,
+              $shipForDamageCheck.debugname,
+              $shipForDamageCheck.hullpercentage,
+              $damageThresholds.{$receivedDamageSensitivity},
+              $shipClass,
+              $stateId,
+              $receivedDamageSensitivity,
+              $damageThresholds
+             ]" chance="$debugchance" />
           <do_if value="$shipForDamageCheck.hullpercentage lt $damageThresholds.{$receivedDamageSensitivity}">
-            <debug_text text="'ProtectSector [%s at %s, %s]: Ship %s is damaged, signalling for repair.'
+            <debug_text text="'ProtectSector [%s at %s, %s]: CheckAndSignalForDamage: Ship %s is damaged, signalling for repair.'
               .[
                 this.assignedcontrolled.debugname,
                 this.assignedcontrolled.sector.knownname,
@@ -161,7 +200,9 @@
             <match_use_blacklist group="$blacklistGroup" type="blacklisttype.sectortravel" object="this.assignedcontrolled" />
             <match_relation_to object="this.assignedcontrolled" relation="enemy" comparison="not" />
           </find_station>
-          <debug_text text="'PlayerRestockWorkaround[%s]: found %s resupply station(s) in the galaxy.'.[this.ship.debugname, $resupplyStationsByWorkaround.count]" chance="if @global.$chemODun.$protectSector.$debugLog then 100 else 0" />
+          <debug_text text="'PlayerRestockWorkaround[%s]: found %s resupply station(s) in the galaxy.'.
+            [this.ship.debugname, $resupplyStationsByWorkaround.count]"
+            chance="if @global.$chemODun.$protectSector.$debugLog then 100 else 0" />
           <do_all exact="$resupplyStationsByWorkaround.count" counter="$counterOfResupplyStationsByWorkaround" reverse="true">
             <do_if value="this.assignedcontrolled.gatedistance.{$resupplyStationsByWorkaround.{$counterOfResupplyStationsByWorkaround}}.{$blacklistGroup}.{this.assignedcontrolled} lt 0">
               <remove_value name="$resupplyStationsByWorkaround.{$counterOfResupplyStationsByWorkaround}" />

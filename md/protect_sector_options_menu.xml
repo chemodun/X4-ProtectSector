@@ -1,9 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
 <mdscript name="Protect_Sector_Options_Menu" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
   <cues>
-    <cue name="Init" instantiate="false">
+    <cue name="Init" instantiate="false" version="2">
       <actions>
+        <set_value name="$sensitivityLevels" exact="[{1001, 7736}, {1001, 7737}, {1001, 7738}]" />
+        <set_value name="$shipClasses" exact="['ship_s', 'ship_m', 'ship_l', 'ship_xl']" />
+        <set_value name="$shipClassNames" exact="[{1001, 51}, {1001, 50}, {1001, 49}, {1001, 48}]" />
+        <set_value name="$states" exact="['idle', 'attack']" />
+        <set_value name="$stateColors" exact="['Color.text_positive', 'Color.text_negative']" />
+        <set_value name="$stateNames" exact="[{1972092401, 90005}, {1972092401, 90006}]" />
+        <set_value name="$debugChance" exact="0" />
       </actions>
+      <patch sinceversion="2">
+        <set_value name="$shipClasses" exact="['ship_s', 'ship_m', 'ship_l', 'ship_xl']" />
+        <set_value name="$states" exact="['idle', 'attack']" />
+        <set_value name="$stateColors" exact="['Color.text_positive', 'Color.text_negative']" />
+        <set_value name="$debugChance" exact="0" />
+      </patch>
       <cues>
         <library name="Ensure_Variables" purpose="include_actions" version="2">
           <actions>
@@ -18,25 +31,29 @@
             </do_if>
             <do_if value="@global.$chemODun.$protectSector.$hullPercentages == null">
               <set_value name="global.$chemODun.$protectSector.$hullPercentages" exact="table[
-                $attack = table[
-                  $ship_s = [50, 70, 90],
-                  $ship_m = [45, 65, 85],
-                  $ship_l = [40, 60, 80],
-                  $ship_xl = [30, 50, 70],
+                $ship_s = table[
+                  $attack = [70, 80, 90],
+                  $idle = [80, 90, 100],
                 ],
-                $idle = table[
-                  $ship_s = [60, 80, 100],
-                  $ship_m = [55, 75, 95],
-                  $ship_l = [50, 70, 90],
-                  $ship_xl = [40, 60, 80],
+                $ship_m = table[
+                  $attack = [55, 70, 85],
+                  $idle = [60, 75, 90],
+                ],
+                $ship_l = table[
+                  $attack = [40, 60, 80],
+                  $idle = [50, 70, 90],
+                ],
+                $ship_xl = table[
+                  $attack = [30, 50, 70],
+                  $idle = [40, 60, 80],
                 ],
               ]" />
             </do_if>
             <debug_text
-              text="'ProtectSector Options: Ensured variables are initialized: %s, %s, %s.' .
-              [@global.$chemODun, @global.$chemODun.$protectSector, @global.$chemODun.$protectSector.$debugLog]"
-              context="false" filter="scripts" />
-            <set_value name="$debugChance" exact="if global.$chemODun.$protectSector.$debugLog then 1 else 0" />
+              text="'ProtectSector Options: Ensured variables are initialized: Debug Log: %s, Hull Percentages: %s. All data: %s' .
+              [@global.$chemODun.$protectSector.$debugLog, @global.$chemODun.$protectSector.$hullPercentages, @global.$chemODun.$protectSector]"
+              filter="scripts" />
+            <set_value name="$debugChance" exact="if global.$chemODun.$protectSector.$debugLog then 100 else 0" />
           </actions>
         </library>
 
@@ -45,7 +62,8 @@
             <event_cue_signalled cue="md.Simple_Menu_API.Reloaded" />
           </conditions>
           <actions>
-            <debug_text text="'ProtectSector Options: Registering Options Menus'" context="false" filter="scripts" />
+            <include_actions ref="Ensure_Variables" />
+            <debug_text text="'ProtectSector Options: Registering Options Menus'" filter="scripts" chance="$debugChance" />
             <signal_cue_instantly cue="md.Simple_Menu_API.Register_Options_Menu"
               param="table[
                 $id      = 'protect_sector_options_menu',
@@ -53,6 +71,9 @@
                 $title   = {1972092401, 1},
                 $onOpen  = Protect_Sector_Options_Menu,
               ]" />
+            <set_value name="$sensitivityLevels" exact="[{1001, 7736}, {1001, 7737}, {1001, 7738}]" />
+            <set_value name="$shipClassNames" exact="[{1001, 51}, {1001, 50}, {1001, 49}, {1001, 48}]" />
+            <set_value name="$stateNames" exact="[{1972092401, 90005}, {1972092401, 90006}]" />
           </actions>
         </cue>
 
@@ -61,8 +82,10 @@
             <event_cue_signalled />
           </conditions>
           <actions>
-            <debug_text text="'ProtectSector Options: Opening ProtectSector Options Menu'" context="false" filter="scripts" />
+            <debug_text text="'ProtectSector Options: Opening ProtectSector Options Menu'" filter="scripts" />
             <include_actions ref="Ensure_Variables" />
+            <debug_text text="'ProtectSector Options: Ship classes: %s, states: %s, sensitivity levels: %s.' .
+              [@$shipClasses, @$states, @$sensitivityLevels]" chance="$debugChance" filter="scripts" />
             <include_actions ref="Menu_Section_Damage_Sensitivity" />
             <include_actions ref="Menu_Section_Other" />
           </actions>
@@ -76,42 +99,35 @@
             <run_actions ref="Add_SubTitle_Row">
               <param name="text" value="{1972092401, 90001}" />
               <param name="col" value="1" />
-              <param name="colSpan" value="2" />
+              <param name="colSpan" value="1" />
             </run_actions>
             <run_actions ref="Add_SubTitle_Row">
               <param name="text" value="{1972092401, 90002}" />
-              <param name="col" value="4" />
-              <param name="colSpan" value="4" />
+              <param name="col" value="2" />
+              <param name="colSpan" value="1" />
             </run_actions>
             <run_actions ref="Add_SubTitle_Row">
               <param name="text" value="{1972092401, 90003}" />
-              <param name="col" value="9" />
-              <param name="colSpan" value="4" />
+              <param name="col" value="3" />
+              <param name="colSpan" value="2" />
             </run_actions>
-            <run_actions ref="Add_Ship_Class_Line">
-              <param name="class" value="ship_s" />
-              <param name="className" value="{1001, 51}" />
-              <param name="valueIdle" value="@global.$chemODun.$protectSector.$hullPercentages.$idle.ship_s.{1}" />
-              <param name="valueAttack" value="@global.$chemODun.$protectSector.$hullPercentages.$attack.ship_s.{1}" />
+            <run_actions ref="Add_SubTitle_Row">
+              <param name="text" value="{1972092401, 90004}" />
+              <param name="col" value="5" />
+              <param name="colSpan" value="8" />
             </run_actions>
-            <run_actions ref="Add_Ship_Class_Line">
-              <param name="class" value="ship_m" />
-              <param name="className" value="{1001, 50}" />
-              <param name="valueIdle" value="@global.$chemODun.$protectSector.$hullPercentages.$idle.ship_m.{1}" />
-              <param name="valueAttack" value="@global.$chemODun.$protectSector.$hullPercentages.$attack.ship_m.{1}" />
-            </run_actions>
-            <run_actions ref="Add_Ship_Class_Line">
-              <param name="class" value="ship_l" />
-              <param name="className" value="{1001, 49}" />
-              <param name="valueIdle" value="@global.$chemODun.$protectSector.$hullPercentages.$idle.ship_l.{1}" />
-              <param name="valueAttack" value="@global.$chemODun.$protectSector.$hullPercentages.$attack.ship_l.{1}" />
-            </run_actions>
-            <run_actions ref="Add_Ship_Class_Line">
-              <param name="class" value="ship_xl" />
-              <param name="className" value="{1001, 48}" />
-              <param name="valueIdle" value="@global.$chemODun.$protectSector.$hullPercentages.$idle.ship_xl.{1}" />
-              <param name="valueAttack" value="@global.$chemODun.$protectSector.$hullPercentages.$attack.ship_xl.{1}" />
-            </run_actions>
+            <include_actions ref="Add_Empty_Row" />
+            <set_value name="$hullPercentages" exact="@global.$chemODun.$protectSector.$hullPercentages" />
+            <do_for_each name="$class" in="@$shipClasses" counter="$i">
+              <set_value name="$classId" exact="'$%s' .[@$class]" />
+              <set_value name="$className" exact="@$shipClassNames.{$i}" />
+              <set_value name="$classValues" exact="@$hullPercentages.{$classId}" />
+              <include_actions ref="Ship_Class_And_Level_Controls" />
+              <remove_value name="$classId" />
+              <remove_value name="$className" />
+              <remove_value name="$classValues" />
+            </do_for_each>
+            <remove_value name="$hullPercentages" />
           </actions>
         </library>
 
@@ -123,7 +139,7 @@
             </run_actions>
             <run_actions ref="Add_CheckBox">
               <param name="id" value="'protect_sector_debug_log'" />
-              <param name="checked" value="@$global.$chemODun.$protectSector.$debugLog" />
+              <param name="checked" value="@global.$chemODun.$protectSector.$debugLog" />
               <param name="col" value="1" />
               <param name="textColSpan" value="11" />
               <param name="text" value="{1972092401, 99010}" />
@@ -170,7 +186,9 @@
                 $halign = @$halign,
                 $text = @$text,
               ]" />
-            <include_actions ref="Add_Empty_Row" />
+            <do_if value="(@$col + @$colSpan) == 12">
+              <include_actions ref="Add_Empty_Row" />
+            </do_if>
           </actions>
         </library>
 
@@ -188,54 +206,65 @@
           </actions>
         </library>
 
-        <library name="Add_Ship_Class_Line" purpose="run_actions">
-          <params>
-            <param name="class" />
-            <param name="className" default="''" />
-            <param name="valueIdle" />
-            <param name="valueAttack" />
-          </params>
+        <library name="Ship_Class_And_Level_Controls" purpose="include_actions">
           <actions>
-            <signal_cue_instantly cue="md.Simple_Menu_API.Add_Row" param="table[$selectable = false]" />
-            <signal_cue_instantly cue="md.Simple_Menu_API.Make_Text"
-              param="table[
-                $col = 1,
-                $colSpan = 2,
-                $halign = 'left',
-                $text = @$className,
-              ]" />
-            <signal_cue_instantly cue="md.Simple_Menu_API.Make_Slider"
-              param="table[
-                $id = 'sensitivity_%s_idle' .[@$class],
-                $col = 4,
-                $colSpan = 4,
-                $min = 10,
-                $max = 100,
-                $step = 5,
-                $start = @$valueIdle,
-                $suffix = '%%',
-                $onSliderCellConfirm = Handle_Slider_Changed,
-                $echo = table [
-                  $class = @$class,
-                  $state = 'idle',
-                ],
-              ]" />
-            <signal_cue_instantly cue="md.Simple_Menu_API.Make_Slider"
-              param="table[
-                $id = 'sensitivity_%s_attack' .[@$class],
-                $col = 9,
-                $colSpan = 4,
-                $min = 10,
-                $max = 100,
-                $step = 5,
-                $start = @$valueAttack,
-                $suffix = '%%',
-                $onSliderCellConfirm = Handle_Slider_Changed,
-                $echo = table [
-                  $class = @$class,
-                  $state = 'attack',
-                ],
-              ]" />
+            <debug_text text="'ProtectSector Options: Adding controls for class %s with values: %s.' .[@$class, @$classValues]" chance="@$debugChance" filter="scripts" />
+            <do_for_each name="$state" in="@$states" counter="$j">
+              <set_value name="$stateId" exact="'$%s' .[@$state]" />
+              <set_value name="$stateValues" exact="@$classValues.{$stateId}" />
+              <debug_text text="'ProtectSector Options: Adding controls for state %s with values %s.' .[@$state, @$stateValues]" chance="@$debugChance" filter="scripts" />
+              <do_for_each name="$sensitivityLevel" in="@$sensitivityLevels" counter="$k">
+                <signal_cue_instantly cue="md.Simple_Menu_API.Add_Row" />
+                <do_if value="$k == 1">
+                  <do_if value="$j == 1">
+                    <signal_cue_instantly cue="md.Simple_Menu_API.Make_Text"
+                      param="table[
+                        $col = 1,
+                        $colSpan = 1,
+                        $halign = 'center',
+                        $font = 'Helper.standardFontBold',
+                        $fontsize = 'Helper.titleFontSize',
+                        $text = @$className,
+                      ]" />
+                  </do_if>
+                  <signal_cue_instantly cue="md.Simple_Menu_API.Make_Text"
+                    param="table[
+                      $col = 2,
+                      $colSpan = 1,
+                      $halign = 'center',
+                      $text = $stateNames.{$j},
+                      $color = @$stateColors.{$j},
+                    ]" />
+                </do_if>
+                <signal_cue_instantly cue="md.Simple_Menu_API.Make_Text"
+                  param="table[
+                    $col = 3,
+                    $colSpan = 2,
+                    $halign = 'center',
+                    $text = $sensitivityLevels.{$k},
+                  ]" />
+                <signal_cue_instantly cue="md.Simple_Menu_API.Make_Slider"
+                  param="table[
+                    $id = 'sensitivity_%s_%s_%s' .[@$class, @$state, $k],
+                    $col = 5,
+                    $colSpan = 8,
+                    $min = 10,
+                    $max = 100,
+                    $step = 5,
+                    $start = @$stateValues.{$k},
+                    $onSliderCellConfirm = Handle_Slider_Changed,
+                    $echo = table [
+                      $class = '$%s'.[@$class],
+                      $state = @$stateId,
+                      $level = $k,
+                    ],
+                  ]" />
+              </do_for_each>
+              <remove_value name="$stateId" />
+              <remove_value name="$stateValues" />
+              <include_actions ref="Add_Empty_Row" />
+            </do_for_each>
+            <include_actions ref="Add_Empty_Row" />
           </actions>
         </library>
 
@@ -296,16 +325,21 @@
           </conditions>
           <actions>
             <include_actions ref="Ensure_Variables" />
-            <set_value name="$hullPercentages" exact="global.$chemODun.$protectSector.$hullPercentages" />
+            <set_value name="$hullPercentages" exact="@global.$chemODun.$protectSector.$hullPercentages" />
             <debug_text text="'ProtectSector Options: Slider %s changed to %s. Echo: %s' .[event.param.$id, event.param.$value, event.param.$echo]" chance="@$debugChance" filter="scripts" />
             <set_value name="$id" exact="event.param.$id" />
             <set_value name="$value" exact="event.param.$value" />
             <set_value name="$class" exact="event.param.$echo.$class" />
             <set_value name="$state" exact="event.param.$echo.$state" />
+            <set_value name="$level" exact="event.param.$echo.$level" />
+            <debug_text text="'ProtectSector Options: Handling slider change for class %s and state %s with new value %s. Old value: %s' .
+              [@$class, @$state, @$value, @$hullPercentages.{@$class}.{@$state}.{@$level}]" chance="@$debugChance" filter="scripts" />
+            <set_value name="$hullPercentages.{$class}.{$state}.{$level}" exact="$value" />
             <remove_value name="$id" />
             <remove_value name="$value" />
             <remove_value name="$class" />
             <remove_value name="$state" />
+            <remove_value name="$level" />
             <remove_value name="$hullPercentages" />
           </actions>
         </cue>

@@ -59,6 +59,8 @@
         <input_param name="min" value="1" />
         <input_param name="max" value="3" />
         <input_param name="step" value="1" />
+        <input_param name="startvalue" value="2" />
+        <patch sinceversion="115" early="true" setvariable="true" value="2" comment="Added patch to set default value" />
       </param>
       <param name="parkInSector" type="bool" default="false" text="{1972092401, 181}">
         <patch sinceversion="115" early="true" setvariable="true" value="@$desiredParkingPosition != null or @$parkInCenterOfSector == true" comment="Added patch to set default value" />
@@ -960,7 +962,7 @@
         </do_for_each>
         <set_value name="$shipForDamageCheck" exact="this.assignedcontrolled" />
         <include_interrupt_actions ref="ProtectSectorCheckAndSignalForDamage" />
-        <set_value name="$isDamaged" exact="$shipIsDamaged" />
+        <set_value name="$isDamaged" exact="@$shipIsDamaged == true" />
         <do_if value="this.assignedcontrolled.order.id == 'ProtectSector'">
           <set_value name="$signalDelay" min="10s" max="20s" />
           <signal_objects object="this.assignedcontrolled" param="'ProtectSector.CheckSubordinatesAttack'" delay="$signalDelay" />
