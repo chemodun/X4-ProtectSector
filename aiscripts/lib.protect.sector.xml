@@ -128,7 +128,7 @@
         </do_if>
       </actions>
       <actions name="ProtectSectorCheckAndSignalForDamage">
-        <set_value name="$hullPercentages" exact="if $isAttackingNow then @global.$chemODun.$protectSector.$hullPercentages.$attacking else @global.$chemODun.$protectSector.$hullPercentages.$idle" />
+        <set_value name="$hullPercentages" exact="if $isAttackingNow then @global.$chemODun.$protectSector.$hullPercentages.$attack else @global.$chemODun.$protectSector.$hullPercentages.$idle" />
         <do_if value="@$hullPercentages != null and typeof $hullPercentages == datatype.table">
           <do_for_each name="$shipClass" in="$hullPercentages.keys.list">
             <do_if value="$shipForDamageCheck.isclass.{class.{$shipClass}}">
