@@ -35,6 +35,7 @@
               <param name="shareTargetsBetweenFleets" value="$orderParams.$shareTargetsBetweenFleets" />
               <param name="attackDistanceAsPercentageOfRadarRange" value="$orderParams.$attackDistanceAsPercentageOfRadarRange" />
               <param name="breakOnDestructionPercentage" value="$orderParams.$breakOnDestructionPercentage" />
+              <param name="receivedDamageSensitivity" value="2" />
               <param name="parkInSector" value="$orderParams.$parkInCenterOfSector or @$orderParams.$desiredParkingPosition != null" />
               <param name="desiredParkingPosition" value="if @$orderParams.$desiredParkingPosition != null then @$orderParams.$desiredParkingPosition else [$orderParams.$homeSector, $orderParams.$homeSector.coreposition]" />
               <param name="delayBetweenScans" value="$orderParams.$delayBetweenScans" />
@@ -64,6 +65,7 @@
               <param name="shareTargetsBetweenFleets" value="$orderParams.$shareTargetsBetweenFleets" />
               <param name="attackDistanceAsPercentageOfRadarRange" value="$orderParams.$attackDistanceAsPercentageOfRadarRange" />
               <param name="breakOnDestructionPercentage" value="$orderParams.$breakOnDestructionPercentage" />
+              <param name="receivedDamageSensitivity" value="$orderParams.$receivedDamageSensitivity" />
               <param name="parkInSector" value="$orderParams.$parkInSector" />
               <param name="desiredParkingPosition" value="$orderParams.$desiredParkingPosition" />
               <param name="delayBetweenScans" value="$orderParams.$delayBetweenScans" />
@@ -95,6 +97,7 @@
           $shareTargetsBetweenFleets = $shareTargetsBetweenFleets,
           $attackDistanceAsPercentageOfRadarRange = $attackDistanceAsPercentageOfRadarRange,
           $breakOnDestructionPercentage = $breakOnDestructionPercentage,
+          $receivedDamageSensitivity = $receivedDamageSensitivity,
           $parkInSector = $parkInSector,
           $desiredParkingPosition = $desiredParkingPosition,
           $delayBetweenScans = $delayBetweenScans,
@@ -122,6 +125,31 @@
                 this.assignedcontrolled.fleet.name,
                 @$processed
               ]" chance="$debugchance" />
+        </do_if>
+      </actions>
+      <actions name="ProtectSectorCheckAndSignalForDamage">
+        <set_value name="$hullPercentages" exact="if $isAttackingNow then @global.$chemODun.$protectSector.$hullPercentages.$attacking else @global.$chemODun.$protectSector.$hullPercentages.$idle" />
+        <do_if value="@$hullPercentages != null and typeof $hullPercentages == datatype.table">
+          <do_for_each name="$shipClass" in="$hullPercentages.keys.list">
+            <do_if value="$shipForDamageCheck.isclass.{class.{$shipClass}}">
+              <set_value name="$damageThresholds" exact="$hullPercentages.{$shipClass}" />
+              <break />
+            </do_if>
+          </do_for_each>
+          <set_value name="$inAttackModifier" exact="if $isAttackingNow then $isInAttackModifier else 0" />
+          <do_if value="$shipForDamageCheck.hullpercentage lt $damageThresholds.{$receivedDamageSensitivity}">
+            <debug_text text="'ProtectSector [%s at %s, %s]: Ship %s is damaged, signalling for repair.'
+              .[
+                this.assignedcontrolled.debugname,
+                this.assignedcontrolled.sector.knownname,
+                this.assignedcontrolled.fleet.name,
+                $shipForDamageCheck.debugname
+              ]"
+              chance="$debugchance" />
+            <set_value name="$shipForDamageCheck.pilot.$playerOwnedWorkaroundForRestock" exact="player.age" />
+            <set_value name="$shipIsDamaged" exact="true" />
+            <signal_objects object="$shipForDamageCheck" param="'resupply'" param2="[$shipForDamageCheck.hullpercentage lt 100]" param3="$debugchance" delay="100ms" />
+          </do_if>
         </do_if>
       </actions>
       <actions name="PlayerShipsRestockWorkaround">

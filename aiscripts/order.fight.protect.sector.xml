@@ -55,6 +55,11 @@
           value="if $breakOnDestructionPercentage == 40 then 0 else $breakOnDestructionPercentage"
           comment="Added patch to disable break on destruction" />
       </param>
+      <param name="receivedDamageSensitivity" type="number" default="2" text="{1972092401, 221}">
+        <input_param name="min" value="1" />
+        <input_param name="max" value="3" />
+        <input_param name="step" value="1" />
+      </param>
       <param name="parkInSector" type="bool" default="false" text="{1972092401, 181}">
         <patch sinceversion="115" early="true" setvariable="true" value="@$desiredParkingPosition != null or @$parkInCenterOfSector == true" comment="Added patch to set default value" />
       </param>
@@ -234,34 +239,15 @@
             this.assignedcontrolled.hullpercentage
           ]"
           chance="$debugchance" />
-        <do_if value="(player.age - @$resupplyCheckLast) gt 3s or
-          this.assignedcontrolled.isclass.ship_xl and this.assignedcontrolled.hullpercentage lt 85 or
-          not this.assignedcontrolled.isclass.ship_xl and this.assignedcontrolled.hullpercentage lt 100">
+        <do_if value="(player.age - @$resupplyCheckLast) gt 3s">
           <do_for_each name="$subordinate" in="@this.assignedcontrolled.allsubordinates">
-            <set_value name="$subordinate.pilot.$playerOwnedWorkaroundForRestock" exact="player.age" />
-            <signal_objects object="$subordinate" param="'resupply'" param2="[$subordinate.hullpercentage lt 100]" param3="$debugchance" />
+            <set_value name="$shipForDamageCheck" exact="$subordinate" />
+            <include_interrupt_actions ref="ProtectSectorCheckAndSignalForDamage" />
           </do_for_each>
-          <set_value name="this.assignedcontrolled.pilot.$playerOwnedWorkaroundForRestock" exact="player.age" />
-          <signal_objects object="this.assignedcontrolled" param="'resupply'" param2="[this.assignedcontrolled.hullpercentage lt 100]" param3="$debugchance" delay="100ms" />
+          <set_value name="$shipForDamageCheck" exact="this.assignedcontrolled" />
+          <include_interrupt_actions ref="ProtectSectorCheckAndSignalForDamage" />
+          <set_value name="$isDamaged" exact="@$shipIsDamaged == true" />
           <set_value name="$resupplyCheckLast" exact="player.age" />
-          <debug_text text="'ProtectSector [%s at %s, %s]: Resupply check. Signal sent.'
-            .[
-              this.assignedcontrolled.debugname,
-              this.assignedcontrolled.sector.knownname,
-              this.assignedcontrolled.fleet.name
-            ]"
-            chance="$debugchance" />
-          <do_if value="this.assignedcontrolled.isclass.ship_xl and this.assignedcontrolled.hullpercentage lt 85 or
-          not this.assignedcontrolled.isclass.ship_xl and this.assignedcontrolled.hullpercentage lt 100">
-            <debug_text text="'ProtectSector [%s at %s, %s]: Resupply check. Ship is damaged, going idle.'
-            .[
-              this.assignedcontrolled.debugname,
-              this.assignedcontrolled.sector.knownname,
-              this.assignedcontrolled.fleet.name
-            ]"
-              chance="$debugchance" />
-            <set_value name="$isDamaged" exact="true" />
-          </do_if>
         </do_if>
       </actions>
       <actions name="ScanForEnemyShips">
@@ -885,22 +871,10 @@
             ]"
           chance="$debugchance" />
         <include_interrupt_actions ref="ProtectSectorPrepareOrderParams" />
-        <do_for_each name="$subordinate" in="this.assignedcontrolled.subordinates">
-          <set_value name="$subordinate.pilot.$playerOwnedWorkaroundForRestock" exact="player.age" />
-          <do_if value="$subordinate.isclass.ship_xl and $subordinate.hullpercentage lt 70 or
-            $subordinate.isclass.ship_l and $subordinate.hullpercentage lt 80 or
-            $subordinate.hullpercentage lt 90">
-            <debug_text text="'ProtectSector [%s at %s, %s]: Subordinate %s is damaged, signalling for repair.'
-            .[
-              this.assignedcontrolled.debugname,
-              this.assignedcontrolled.sector.knownname,
-              this.assignedcontrolled.fleet.name,
-              $subordinate.debugname
-            ]"
-              chance="$debugchance" />
-            <signal_objects object="$subordinate" param="'resupply'" param2="[$subordinate.hullpercentage lt 100]" param3="$debugchance" delay="100ms" />
-          </do_if>
-          <do_else>
+        <do_for_each name="$subordinate" in="this.assignedcontrolled.allsubordinates">
+          <set_value name="$shipForDamageCheck" exact="$subordinate" />
+          <include_interrupt_actions ref="ProtectSectorCheckAndSignalForDamage" />
+          <do_if value="@$shipIsDamaged != true and $subordinate.commander == this.assignedcontrolled">
             <do_if value="@$subordinate.pilot != null and @$subordinate.exists and not @$subordinate.iswreck and @$subordinate.isoperational">
               <do_if value="@$subordinate.defaultorder.id == 'Escort' and @$subordinate.defaultorder.$target == this.assignedcontrolled and not $subordinate.subordinategroupdockoverride">
                 <debug_text text="'ProtectSector [%s at %s, %s]: CheckSubordinatesAttack: Checking subordinate %s with default order %s and target %s and with order %s on distance %s to target %s and to us %s.'.
@@ -918,7 +892,7 @@
                 ]"
                   chance="$debugchance" />
                 <set_value name="$subordinate.aipilot.$protectSectorParams" exact="$protectSectorParams" />
-                <do_if value="@$subordinate.order.id != 'Attack' and @$subordinate.order.id != 'Resupply' or
+                <do_if value="this.assignedcontrolled.order.id == 'ProtectSector' and @$subordinate.order.id != 'Attack' and @$subordinate.order.id != 'Resupply' or
                     ($target != $subordinate.order.$primarytarget and ($subordinate.distanceto.{this.assignedcontrolled} gt this.assignedcontrolled.maxradarrange * 0.6))">
                   <do_if value="@$subordinate.order.id != 'Escort'">
                     <cancel_all_orders object="$subordinate" />
@@ -982,32 +956,24 @@
                 </do_if>
               </do_if>
             </do_if>
-          </do_else>
+          </do_if>
         </do_for_each>
-        <set_value name="this.assignedcontrolled.pilot.$playerOwnedWorkaroundForRestock" exact="player.age" />
-        <do_if value="this.assignedcontrolled.isclass.ship_xl and this.assignedcontrolled.hullpercentage lt 70 or
-            this.assignedcontrolled.isclass.ship_l and this.assignedcontrolled.hullpercentage lt 80 or
-            this.assignedcontrolled.hullpercentage lt 90">
-          <debug_text text="'ProtectSector [%s at %s, %s]: Ship is damaged, signalling for repair.'
-            .[
-              this.assignedcontrolled.debugname,
-              this.assignedcontrolled.sector.knownname,
-              this.assignedcontrolled.fleet.name
-            ]"
+        <set_value name="$shipForDamageCheck" exact="this.assignedcontrolled" />
+        <include_interrupt_actions ref="ProtectSectorCheckAndSignalForDamage" />
+        <set_value name="$isDamaged" exact="$shipIsDamaged" />
+        <do_if value="this.assignedcontrolled.order.id == 'ProtectSector'">
+          <set_value name="$signalDelay" min="10s" max="20s" />
+          <signal_objects object="this.assignedcontrolled" param="'ProtectSector.CheckSubordinatesAttack'" delay="$signalDelay" />
+          <debug_text
+            text="'ProtectSector [%s at %s, %s]: CheckSubordinatesAttack: New signal scheduled in %s.'.
+              [
+                @this.assignedcontrolled.debugname,
+                @this.assignedcontrolled.sector.knownname,
+                @this.assignedcontrolled.fleet.name,
+                $signalDelay
+              ]"
             chance="$debugchance" />
-          <signal_objects object="this.assignedcontrolled" param="'resupply'" param2="[this.assignedcontrolled.hullpercentage lt 100]" param3="$debugchance" delay="100ms" />
         </do_if>
-        <set_value name="$signalDelay" min="10s" max="20s" />
-        <signal_objects object="this.assignedcontrolled" param="'ProtectSector.CheckSubordinatesAttack'" delay="$signalDelay" />
-        <debug_text
-          text="'ProtectSector [%s at %s, %s]: CheckSubordinatesAttack: New signal scheduled in %s.'.
-                [
-                  @this.assignedcontrolled.debugname,
-                  @this.assignedcontrolled.sector.knownname,
-                  @this.assignedcontrolled.fleet.name,
-                  $signalDelay
-                ]"
-          chance="$debugchance" />
       </actions>
     </handler>
   </interrupts>
@@ -1320,6 +1286,7 @@
     <do_if value="@$parkInSector">
       <set_value name="$parkingPosition" exact="@$desiredParkingPosition.{2}" />
     </do_if>
+    <set_value name="$receivedDamageSensitivity" exact="2" />
   </patch>
   <attention min="unknown">
     <actions>
