@@ -5,18 +5,16 @@ This is useful when you want to prevent hostile ships to attack your ships and s
 
 ## Compatibility
 
-Compatible with `X4: Foundations 7.10` and upper. At least it written and tested with versions `7.10` and `7.50`.
+Compatible with `X4: Foundations 7.50` and upper.
 
 ## Features
 
 - Always the closest possible target will be selected to attack.
 - Several ships/fleets with one order can work in one sector or crossed sectors.
-- Not recommended to use single ship - the fleet is always better.
 - `Mimic` order in a fleet is fully supported. But, again, not set single ship to mimic mode - use the fleet instead.
-- The `Lost Ship Replacement` feature of version `7.50` is fully supported.
-- The own (`experimental`) order for station attacks is available.
-- The workaround for player ships repairing/restocking not only in current sector is implemented.
-- From version `1.08` have own icons for the `Protect Sector` and `Station attack` orders.
+- The `Lost Ship Replacement` feature is fully supported.
+- The own (`Experimental`) order for station attacks is available.
+- The workaround for player ships repairing/restocking not only in current sector is implemented based on received damage sensitivity levels.
 
 ## Download
 
@@ -30,14 +28,14 @@ Please be aware - this order requires the ship captain to have at least **two st
 
 ## Configuration
 
-There are a several configuration options available. You can see all of them on a screenshot.
+There are a several configuration order parameters available. You can see all of them on a screenshot.
+
+![alt text](docs/images/order_parameters.png)
 
 ### Home Sector
 
 This is a sector which will be protected. You can select it from the list of discovered sectors.
 If you select not current sector, the ship will fly to the selected sector to some "safe" point before to start protecting it.
-
-It can be any known sector, even if it is not yours.
 
 ### Attack Stations
 
@@ -55,19 +53,15 @@ If disabled, the ship will use the usual "Attack" order to attack the stations.
 #### Use experimental "Attack Station"
 
 `Disabled` by default.
-If enabled, the ship will use the experimental "Attack Station" order to attack the stations. It will be used for the stations only, not for the ships.
+If enabled, the ship will use the Experimental "Attack Station" order to attack the stations. It will be used for the stations only, not for the ships.
 
 Will work only if the ships in a fleet contains only `L` or `XL` classes only. Otherwise it will be de-selected together with "Attack stations" checkbox.
 
 For `L` only - four and more ships are recommended.
 
-##### Important notice
-
-If Use experimental "Attack Station" selected, the ship will use the `experimental` order independently of the order type selected in the previous parameter.
-
 #### Common warning for station attacks
 
-In non-OOS mode, i.e. when the Player is in the same sector, the stations drones will attack the ships. The appropriate logic to react on this event is implemented in `experimental` order, and working not bad :-).
+In non-OOS mode, i.e. when the Player is in the same sector, the stations drones will attack the ships. The appropriate logic to react on this event is implemented in `Experimental` order, and working not bad :-).
 But still not recommended to be in the same sector with the ship, independently of the order type selected.
 
 ### Attack Ships
@@ -79,16 +73,14 @@ You can select exact ship types:
 - M
 - S
 
-By default are set depending on the player ship type.
+By default are none is selected.
 
 If it will find a hostile squad - it will not be attacked, if it contains at least one ship of the type higher than highest selected one.
 
 ### Attack farther from stations
 
 There is a slider to define a minimal distance from the possible target to the hostile station. If the distance is less than the defined value, the ship will be selected as a target.
-If value is 0 - the distance will not be checked.
-
-Default value is `0`.
+If value is `0` (default one) - the distance will not be checked.
 
 ### Attack only visible targets
 
@@ -149,35 +141,30 @@ The attack de facto contains two stages:
 - The ship is trying to reach the target till some acceptable distance. This distance is defined as a percentage of the radar range.
 - The ship is trying to attack the target when it is in the acceptable distance.
 
-### Avoid boosters usage
-
-`Disabled` by default.
-
-If enabled, the ship will not use the boosters to increase the speed. In game version prior `7.50` it will help to preserve the shield energy. For version `7.50` and higher, boosters are used always, despite the `Avoid boosters usage` option.
-
-### Disable on destruction threat
+### Leave target with hull percentage
 
 It is a percentage of hull of the target to make this order disabled. Useful when you want to achieve more abandoned ships.
 
 By default, it is `0 percent` - i.e. disabled this check.
 
-If set to non-zero value, the ship will stop attacking when hull is less than desired percent.
+### Received damage sensitivity
 
-### Park at sector core
+There is three levels: 1 - `Low`, 2 - `Medium`, 3 - `High`. Default value is `2` - `Medium`. Use it to set the sensitivity of the ship to the received damage. The higher value, the more likely the ship will try to move out for repair. Appropriate hull percentage thresholds can be set in the `Extension options` menu.
+
+### Ignore blacklists for attack
+
+`Disabled` by default, but in case of "upgrade" from the previous versions, it will be enabled by default to keep the same behavior as before.
+If enabled, the ship will ignore blacklists when going to the `Home sector`. Equal to the behavior of the order before version `1.15`. Otherwise, when not set, the order will use `military` blacklist group to reach the `Home sector`.
+
+### Park on delay
 
 `Disabled` by default.
 
-If enabled, the ship will try to park at the sector core, when it is not targets to fight against.
+If enabled, the ship will try to park at position, set by next parameter.
 
 ### Park exactly there
 
-It's `optional` parameter, it means - it can be skipped to set.
-Moreover, if `Park at sector core` is enabled - this parameter will not only be ignored, its value will be cleared. So, if you want to park exactly there - disable the `Park at sector core` option.
-To set the value of this parameter - you have to select the exact position on the galaxy map inside the appropriate sector.
-
-#### Important Notice
-
-If the sector, selected in this parameter, is not the same as the `Home Sector` - the `Home Sector` will be changed to the selected one.
+It's `optional` parameter, it means - it can be skipped to set. By default it is center of the sector, but you can set it to any position in the sector. It will be used when the `Park on delay` is enabled.
 
 ### Delay between scans, seconds
 
@@ -189,7 +176,7 @@ If you want - you can set it in between 1 and 90 seconds, with step 4 seconds. B
 `Disabled` by default.
 
 Please take in account, some sectors are not safe, even if the ship is not attacked. For example, the sectors with the hazardous zones, like `The Void`. If ship is in the hazardous zone it's shield and then hull will be continuously damaged.
-From version 1.08 `Protect Sector` order will automatically finished in such sectors. Appropriate message will be shown in the logbook.
+From version 1.15 `Protect Sector` order will raise a fault state for order. Appropriate message will be shown in the logbook.
 
 If you still want to use this order in the hazardous zone - you can enable this option. But please be aware - the ships can be destroyed in the hazardous zone, as there is no good solutions to avoid such zones.
 
@@ -198,6 +185,20 @@ If you still want to use this order in the hazardous zone - you can enable this 
 `Enabled` by default.
 
 If enabled, the ship will record the events to the logbook. I.e. starts, travel to desired sector, flying to the target, attacking the target, destroying the target, etc.
+
+## Extension options
+
+![alt text](docs/images/extension_options.png)
+
+There are several options available for this order in the `Extension options` menu. Please check the `Protect Sector` section in the `Extension options` menu for more details.
+
+![alt text](docs/images/protect_sector_options.png)
+
+### Ship Received Damage Sensitivity Thresholds
+
+In this section you can set the hull percentage thresholds for the ship to react on the received damage. The ship will try to move out for repair when the hull percentage is less than defined threshold for the current sensitivity level.
+The thresholds are defined for three levels of sensitivity: `Low`, `Medium` and `High`. The higher level, the more likely the ship will try to move out for repair.
+In addition there is an extra separation by ship sizes and its states - `Idle` or `Attack`. Currently the thresholds for attack state are lower than for idle state, because the ship is more likely to be damaged in attack state. But you can set it as you want.
 
 ## Situation when nothing to attack
 
