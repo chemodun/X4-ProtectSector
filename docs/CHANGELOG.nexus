@@ -4,8 +4,8 @@
 [list]
 [*] Added
 [list]
-[*] New option [b]Received damage sensitivity[/b] to set the sensitivity of the reaction on receiving damage. There is three levels: 1 - low, 2 - medium, 3 - high.
-[*] Possibility to to set appropriate threshold for the sensitivity levels per the percentage of the hull integrity per ship size in [b]Extension Options[/b]  menu.
+[*] New option [b]Received damage sensitivity[/b] to set the sensitivity of the reaction on receiving damage. There is three levels: 1 - low, 2 - medium, 3 - high. With different thresholds in idle or attack state.
+[*] Possibility to to set appropriate threshold for the sensitivity levels based on the percentage of the hull integrity per ship size ans state in [b]Extension Options[/b]  menu.
 [*] New option [b]Ignore blacklists for attack[/b] - to ignore blacklists when going to the [b]Home sector[/b]. Equal to the behavior of the order before version [b]1.15[/b]. Otherwise, when not set, the order will use [b]military[/b] blacklist group to reach the [b]Home sector[/b].
 [/list]
 [*] Improved
