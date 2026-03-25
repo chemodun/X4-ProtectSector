@@ -62,6 +62,9 @@
         <input_param name="startvalue" value="2" />
         <patch sinceversion="115" early="true" setvariable="true" value="2" comment="Added patch to set default value" />
       </param>
+      <param name="ignoreBlackListsForAttack" type="bool" default="false" text="{1972092401, 231}">
+        <patch sinceversion="115" early="true" setvariable="true" value="true" comment="Added patch to set default value" />
+      </param>
       <param name="parkInSector" type="bool" default="false" text="{1972092401, 181}">
         <patch sinceversion="115" early="true" setvariable="true" value="@$desiredParkingPosition != null or @$parkInCenterOfSector == true" comment="Added patch to set default value" />
       </param>
@@ -1221,6 +1224,7 @@
     <set_value name="$resupplyCheckLast" exact="player.age" />
     <set_value name="$stoppingToWorkMessage" exact="null" />
     <set_value name="$blacklistGroup" exact="blacklistgroup.military" />
+    <set_value name="$flyingToHomeSectorTurnsCount" exact="0" />
     <remove_value name="$isInit" />
   </init>
   <patch sinceversion="104">
@@ -1289,12 +1293,16 @@
       <set_value name="$parkingPosition" exact="@$desiredParkingPosition.{2}" />
     </do_if>
     <set_value name="$receivedDamageSensitivity" exact="2" />
+    <set_value name="$ignoreBlackListsForAttack" exact="true" />
+    <set_value name="$flyingToHomeSectorTurnsCount" exact="0" />
   </patch>
   <attention min="unknown">
     <actions>
       <!-- START ******************************************************************************* -->
 
       <label name="start" />
+
+      <set_value name="$flyingToHomeSectorTurnsCount" exact="0" />
 
       <clear_order_failure order="this.assignedcontrolled.order" />
 
@@ -2345,32 +2353,44 @@
 
       <!-- HOME ********************************************************************************* -->
       <label name="flightToHomeSector" />
+      <set_value name="$flyingToHomeSectorTurnsCount" operation="add" />
 
       <do_if value="this.assignedcontrolled.sector == $homeSector">
         <resume label="start" />
       </do_if>
 
-      <do_if value="this.assignedcontrolled.gatedistance.{$homeSector}.{$blacklistGroup}.{this.assignedcontrolled} lt 0">
-        <debug_text text="'ProtectSector [%s at %s, %s]: ERROR: we are not at the target sector %s, but gate distance is negative. aborting.'.[
+      <do_if value="$ignoreBlackListsForAttack and (this.assignedcontrolled.gatedistance.{$homeSector} lt 0) or
+        not $ignoreBlackListsForAttack and (this.assignedcontrolled.gatedistance.{$homeSector}.{$blacklistGroup} lt 0)">
+        <debug_text text="'ProtectSector [%s at %s, %s]: ERROR: we are not at the target sector %s, but gate distance is negative. Black list ignore: %s. aborting.'.[
             this.assignedcontrolled.debugname,
             this.assignedcontrolled.sector.knownname,
             this.assignedcontrolled.fleet.name,
             $homeSector.knownname,
+            $ignoreBlackListsForAttack
           ]" chance="$debugchance" />
         <set_value name="$stoppingToWorkMessage" exact="{1972092401, 1102}.[$textUnit, $textHomeSector]" />
         <resume label="stoppingToWork" />
       </do_if>
       <remove_value name="$stoppingToWorkMessage" />
 
-      <get_jump_path component="$jumpPath" multiple="true" uselocalhighways="true" refobject="this.assignedcontrolled" useblacklist="$blacklistGroup"
-        useknownpath="this.isplayerowned">
-        <start object="this.assignedcontrolled" />
-        <end object="$homeSector" />
-      </get_jump_path>
+      <do_if value="$ignoreBlackListsForAttack">
+        <get_jump_path component="$jumpPath" multiple="true" uselocalhighways="true" refobject="this.assignedcontrolled"
+          useknownpath="this.isplayerowned">
+          <start object="this.assignedcontrolled" />
+          <end object="$homeSector" />
+        </get_jump_path>
+      </do_if>
+      <do_else>
+        <get_jump_path component="$jumpPath" multiple="true" uselocalhighways="true" refobject="this.assignedcontrolled" useblacklist="$blacklistGroup"
+          useknownpath="this.isplayerowned">
+          <start object="this.assignedcontrolled" />
+          <end object="$homeSector" />
+        </get_jump_path>
+      </do_else>
 
       <do_if value="$jumpPath.count lt 2">
         <debug_text
-          text="'ProtectSector [%s at %s, %s]: ERROR: we are not at the target sector, but no jump path found from %s %s to %s %s. aborting.'.
+          text="'ProtectSector [%s at %s, %s]: ERROR: we are not at the target sector, but no jump path found from %s %s to %s %s. Black list ignore: %s. aborting.'.
           [
             this.assignedcontrolled.debugname,
             this.assignedcontrolled.sector.knownname,
@@ -2378,7 +2398,8 @@
             this.sector.knownname,
             this.sector,
             $homeSector.knownname,
-            $homeSector
+            $homeSector,
+            $ignoreBlackListsForAttack
           ]"
           chance="$debugchance" />
         <do_all exact="$jumpPath.count" counter="$pathIndex">
@@ -2422,10 +2443,18 @@
         <set_value name="$destinationAtHome" exact="@$desiredParkingPosition.{2}" />
       </do_if>
 
-      <move_to object="this.assignedcontrolled" destination="$homeLocation" travel="true" forceposition="false" finishonapproach="true" useblacklist="$blacklistGroup" boost="true" uselocalhighways="true"
-        useknownpath="true" commandaction="false">
-        <position value="$destinationAtHome" min="5km" max="6km" />
-      </move_to>
+      <do_if value="$ignoreBlackListsForAttack">
+        <move_to object="this.assignedcontrolled" destination="$homeLocation" travel="true" forceposition="false" finishonapproach="true" boost="true" uselocalhighways="true"
+          useknownpath="true" commandaction="false">
+          <position value="$destinationAtHome" min="5km" max="6km" />
+        </move_to>
+      </do_if>
+      <do_else>
+        <move_to object="this.assignedcontrolled" destination="$homeLocation" travel="true" forceposition="false" finishonapproach="true" useblacklist="$blacklistGroup" boost="true" uselocalhighways="true"
+          useknownpath="true" commandaction="false">
+          <position value="$destinationAtHome" min="5km" max="6km" />
+        </move_to>
+      </do_else>
 
       <remove_value name="$homeLocation" />
       <remove_value name="$destinationAtHome" />
@@ -2439,6 +2468,15 @@
             $homeSector.knownname,
             this.assignedcontrolled.sector.knownname
           ]" chance="$debugchance" />
+        <do_if value="$flyingToHomeSectorTurnsCount ge 10">
+          <debug_text text="'ProtectSector [%s at %s, %s]: Been flying to home sector for a while, but still not there. Raising fault.'.[
+                this.assignedcontrolled.debugname,
+                this.assignedcontrolled.sector.knownname,
+                this.assignedcontrolled.fleet.name
+              ]" chance="$debugchance" />
+          <set_value name="$stoppingToWorkMessage" exact="{1972092401, 1102}.[$textUnit, $textHomeSector]" />
+          <resume label="stoppingToWork" />
+        </do_if>
         <resume label="flightToHomeSector" />
       </do_if>
 
