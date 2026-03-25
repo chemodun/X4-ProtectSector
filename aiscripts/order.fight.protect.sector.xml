@@ -2359,9 +2359,24 @@
         <resume label="start" />
       </do_if>
 
+
+      <do_if value="not $ignoreBlackListsForAttack and
+        ($homeSector.isblacklisted.{blacklisttype.sectortravel}.{$blacklistGroup}.{this.assignedcontrolled} or
+        $homeSector.isblacklisted.{blacklisttype.sectoractivity}.{$blacklistGroup}.{this.assignedcontrolled})">
+        <debug_text text="'ProtectSector [%s at %s, %s]: we are not at the target sector %s, but it is blacklisted for travel or activity. Black list ignore: %s. Stopping to work.'.[
+            this.assignedcontrolled.debugname,
+            this.assignedcontrolled.sector.knownname,
+            this.assignedcontrolled.fleet.name,
+            $homeSector.knownname,
+            $ignoreBlackListsForAttack
+          ]" chance="$debugchance" />
+        <set_value name="$stoppingToWorkMessage" exact="{1972092401, 1102}.[$textUnit, $textHomeSector]" />
+        <resume label="stoppingToWork" />
+      </do_if>
+
       <do_if value="$ignoreBlackListsForAttack and (this.assignedcontrolled.gatedistance.{$homeSector} lt 0) or
-        not $ignoreBlackListsForAttack and (this.assignedcontrolled.gatedistance.{$homeSector}.{$blacklistGroup} lt 0)">
-        <debug_text text="'ProtectSector [%s at %s, %s]: ERROR: we are not at the target sector %s, but gate distance is negative. Black list ignore: %s. aborting.'.[
+        not $ignoreBlackListsForAttack and (this.assignedcontrolled.gatedistance.{$homeSector}.{$blacklistGroup}.{this.assignedcontrolled} lt 0)">
+        <debug_text text="'ProtectSector [%s at %s, %s]: we are not at the target sector %s, but gate distance is negative. Black list ignore: %s. Stopping to work.'.[
             this.assignedcontrolled.debugname,
             this.assignedcontrolled.sector.knownname,
             this.assignedcontrolled.fleet.name,
@@ -2379,6 +2394,13 @@
           <start object="this.assignedcontrolled" />
           <end object="$homeSector" />
         </get_jump_path>
+        <debug_text text="'ProtectSector [%s at %s, %s]: Jump path with ignored blacklists: %s, count: %s'.[
+            this.assignedcontrolled.debugname,
+            this.assignedcontrolled.sector.knownname,
+            this.assignedcontrolled.fleet.name,
+            $jumpPath,
+            $jumpPath.count
+          ]" chance="$debugchance" />
       </do_if>
       <do_else>
         <get_jump_path component="$jumpPath" multiple="true" uselocalhighways="true" refobject="this.assignedcontrolled" useblacklist="$blacklistGroup"
@@ -2386,11 +2408,18 @@
           <start object="this.assignedcontrolled" />
           <end object="$homeSector" />
         </get_jump_path>
+        <debug_text text="'ProtectSector [%s at %s, %s]: Jump path with blacklists: %s, count: %s'.[
+            this.assignedcontrolled.debugname,
+            this.assignedcontrolled.sector.knownname,
+            this.assignedcontrolled.fleet.name,
+            $jumpPath,
+            $jumpPath.count
+          ]" chance="$debugchance" />
       </do_else>
 
       <do_if value="$jumpPath.count lt 2">
         <debug_text
-          text="'ProtectSector [%s at %s, %s]: ERROR: we are not at the target sector, but no jump path found from %s %s to %s %s. Black list ignore: %s. aborting.'.
+          text="'ProtectSector [%s at %s, %s]:  but no jump path found from %s %s to %s %s. Black list ignore: %s. Stopping to work.'.
           [
             this.assignedcontrolled.debugname,
             this.assignedcontrolled.sector.knownname,
