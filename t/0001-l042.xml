@@ -24,11 +24,13 @@
       <t id="152"> - přesnou "-" reputací. Tj. lodě s reputací/rasovým vztahem mezi vybranou hodnotou (s "-") a -30 budou považovány za nepřátelské</t>
       <t id="161">Vyhnout se použití zesilovačů</t>
       <t id="171">Opustit cíl s procentem trupu</t>
-      <t id="181">Zaparkovat v jádru sektoru</t>
+      <t id="181">Zaparkovat se zpožděním</t>
       <t id="182">Zaparkovat přesně tam</t>
       <t id="191">Zpoždění mezi skenováními, sekundy</t>
       <t id="201">Vzdálenost útoku: procento dosahu radaru</t>
-      <t id="211">Ignorovat hrozby nebezpečných zón. Některé sektory obsahují nebezpečné zóny, které mohou zničit lodě. Budete je ignorovat...</t>
+      <t id="211">Ignorovat hrozby \033RNebezpečných\033X zón. Některé sektory obsahují nebezpečné zóny, které mohou zničit lodě. Budete je ignorovat...</t>
+      <t id="221">Citlivost na přijaté poškození. Existují tři úrovně: 1 - nízká, 2 - střední, 3 - vysoká</t>
+      <t id="231">Ignorovat černé listiny pro útok</t>
       <t id="901">Zaznamenat do lodního deníku</t>
       <t id="1000">..: Chránit sektor :..</t>
       <t id="1001">loď</t>
@@ -49,11 +51,20 @@
       <t id="1043">%s: %s zůstal %s</t>
       <t id="1044">%s: %s v %s je příliš rychlý</t>
       <t id="1101">%s: %s obsahuje \033Rnebezpečné\033X zóny. Zastavuji práci...</t>
+      <t id="1102">%s: %s není dosažitelný. Zastavuji práci...</t>
       <t id="10001">Útok na stanici</t>
       <t id="10011">Experimentální příkaz k útoku pouze na stanice. K dispozici pouze pro L a XL lodě</t>
       <t id="20001">Inteligentní útok na stanici</t>
       <t id="20011">Příkaz k útoku pouze na stanice pomocí inteligentních manévrů. K dispozici pouze pro L a XL lodě</t>
-      <t id="90001">Povolit protokol ladění</t>
+      <t id="90000">Prahové hodnoty citlivosti lodě na přijaté poškození:</t>
+      <t id="90001">Velikost</t>
+      <t id="90002">Stav</t>
+      <t id="90003">Citlivost</t>
+      <t id="90004">Prahová hodnota procenta trupu \(nižší než\)</t>
+      <t id="90005">Nečinný</t>
+      <t id="90006">Útok</t>
+      <t id="99000">Ostatní:</t>
+      <t id="99010">Povolit protokol ladění</t>
     </page>
   </add>
 </diff>

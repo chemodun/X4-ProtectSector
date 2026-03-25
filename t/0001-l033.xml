@@ -13,8 +13,7 @@
       <t id="122">Attaquer les vaisseaux L</t>
       <t id="123">Attaquer les vaisseaux M</t>
       <t id="124">Attaquer les vaisseaux S</t>
-      <t id="129">Attaquer plus loin des stations - si un vaisseau hostile est plus proche que la valeur sélectionnée de la station hostile, il ne sera pas
-        attaqué</t>
+      <t id="129">Attaquer plus loin des stations - si un vaisseau hostile est plus proche que la valeur sélectionnée de la station hostile, il ne sera pas attaqué</t>
       <t id="131">Attaquer uniquement les cibles visibles</t>
       <t id="132">Attaquer uniquement les cibles hostiles</t>
       <t id="133">Poursuivre les cibles en fuite</t>
@@ -25,12 +24,13 @@
       <t id="152">Relation négative maximale - c'est-à-dire que les vaisseaux avec une relation de -30 à la valeur sélectionnée seront considérés comme hostiles</t>
       <t id="161">Éviter l'utilisation des propulseurs</t>
       <t id="171">Laisser la cible avec un pourcentage de coque</t>
-      <t id="181">Se garer au cœur du secteur</t>
+      <t id="181">Stationner avec délai</t>
       <t id="182">Se garer exactement là</t>
       <t id="191">Délai entre les scans, secondes</t>
       <t id="201">Distance d'attaque : pourcentage de la portée du radar</t>
-      <t id="211">Ignorer les menaces des zones dangereuses. Certains secteurs contiennent des zones dangereuses, qui peuvent détruire des vaisseaux. Vous les
-        ignorerez...</t>
+      <t id="211">Ignorer les menaces des zones \033RDangereuses\033X. Certains secteurs contiennent des zones dangereuses, qui peuvent détruire des vaisseaux. Vous les ignorerez...</t>
+      <t id="221">Sensibilité aux dommages reçus. Il y a trois niveaux: 1 - faible, 2 - moyen, 3 - élevé</t>
+      <t id="231">Ignorer les listes noires pour l'attaque</t>
       <t id="901">Enregistrer dans le journal de bord</t>
       <t id="1000">..: Protéger le Secteur :..</t>
       <t id="1001">vaisseau</t>
@@ -51,11 +51,20 @@
       <t id="1043">%s : %s est laissé %s</t>
       <t id="1044">%s : %s dans %s est trop rapide</t>
       <t id="1101">%s : Le %s contient des zones \033Rdangereuses\033X. Arrêt du travail...</t>
+      <t id="1102">%s : Le %s n'est pas accessible. Arrêt du travail...</t>
       <t id="10001">Attaquer la Station</t>
       <t id="10011">Un ordre expérimental pour attaquer uniquement les stations. Disponible uniquement pour les vaisseaux L et XL</t>
       <t id="20001">Attaque Intelligente de Station</t>
       <t id="20011">Un ordre pour attaquer uniquement les stations en utilisant des manœuvres intelligentes. Disponible uniquement pour les vaisseaux L et XL</t>
-      <t id="90001">Activer le journal de débogage</t>
+      <t id="90000">Seuils de sensibilité aux dommages reçus par le vaisseau:</t>
+      <t id="90001">Taille</t>
+      <t id="90002">État</t>
+      <t id="90003">Sensibilité</t>
+      <t id="90004">Seuil de pourcentage de coque \(inférieur à\)</t>
+      <t id="90005">Inactif</t>
+      <t id="90006">Attaque</t>
+      <t id="99000">Autre:</t>
+      <t id="99010">Activer le journal de débogage</t>
     </page>
   </add>
 </diff>

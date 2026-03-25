@@ -24,11 +24,13 @@
       <t id="152">Relação negativa máxima - ou seja, naves com relação de -30 ao valor selecionado serão consideradas hostis</t>
       <t id="161">Evitar o uso de propulsores</t>
       <t id="171">Abandonar alvo com percentagem de casco</t>
-      <t id="181">Estacionar no núcleo do setor</t>
+      <t id="181">Estacionar com atraso</t>
       <t id="182">Estacionar exatamente lá</t>
       <t id="191">Intervalo entre varreduras, segundos</t>
       <t id="201">Distância de ataque: porcentagem do alcance do radar</t>
-      <t id="211">Ignore as ameaças de zonas perigosas. Alguns setores contêm zonas perigosas, que podem destruir naves. Você irá ignorá-las...</t>
+      <t id="211">Ignore as ameaças de zonas \033RPerigosas\033X. Alguns setores contêm zonas perigosas, que podem destruir naves. Você irá ignorá-las...</t>
+      <t id="221">Sensibilidade ao dano recebido. Existem três níveis: 1 - baixo, 2 - médio, 3 - alto</t>
+      <t id="231">Ignorar listas negras ao atacar</t>
       <t id="901">Registrar no diário de bordo</t>
       <t id="1000">..: Proteger Setor :..</t>
       <t id="1001">nave</t>
@@ -49,11 +51,20 @@
       <t id="1043">%s: %s foi deixado %s</t>
       <t id="1044">%s: %s em %s é muito rápido</t>
       <t id="1101">%s: O %s contém zonas \033Rperigosas\033X. Parando o trabalho...</t>
+      <t id="1102">%s: %s está inalcançável. Parando o trabalho...</t>
       <t id="10001">Atacar Estação</t>
       <t id="10011">Uma ordem experimental para atacar apenas estações. Disponível apenas para naves L e XL</t>
       <t id="20001">Ataque Inteligente à Estação</t>
       <t id="20011">Uma ordem para atacar apenas estações usando manobras inteligentes. Disponível apenas para naves L e XL</t>
-      <t id="90001">Ativar registro de depuração</t>
+      <t id="90000">Limiares de sensibilidade da nave ao dano recebido:</t>
+      <t id="90001">Tamanho</t>
+      <t id="90002">Status</t>
+      <t id="90003">Sensibilidade</t>
+      <t id="90004">Limiar de percentagem de casco \(menos de\)</t>
+      <t id="90005">Inativo</t>
+      <t id="90006">Ataque</t>
+      <t id="99000">Outro:</t>
+      <t id="99010">Ativar registro de depuração</t>
     </page>
   </add>
 </diff>

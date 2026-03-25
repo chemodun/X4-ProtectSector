@@ -24,11 +24,13 @@
       <t id="152">Relación negativa máxima - es decir, las naves con una relación de -30 al valor seleccionado serán consideradas hostiles</t>
       <t id="161">Evitar el uso de propulsores</t>
       <t id="171">Abandonar objetivo con porcentaje de casco</t>
-      <t id="181">Aparcar en el núcleo del sector</t>
+      <t id="181">Aparcar con retraso</t>
       <t id="182">Aparcar exactamente allí</t>
       <t id="191">Retraso entre escaneos, segundos</t>
       <t id="201">Distancia de ataque: porcentaje del alcance del radar</t>
-      <t id="211">Ignorar las amenazas de zonas peligrosas. Algunos sectores contienen zonas peligrosas, que pueden destruir naves. Las ignorarás...</t>
+      <t id="211">Ignorar las amenazas de zonas \033RPeligrosas\033X. Algunos sectores contienen zonas peligrosas que pueden destruir naves. Las ignorarás...</t>
+      <t id="221">Sensibilidad al daño recibido. Hay tres niveles: 1 - bajo, 2 - medio, 3 - alto</t>
+      <t id="231">Ignorar listas negras para ataques</t>
       <t id="901">Registrar en el libro de registro</t>
       <t id="1000">..: Proteger el Sector :..</t>
       <t id="1001">nave</t>
@@ -49,11 +51,20 @@
       <t id="1043">%s: %s ha sido dejado %s</t>
       <t id="1044">%s: %s en %s es demasiado rápido</t>
       <t id="1101">%s: El %s contiene zonas \033Rpeligrosas\033X. Deteniéndose...</t>
-      <t id="10001">Atacar estación</t>
+      <t id="1102">%s: El %s no es accesible. Deteniendo trabajo...</t>
+      <t id="10001">Atacar Estación</t>
       <t id="10011">Una orden experimental para atacar solo estaciones. Disponible solo para naves L y XL</t>
       <t id="20001">Ataque Inteligente a Estación</t>
       <t id="20011">Una orden para atacar solo estaciones usando maniobras inteligentes. Disponible solo para naves L y XL</t>
-      <t id="90001">Habilitar registro de depuración</t>
+      <t id="90000">Umbrales de sensibilidad al daño recibido de la nave:</t>
+      <t id="90001">Tamaño</t>
+      <t id="90002">Estado</t>
+      <t id="90003">Sensibilidad</t>
+      <t id="90004">Umbral de porcentaje de casco \(menor que\)</t>
+      <t id="90005">Inactivo</t>
+      <t id="90006">Ataque</t>
+      <t id="99000">Otro:</t>
+      <t id="99010">Habilitar registro de depuración</t>
     </page>
   </add>
 </diff>

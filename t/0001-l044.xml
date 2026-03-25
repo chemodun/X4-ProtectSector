@@ -24,11 +24,13 @@
       <t id="152"> - by exact "-" reputation. I.e. ships with reputation/race relation between selected value (with "-") and -30 will be assumed as hostile</t>
       <t id="161">Avoid boosters usage</t>
       <t id="171">Leave target with hull percentage</t>
-      <t id="181">Park at sector core</t>
+      <t id="181">Park on delay</t>
       <t id="182">Park exactly there</t>
       <t id="191">Delay between scans, seconds</t>
       <t id="201">Attack distance: percentage of radar range</t>
-      <t id="211">Ignore the threats of hazardous zones. Some sectors contains a hazardous zones, which can destroy a ships. You will ignore it...</t>
+      <t id="211">Ignore the threats of Hazardous zones. Some sectors contains a hazardous zones, which can destroy a ships. You will ignore it...</t>
+      <t id="221">Received damage sensitivity. There is three levels: 1 - low, 2 - medium, 3 - high</t>
+      <t id="231">Ignore blacklists for attack</t>
       <t id="901">Record to logbook</t>
       <t id="1000">..: Protect Sector :..</t>
       <t id="1001">ship</t>
@@ -49,11 +51,20 @@
       <t id="1043">%s: %s is left %s</t>
       <t id="1044">%s: %s in %s is too fast</t>
       <t id="1101">%s: The %s contains a \033Rhazardous\033X zones. Stopping to work...</t>
+      <t id="1102">%s: %s is unreachable. Stopping working...</t>
       <t id="10001">Attack Station</t>
       <t id="10011">An experimental order to attack only stations. Available only for L and XL ships</t>
       <t id="20001">Smart Station Attack</t>
       <t id="20011">An order to attack only stations using smart maneuvers. Available only for L and XL ships</t>
-      <t id="90001">Enable debug log</t>
+      <t id="90000">Ship taking damage sensitivity thresholds:</t>
+      <t id="90001">Size</t>
+      <t id="90002">Status</t>
+      <t id="90003">Sensitivity</t>
+      <t id="90004">Hull percentage threshold \(less than\)</t>
+      <t id="90005">Idle</t>
+      <t id="90006">Attack</t>
+      <t id="99000">Other:</t>
+      <t id="99010">Enable debug log</t>
     </page>
   </add>
 </diff>

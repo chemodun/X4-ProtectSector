@@ -49,11 +49,20 @@
       <t id="1043">%s: %s è stato lasciato %s</t>
       <t id="1044">%s: %s in %s è troppo veloce</t>
       <t id="1101">%s: Il %s contiene zone \033Rpericolose\033X. Interrompo il lavoro...</t>
+      <t id="1102">%s: Il %s non è raggiungibile. Arresto lavoro...</t>
       <t id="10001">Attacca Stazione</t>
-      <t id="10011">Un ordine sperimentale per attaccare solo le stazioni. Disponibile solo per navi L e XL</t>
+      <t id="10011">Un ordine sperimentale per attaccare solo stazioni. Disponibile solo per navi L e XL</t>
       <t id="20001">Attacco Intelligente alla Stazione</t>
-      <t id="20011">Un ordine per attaccare solo le stazioni usando manovre intelligenti. Disponibile solo per navi L e XL</t>
-      <t id="90001">Abilita registro di debug</t>
+      <t id="20011">Un ordine per attaccare solo stazioni usando manovre intelligenti. Disponibile solo per navi L e XL</t>
+      <t id="90000">Soglie di sensibilità ai danni ricevuti dalla nave:</t>
+      <t id="90001">Dimensione</t>
+      <t id="90002">Stato</t>
+      <t id="90003">Sensibilità</t>
+      <t id="90004">Soglia percentuale scafo \(inferiore a\)</t>
+      <t id="90005">Inattivo</t>
+      <t id="90006">Attacco</t>
+      <t id="99000">Altro:</t>
+      <t id="99010">Abilita registro di debug</t>
     </page>
   </add>
 </diff>

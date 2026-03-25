@@ -13,8 +13,7 @@
       <t id="122">L-Schiffe angreifen</t>
       <t id="123">M-Schiffe angreifen</t>
       <t id="124">S-Schiffe angreifen</t>
-      <t id="129">Weiter von Stationen angreifen - wenn das feindliche Schiff näher als der ausgewählte Wert an der feindlichen Station ist, wird es nicht
-        angegriffen</t>
+      <t id="129">Weiter von Stationen angreifen - wenn das feindliche Schiff näher als der ausgewählte Wert an der feindlichen Station ist, wird es nicht angegriffen</t>
       <t id="131">Nur sichtbare Ziele angreifen</t>
       <t id="132">Nur feindliche Ziele angreifen</t>
       <t id="133">Fliehende Ziele verfolgen</t>
@@ -50,11 +49,20 @@
       <t id="1043">%s: %s wurde %s zurückgelassen</t>
       <t id="1044">%s: %s in %s ist zu schnell</t>
       <t id="1101">%s: Der %s enthält \033Rgefährliche\033X Zonen. Arbeit wird gestoppt...</t>
+      <t id="1102">%s: %s ist nicht erreichbar. Beende Arbeit...</t>
       <t id="10001">Station angreifen</t>
-      <t id="10011">Ein experimenteller Befehl, um nur Stationen anzugreifen. Nur für L- und XL-Schiffe verfügbar</t>
+      <t id="10011">Experimenteller Befehl, nur Stationen anzugreifen. Nur für L- und XL-Schiffe verfügbar</t>
       <t id="20001">Intelligenter Stationsangriff</t>
-      <t id="20011">Ein Befehl, um nur Stationen mit intelligenten Manövern anzugreifen. Nur für L- und XL-Schiffe verfügbar</t>
-      <t id="90001">Debug-Protokoll aktivieren</t>
+      <t id="20011">Befehl, nur Stationen mit intelligenten Manövern anzugreifen. Nur für L- und XL-Schiffe verfügbar</t>
+      <t id="90000">Schwellenwerte für Schadensempfindlichkeit des Schiffs:</t>
+      <t id="90001">Größe</t>
+      <t id="90002">Status</t>
+      <t id="90003">Empfindlichkeit</t>
+      <t id="90004">Hüllenprozentsatz-Schwellenwert \(weniger als\)</t>
+      <t id="90005">Untätig</t>
+      <t id="90006">Angriff</t>
+      <t id="99000">Sonstiges:</t>
+      <t id="99010">Debug-Protokoll aktivieren</t>
     </page>
   </add>
 </diff>
