@@ -2,9 +2,13 @@
 
 ## [1.15] - 2026-03-??
 
+- Added
+  - New option `Received damage sensitivity` to set the sensitivity of the reaction on receiving damage. There is three levels: 1 - low, 2 - medium, 3 - high.
+  - Possibility to to set appropriate threshold for the sensitivity levels per the percentage of the hull integrity per ship size in `Extension Options`  menu.
+  - New option `Ignore blacklists for attack` - to ignore blacklists when going to the `Home sector`. Equal to the behavior of the order before version `1.15`. Otherwise, when not set, the order will use `military` blacklist group to reach the `Home sector`.
+
 - Improved
-  - Checking for the `Home sector` reachability is added.
-  - Behavior when hazardous or unreachable sectors are set as a home ones. Script does not stopped, but generated failure instead.
+  - Behavior when hazardous or unreachable sectors are set as a home ones. Order does not stop, but generates a failure instead.
 
 - Changed
   - Due to the above change and specific behavior of UI with null positions in order params, the default value for `Park exactly there` is set to center of the sector instead of empty one. And now it is not make parking as default behavior, but just set the parking position to the center of the sector. The parking will be happen only if `Park on delay` is enabled.
