@@ -5,7 +5,7 @@
 - Added
   - New option `Received damage sensitivity` to set the sensitivity of the reaction on receiving damage. There is three levels: 1 - low, 2 - medium, 3 - high. With different thresholds in idle or attack state.
   - Possibility to to set appropriate threshold for the sensitivity levels based on the percentage of the hull integrity per ship size ans state in `Extension Options`  menu.
-  - New option `Ignore blacklists for attack` - to ignore blacklists when going to the `Home sector`. Equal to the behavior of the order before version `1.15`. Otherwise, when not set, the order will use `military` blacklist group to reach the `Home sector`.
+  - New option `Ignore blacklists` - to ignore blacklists when going to and protecting the `Home sector`. Equal to the behavior of the order before version `1.15`. Otherwise, when not set, the order will use `military` blacklist group to reach and protect the `Home sector`.
 
 - Improved
   - Behavior when hazardous or unreachable sectors are set as a home ones. Order does not stop, but generates a failure instead.

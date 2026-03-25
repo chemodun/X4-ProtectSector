@@ -151,10 +151,10 @@ By default, it is `0 percent` - i.e. disabled this check.
 
 There is three levels: 1 - `Low`, 2 - `Medium`, 3 - `High`. Default value is `2` - `Medium`. Use it to set the sensitivity of the ship to the received damage. The higher value, the more likely the ship will try to move out for repair. Appropriate hull percentage thresholds can be set in the `Extension options` menu.
 
-### Ignore blacklists for attack
+### Ignore blacklists
 
 `Disabled` by default, but in case of "upgrade" from the previous versions, it will be enabled by default to keep the same behavior as before.
-If enabled, the ship will ignore blacklists when going to the `Home sector`. Equal to the behavior of the order before version `1.15`. Otherwise, when not set, the order will use `military` blacklist group to reach the `Home sector`.
+If enabled, the ship will ignore blacklists when going to and protecting the `Home sector`. Equal to the behavior of the order before version `1.15`. Otherwise, when not set, the order will use `military` blacklist group to reach and protect the `Home sector`.
 
 ### Park on delay
 
