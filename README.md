@@ -30,7 +30,7 @@ Please be aware - this order requires the ship captain to have at least **two st
 
 There are a several configuration order parameters available. You can see all of them on a screenshot.
 
-![alt text](docs/images/order_parameters.png)
+![Protect Sector Order Parameters](docs/images/order_parameters.png)
 
 ### Home Sector
 
@@ -188,11 +188,11 @@ If enabled, the ship will record the events to the logbook. I.e. starts, travel 
 
 ## Extension options
 
-![alt text](docs/images/extension_options.png)
+![Extension Options](docs/images/extension_options.png)
 
 There are several options available for this order in the `Extension options` menu. Please check the `Protect Sector` section in the `Extension options` menu for more details.
 
-![alt text](docs/images/protect_sector_options.png)
+![Protect Sector Options](docs/images/protect_sector_options.png)
 
 ### Ship Received Damage Sensitivity Thresholds
 
