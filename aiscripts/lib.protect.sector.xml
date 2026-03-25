@@ -36,6 +36,7 @@
               <param name="attackDistanceAsPercentageOfRadarRange" value="$orderParams.$attackDistanceAsPercentageOfRadarRange" />
               <param name="breakOnDestructionPercentage" value="$orderParams.$breakOnDestructionPercentage" />
               <param name="receivedDamageSensitivity" value="2" />
+              <param name="ignoreBlackListsForAttack" value="true" />
               <param name="parkInSector" value="$orderParams.$parkInCenterOfSector or @$orderParams.$desiredParkingPosition != null" />
               <param name="desiredParkingPosition" value="if @$orderParams.$desiredParkingPosition != null then @$orderParams.$desiredParkingPosition else [$orderParams.$homeSector, $orderParams.$homeSector.coreposition]" />
               <param name="delayBetweenScans" value="$orderParams.$delayBetweenScans" />
@@ -66,6 +67,7 @@
               <param name="attackDistanceAsPercentageOfRadarRange" value="$orderParams.$attackDistanceAsPercentageOfRadarRange" />
               <param name="breakOnDestructionPercentage" value="$orderParams.$breakOnDestructionPercentage" />
               <param name="receivedDamageSensitivity" value="$orderParams.$receivedDamageSensitivity" />
+              <param name="ignoreBlackListsForAttack" value="$orderParams.$ignoreBlackListsForAttack" />
               <param name="parkInSector" value="$orderParams.$parkInSector" />
               <param name="desiredParkingPosition" value="$orderParams.$desiredParkingPosition" />
               <param name="delayBetweenScans" value="$orderParams.$delayBetweenScans" />
@@ -98,6 +100,7 @@
           $attackDistanceAsPercentageOfRadarRange = $attackDistanceAsPercentageOfRadarRange,
           $breakOnDestructionPercentage = $breakOnDestructionPercentage,
           $receivedDamageSensitivity = $receivedDamageSensitivity,
+          $ignoreBlackListsForAttack = $ignoreBlackListsForAttack,
           $parkInSector = $parkInSector,
           $desiredParkingPosition = $desiredParkingPosition,
           $delayBetweenScans = $delayBetweenScans,
