@@ -186,11 +186,13 @@ If you still want to use this order in the hazardous zone - you can enable this 
 
 If enabled, the ship will record the events to the logbook. I.e. starts, travel to desired sector, flying to the target, attacking the target, destroying the target, etc.
 
-[size=130][u]Extension options[/u][/size]
+[size=130][u]Protect Sector common options[/u][/size]
+
+These options is accessible via the [b]Extension options[/b] menu in case the [b]Mod Support APIs[/b] by [url=https://next.nexusmods.com/profile/sirnukes?gameId=2659]SirNukes[/url] is installed and enabled.
 
 [spoiler][img]https://raw.githubusercontent.com/chemodun/X4-ProtectSector/refs/heads/main/docs/images/extension_options.png[/img][/spoiler]
 
-There are several options available for this order in the [b]Extension options[/b] menu. Please check the [b]Protect Sector[/b] section in the [b]Extension options[/b] menu for more details.
+There are several options available under the [b]Protect Sector[/b] section in the [b]Extension options[/b] menu.
 
 [spoiler][img]https://raw.githubusercontent.com/chemodun/X4-ProtectSector/refs/heads/main/docs/images/protect_sector_options.png[/img][/spoiler]
 
@@ -209,5 +211,16 @@ If no Attack target is selected (i.e. no station and no any ship types are selec
 Special thanks to the pilot [url=https://steamcommunity.com/profiles/76561198087933619/myworkshopfiles/?appid=392160]Assailer[/url] for his awesome script [url=https://steamcommunity.com/sharedfiles/filedetails/?id=2458720435]"Sector Patrol"[/url] which was used as a base for this one.
 
 [size=130][u]Links[/u][/size]
-
-There is a thread on EgoSoft forum - [[url=https://forum.egosoft.com/viewtopic.php?p=5257237]Mod/AIScript] Order "Protect Sector"[/url]
+[list]
+[*] There is a thread on EgoSoft forum - [[url=https://forum.egosoft.com/viewtopic.php?p=5257237]Mod/AIScript] Order "Protect Sector"[/url]
+[*] Mod Support APIs:
+[list]
+[*] [url=https://steamcommunity.com/sharedfiles/filedetails/?id=2042901274]SirNukes Mod Support APIs on Steam[/url]
+[*] [url=https://www.nexusmods.com/x4foundations/mods/503]Mod Support APIs on Nexus Mods[/url]
+[/list]
+[*] My other mods and tools:
+[list]
+[*] [url=https://steamcommunity.com/id/chemodun/myworkshopfiles/?appid=392160]On Steam[/url]
+[*] [url=https://www.nexusmods.com/profile/ChemODun/mods?gameId=2659]On Nexus Mods[/url]
+[/list]
+[/list]
