@@ -186,11 +186,13 @@ If you still want to use this order in the hazardous zone - you can enable this 
 
 If enabled, the ship will record the events to the logbook. I.e. starts, travel to desired sector, flying to the target, attacking the target, destroying the target, etc.
 
-## Extension options
+## Protect Sector common options
+
+These options is accessible via the `Extension options` menu in case the `Mod Support APIs` by [SirNukes](https://next.nexusmods.com/profile/sirnukes?gameId=2659) is installed and enabled.
 
 ![Extension Options](docs/images/extension_options.png)
 
-There are several options available for this order in the `Extension options` menu. Please check the `Protect Sector` section in the `Extension options` menu for more details.
+There are several options available under the `Protect Sector` section in the `Extension options` menu.
 
 ![Protect Sector Options](docs/images/protect_sector_options.png)
 
@@ -210,4 +212,10 @@ Special thanks to the pilot [Assailer](https://steamcommunity.com/profiles/76561
 
 ## Links
 
-There is a thread on EgoSoft forum - [[Mod/AIScript] Order "Protect Sector"](https://forum.egosoft.com/viewtopic.php?p=5257237)
+- There is a thread on EgoSoft forum - [[Mod/AIScript] Order "Protect Sector"](https://forum.egosoft.com/viewtopic.php?p=5257237)
+- Mod Support APIs:
+  - [SirNukes Mod Support APIs on Steam](https://steamcommunity.com/sharedfiles/filedetails/?id=2042901274)
+  - [Mod Support APIs on Nexus Mods](https://www.nexusmods.com/x4foundations/mods/503)
+- My other mods and tools:
+  - [On Steam](https://steamcommunity.com/id/chemodun/myworkshopfiles/?appid=392160)
+  - [On Nexus Mods](https://www.nexusmods.com/profile/ChemODun/mods?gameId=2659)
