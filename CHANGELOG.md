@@ -3,20 +3,20 @@
 ## [1.15] - 2026-03-26
 
 - Added
-  - New option `Received damage sensitivity` to set the sensitivity of the reaction on receiving damage. There is three levels: 1 - low, 2 - medium, 3 - high. With different thresholds in idle or attack state.
-  - Possibility to to set appropriate threshold for the sensitivity levels based on the percentage of the hull integrity per ship size ans state in `Extension Options`  menu.
+  - New option `Received damage sensitivity` to set the sensitivity of the reaction on receiving damage. There are three levels: 1 - low, 2 - medium, 3 - high. With different thresholds in idle or attack state.
+  - Possibility to set appropriate threshold for the sensitivity levels based on the percentage of the hull integrity per ship size and state in `Extension Options` menu.
   - New option `Ignore blacklists` - to ignore blacklists when going to and protecting the `Home sector`. Equal to the behavior of the order before version `1.15`. Otherwise, when not set, the order will use `military` blacklist group to reach and protect the `Home sector`.
 
 - Improved
-  - Behavior when hazardous or unreachable sectors are set as a home ones. Order does not stop, but generates a failure instead.
+  - Behavior when hazardous or unreachable sectors are set as home ones. Order does not stop, but generates a failure instead.
 
 - Changed
-  - Due to the above change and specific behavior of UI with null values in order params, the default value for `Park exactly there` is set to center of the sector instead of empty one. And now it is not make parking as default behavior, but just set the parking position to the center of the sector. The parking will be happen only if `Park on delay` is enabled.
+  - Due to the above change and specific behavior of UI with null values in order params, the default value for `Park exactly there` is set to center of the sector instead of empty one. And now it does not make parking as default behavior but just sets the parking position to the center of the sector. Parking will happen only if `Park on delay` is enabled.
   - The `Park on delay` is introduced instead of `Park at sector core` to cover both parking in the center and parking in the desired position.
   - Version is set to `1.15` to be in line with the version of the main script of the mod.
 
 - Fixed
-  - Restocking and repairing is now process only reachable stations.
+  - Restocking and repairing now processes only reachable stations.
 
 ## [1.13] - 2026-03-14
 
