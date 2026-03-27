@@ -127,6 +127,11 @@ If enabled, the ship will not protect the military ships. It will not attack the
 
 If enabled, the ship will pursue the target, which is trying to flee after is being attacked.
 
+[size=3][u][i]Aggressive subordinates[/i][/u][/size]
+
+[b]Disabled[/b] by default.
+If enabled, the subordinates will be more aggressive in attacking the targets. It will force them to attack more and more.
+
 [size=3][u][i]Share target with other[/i][/u][/size]
 
 [b]Enabled[/b] by default.
