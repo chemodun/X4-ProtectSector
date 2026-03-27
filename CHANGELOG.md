@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.16] - 2026-03-27
+
+- Added
+  - New `Aggressive subordinates` option to make subordinates more aggressive in attacking targets. It was introduced in version `1.13` as the default behavior; with this update, it becomes optional and is disabled by default.
+- Fixed
+  - Fixed a bug with `Aggressive subordinates` where subordinates were forced to attack targets outside the sector where the leader is.
+  - In some cases the `Park exactly there` option was assumed by the game engine as a null value, which prevented the `Behavior tab` from being opened on order failure.
+
 ## [1.15] - 2026-03-26
 
 - Added

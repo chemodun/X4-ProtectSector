@@ -31,6 +31,7 @@
       <t id="211">Ignorovat hrozby \033RNebezpečných\033X zón. Některé sektory obsahují nebezpečné zóny, které mohou zničit lodě. Budete je ignorovat...</t>
       <t id="221">Citlivost na přijaté poškození. Existují tři úrovně: 1 - nízká, 2 - střední, 3 - vysoká</t>
       <t id="231">Ignorovat černé listiny</t>
+      <t id="241">Agresivní podřízení. Donutí podřízené útočit stále více a více</t>
       <t id="901">Zaznamenat do lodního deníku</t>
       <t id="1000">..: Chránit sektor :..</t>
       <t id="1001">loď</t>

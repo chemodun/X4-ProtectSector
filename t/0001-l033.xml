@@ -31,6 +31,7 @@
       <t id="211">Ignorer les menaces des zones \033RDangereuses\033X. Certains secteurs contiennent des zones dangereuses, qui peuvent détruire des vaisseaux. Vous les ignorerez...</t>
       <t id="221">Sensibilité aux dommages reçus. Il y a trois niveaux: 1 - faible, 2 - moyen, 3 - élevé</t>
       <t id="231">Ignorer les listes noires</t>
+      <t id="241">Subordonnés agressifs. Forcera les subordonnés à attaquer de plus en plus</t>
       <t id="901">Enregistrer dans le journal de bord</t>
       <t id="1000">..: Protéger le Secteur :..</t>
       <t id="1001">vaisseau</t>

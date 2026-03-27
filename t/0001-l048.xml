@@ -31,6 +31,7 @@
       <t id="211">Ignoruj zagrożenia stref \033Rniebezpiecznych\033X. Niektóre sektory zawierają strefy niebezpieczne, które mogą zniszczyć statki. Będziesz je ignorować...</t>
       <t id="221">Wrażliwość na otrzymane obrażenia. Są trzy poziomy: 1 - niski, 2 - średni, 3 - wysoki</t>
       <t id="231">Ignoruj czarne listy</t>
+      <t id="241">Agresywni podporządkowani. Zmusi podporządkowanych do coraz większych ataków</t>
       <t id="901">Zapisz do dziennika pokładowego</t>
       <t id="1000">..: Chroń sektor :..</t>
       <t id="1001">statek</t>

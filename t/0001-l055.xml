@@ -31,6 +31,7 @@
       <t id="211">Ignore as ameaças de zonas \033RPerigosas\033X. Alguns setores contêm zonas perigosas, que podem destruir naves. Você irá ignorá-las...</t>
       <t id="221">Sensibilidade ao dano recebido. Existem três níveis: 1 - baixo, 2 - médio, 3 - alto</t>
       <t id="231">Ignorar listas negras</t>
+      <t id="241">Subordinados agressivos. Forçará os subordinados a atacar cada vez mais</t>
       <t id="901">Registrar no diário de bordo</t>
       <t id="1000">..: Proteger Setor :..</t>
       <t id="1001">nave</t>

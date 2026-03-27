@@ -31,6 +31,7 @@
       <t id="211">\033RGefährliche\033X Zonen ignorieren. Einige Sektoren enthalten Gefahrenzonen, die Schiffe zerstören können. Sie werden diese ignorieren...</t>
       <t id="221">Empfindlichkeit gegenüber erhaltenem Schaden. Es gibt drei Stufen: 1 - niedrig, 2 - mittel, 3 - hoch</t>
       <t id="231">Blacklists ignorieren</t>
+      <t id="241">Aggressive Untergebene. Zwingt Untergebene, immer mehr anzugreifen</t>
       <t id="901">Im Logbuch aufzeichnen</t>
       <t id="1000">..: Sektor schützen :..</t>
       <t id="1001">Schiff</t>

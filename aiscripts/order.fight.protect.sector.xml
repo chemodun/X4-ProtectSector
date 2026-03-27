@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="iso-8859-1"?>
-<aiscript name="order.fight.protect.sector" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="aiscripts.xsd" version="115">
+<aiscript name="order.fight.protect.sector" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="aiscripts.xsd" version="116">
   <order id="ProtectSector" name="{1972092401, 1}" description="{1972092401, 2}" category="combat" infinite="true" allowinloop="false">
     <params>
       <param name="homeSector"
@@ -39,6 +39,9 @@
       <param name="protectPlayerShipsInSector" type="bool" default="true" text="{1972092401, 134}" />
       <param name="protectOnlyNonMilitaryShips" type="bool" default="true" text="{1972092401, 135}" />
       <param name="pursueFleeingTarget" type="bool" default="false" text="{1972092401, 133}" />
+      <param name="aggressiveSubordinates" type="bool" default="false" text="{1972092401, 241}">
+        <patch sinceversion="116" early="true" setvariable="true" value="false" comment="Added patch to set default value" />
+      </param>
       <param name="shareTargetsBetweenFleets" type="bool" default="true" text="{1972092401, 141}" />
       <param name="attackDistanceAsPercentageOfRadarRange" type="number" default="70" text="{1972092401, 201}">
         <input_param name="min" value="10" />
@@ -70,6 +73,7 @@
       </param>
       <param name="desiredParkingPosition" type="position" default="[$homeSector, $homeSector.coreposition]" required="false" text="{1972092401, 182}">
         <input_param name="class" value="class.sector" />
+        <editable />
         <patch sinceversion="115" early="true" setvariable="true" value="if @$desiredParkingPosition != null and @$desiredParkingPosition.{1}.isclass.sector and @$desiredParkingPosition.{1} == $homeSector then @$desiredParkingPosition else [$homeSector, $homeSector.coreposition]" comment="Added patch to set default value" />
       </param>
       <param name="delayBetweenScans" type="number" default="4" text="{1972092401, 191}">
@@ -138,7 +142,6 @@
         </do_if>
       </actions>
       <actions name="SubordinatesResetOrders">
-        <set_value name="$isAttackingNow" exact="false" />
         <do_for_each name="$subordinate" in="this.assignedcontrolled.allsubordinates">
           <do_if value="@$subordinate.order.id == 'Attack'">
             <cancel_all_orders object="$subordinate" />
@@ -477,9 +480,17 @@
         <set_value name="$idleTill" exact="0" />
         <set_value name="$lastStationScan" exact="player.age" />
         <include_interrupt_actions ref="HazardInSector" />
+        <debug_text
+          text="'ProtectSector [%s at %s, %s]: Patched for version 108.'
+            .[
+              this.assignedcontrolled.debugname,
+              this.assignedcontrolled.sector.knownname,
+              this.assignedcontrolled.fleet.name
+            ]"
+          chance="$debugchance" />
       </actions>
       <actions name="SetVersion">
-        <set_value name="$scriptVersion" exact="115" />
+        <set_value name="$scriptVersion" exact="116" />
       </actions>
       <actions name="ProtectSectorGlobalApply">
         <debug_text
@@ -859,9 +870,9 @@
     <handler>
       <conditions>
         <event_object_signalled object="this.assignedcontrolled" param="'ProtectSector.CheckSubordinatesAttack'" />
-        <check_value value="@$isAttackingNow" />
-        <check_value value="$target != null" />
-        <check_value value="$target.isclass.ship" />
+        <check_value value="@$target != null" />
+        <check_value value="@$target.isclass.ship" />
+        <check_value value="@$target.exists and not @$target.iswreck and @$target.isoperational" />
         <check_value value="@this.assignedcontrolled.subordinates.count gt 0" />
       </conditions>
       <actions>
@@ -882,27 +893,50 @@
           <do_if value="@$shipIsDamaged != true and $subordinate.commander == this.assignedcontrolled">
             <do_if value="@$subordinate.pilot != null and @$subordinate.exists and not @$subordinate.iswreck and @$subordinate.isoperational">
               <do_if value="@$subordinate.defaultorder.id == 'Escort' and @$subordinate.defaultorder.$target == this.assignedcontrolled and not $subordinate.subordinategroupdockoverride">
-                <debug_text text="'ProtectSector [%s at %s, %s]: CheckSubordinatesAttack: Checking subordinate %s with default order %s and target %s and with order %s on distance %s to target %s and to us %s.'.
+                <debug_text text="'ProtectSector [%s at %s, %s]: CheckSubordinatesAttack: Checking subordinate %s in sector %s with default order %s and target %s and with order %s on distance %s to target %s and to us %s. Aggressive: %s. Target is ok: %s.Checks: %s, %s, %s, %s, %s, %s : %s.'.
                 [
                   @this.assignedcontrolled.debugname,
                   @this.assignedcontrolled.sector.knownname,
                   @this.assignedcontrolled.fleet.name,
                   @$subordinate.debugname,
+                  @$subordinate.sector.knownname,
                   @$subordinate.defaultorder.id,
                   @$subordinate.defaultorder.$target.debugname,
                   @$subordinate.order.id,
                   @$subordinate.distanceto.{@$target},
                   @$target.debugname,
-                  $subordinate.distanceto.{this.assignedcontrolled}
+                  $subordinate.distanceto.{this.assignedcontrolled},
+                  @$aggressiveSubordinates,
+                  @$target.exists and not @$target.iswreck and @$target.isoperational,
+                  @$aggressiveSubordinates == true and this.assignedcontrolled.order.id == 'ProtectSector',
+                  this.assignedcontrolled.sector == @$target.sector and this.assignedcontrolled.sector == $subordinate.sector,
+                  @$subordinate.order.id != 'Flee' and @$subordinate.order.id != 'Resupply',
+                  @$subordinate.order.id != 'Attack',
+                  @$target != @$subordinate.order.$primarytarget,
+                  $subordinate.distanceto.{this.assignedcontrolled} gt this.assignedcontrolled.maxradarrange * 0.6,
+                  @$aggressiveSubordinates == true and this.assignedcontrolled.order.id == 'ProtectSector' and
+                  this.assignedcontrolled.sector == @$target.sector and this.assignedcontrolled.sector == $subordinate.sector and
+                  @$subordinate.order.id != 'Flee' and @$subordinate.order.id != 'Resupply'
+                  and (
+                    @$subordinate.order.id != 'Attack' or
+                    (@$target != @$subordinate.order.$primarytarget and ($subordinate.distanceto.{this.assignedcontrolled} gt this.assignedcontrolled.maxradarrange * 0.6)
+                  )
+                )
                 ]"
                   chance="$debugchance" />
                 <set_value name="$subordinate.aipilot.$protectSectorParams" exact="$protectSectorParams" />
-                <do_if value="this.assignedcontrolled.order.id == 'ProtectSector' and @$subordinate.order.id != 'Attack' and @$subordinate.order.id != 'Resupply' or
-                    ($target != $subordinate.order.$primarytarget and ($subordinate.distanceto.{this.assignedcontrolled} gt this.assignedcontrolled.maxradarrange * 0.6))">
+                <do_if value="@$aggressiveSubordinates == true and this.assignedcontrolled.order.id == 'ProtectSector' and
+                  this.assignedcontrolled.sector == @$target.sector and this.assignedcontrolled.sector == $subordinate.sector and
+                  @$subordinate.order.id != 'Flee' and @$subordinate.order.id != 'Resupply'
+                  and (
+                    @$subordinate.order.id != 'Attack' or
+                    (@$target != @$subordinate.order.$primarytarget and ($subordinate.distanceto.{this.assignedcontrolled} gt this.assignedcontrolled.maxradarrange * 0.6)
+                  )
+                )">
                   <do_if value="@$subordinate.order.id != 'Escort'">
                     <cancel_all_orders object="$subordinate" />
                     <debug_text
-                      text="'ProtectSector [%s at %s, %s]: Canceling order %s for %s '.
+                      text="'ProtectSector [%s at %s, %s]: CheckSubordinatesAttack: Canceling order %s for %s '.
                           [
                             this.assignedcontrolled.debugname,
                             this.assignedcontrolled.sector.knownname,
@@ -913,7 +947,7 @@
                       chance="$debugchance" />
                   </do_if>
                   <debug_text
-                    text="'ProtectSector [%s at %s, %s]: Restarting the attack order for %s with target %s.'.
+                    text="'ProtectSector [%s at %s, %s]: CheckSubordinatesAttack: Restarting the attack order for %s with target %s.'.
                       [
                         this.assignedcontrolled.debugname,
                         this.assignedcontrolled.sector.knownname,
@@ -967,7 +1001,7 @@
         <include_interrupt_actions ref="ProtectSectorCheckAndSignalForDamage" />
         <set_value name="$isDamaged" exact="@$shipIsDamaged == true" />
         <do_if value="this.assignedcontrolled.order.id == 'ProtectSector'">
-          <set_value name="$signalDelay" min="10s" max="20s" />
+          <set_value name="$signalDelay" min="20s" max="50s" />
           <signal_objects object="this.assignedcontrolled" param="'ProtectSector.CheckSubordinatesAttack'" delay="$signalDelay" />
           <debug_text
             text="'ProtectSector [%s at %s, %s]: CheckSubordinatesAttack: New signal scheduled in %s.'.
@@ -996,7 +1030,7 @@
     <include_interrupt_actions ref="RelationsConversionList" />
 
     <debug_text
-      text="'ProtectSector [%s at %s, %s]: Version: %s. Home Sector: %s. Attack Stations: %s (Tactical: %s, Internal: %s). Attack Ships XL: %s. Attack Ships L: %s. Attack Ships M: %s. Attack Ships S: %s. Attack Ships Out Of Stations Distance: %s. Attack Visible Only: %s. Attack Hostile Only: %s. Relation Threshold: %s. Protect Player Ships In Sector: %s. Protect Only Non Military Ships: %s. Pursue Fleeing Target: %s. Share Targets Between Fleets: %s. Break On Destruction Percentage: %s. Park In Sector: %s (Old: %s). Desired Parking Position: %s at %s. Delay Between Scans: %s, in seconds: %s. Ignore Hazard Threat: %s. Record Actions To Log Book: %s. By Player: %s.'
+      text="'ProtectSector [%s at %s, %s]: Version: %s. Home Sector: %s. Attack Stations: %s (Tactical: %s, Internal: %s). Attack Ships XL: %s. Attack Ships L: %s. Attack Ships M: %s. Attack Ships S: %s. Attack Ships Out Of Stations Distance: %s. Attack Visible Only: %s. Attack Hostile Only: %s. Relation Threshold: %s. Protect Player Ships In Sector: %s. Protect Only Non Military Ships: %s. Pursue Fleeing Target: %s. Aggressive subordinates: %s. Share Targets Between Fleets: %s. Break On Destruction Percentage: %s. Park In Sector: %s (Old: %s). Desired Parking Position: %s at %s. Delay Between Scans: %s, in seconds: %s. Ignore Hazard Threat: %s. Record Actions To Log Book: %s. By Player: %s.'
         .[
           this.assignedcontrolled.debugname,
           this.assignedcontrolled.sector.knownname,
@@ -1017,6 +1051,7 @@
           $protectPlayerShipsInSector,
           $protectOnlyNonMilitaryShips,
           $pursueFleeingTarget,
+          $aggressiveSubordinates,
           $shareTargetsBetweenFleets,
           $breakOnDestructionPercentage,
           @$parkInSector,
@@ -1218,10 +1253,9 @@
     <set_value name="$positionIdleTime" exact="player.age" />
     <include_interrupt_actions ref="PatchToVersion108" />
     <include_interrupt_actions ref="ProtectSectorGlobalApply" />
-    <set_value name="$isAttackingNow" exact="false" />
     <include_interrupt_actions ref="ProtectSectorPrepareOrderParams" />
     <set_value name="$reScanCount" exact="0" />
-    <set_value name="$resupplyCheckLast" exact="player.age" />
+    <set_value name="$resupplyCheckLast" exact="0" />
     <set_value name="$stoppingToWorkMessage" exact="null" />
     <set_value name="$blacklistGroup" exact="blacklistgroup.military" />
     <set_value name="$flyingToHomeSectorTurnsCount" exact="0" />
@@ -1242,6 +1276,14 @@
   <patch sinceversion="106">
     <include_interrupt_actions ref="SubordinatesRefresh" />
     <set_value name="$scriptVersion" exact="106" />
+    <debug_text
+      text="'ProtectSector [%s at %s, %s]: Patched for version 106.'
+        .[
+          this.assignedcontrolled.debugname,
+          this.assignedcontrolled.sector.knownname,
+          this.assignedcontrolled.fleet.name
+        ]"
+      chance="$debugchance" />
   </patch>
   <patch sinceversion="107">
     <include_interrupt_actions ref="RelationsConversionList" />
@@ -1261,28 +1303,68 @@
     </do_else>
     <set_value name="$positionIdleTime" exact="player.age" />
     <set_value name="$scriptVersion" exact="107" />
+    <debug_text
+      text="'ProtectSector [%s at %s, %s]: Patched for version 107.'
+        .[
+          this.assignedcontrolled.debugname,
+          this.assignedcontrolled.sector.knownname,
+          this.assignedcontrolled.fleet.name
+        ]"
+      chance="$debugchance" />
   </patch>
   <patch sinceversion="108">
     <include_interrupt_actions ref="PatchToVersion108" />
   </patch>
   <patch sinceversion="109">
     <set_value name="$scriptVersion" exact="109" />
+    <debug_text
+      text="'ProtectSector [%s at %s, %s]: Patched for version 109.'
+        .[
+          this.assignedcontrolled.debugname,
+          this.assignedcontrolled.sector.knownname,
+          this.assignedcontrolled.fleet.name
+        ]"
+      chance="$debugchance" />
   </patch>
   <patch sinceversion="112">
     <include_interrupt_actions ref="SetVersion" />
+    <debug_text
+      text="'ProtectSector [%s at %s, %s]: Patched for version 112.'
+        .[
+          this.assignedcontrolled.debugname,
+          this.assignedcontrolled.sector.knownname,
+          this.assignedcontrolled.fleet.name
+        ]"
+      chance="$debugchance" />
   </patch>
   <patch sinceversion="113">
     <include_interrupt_actions ref="SetVersion" />
     <set_value name="$oneSecond" exact="1s" />
     <set_value name="$delayBetweenScansInSeconds" exact="if @$delayBetweenScans != null then $oneSecond * $delayBetweenScans else 4s" />
     <set_value name="$macrosToSkip" exact="[macro.asteroid_turret_m_01_macro]" />
+    <debug_text
+      text="'ProtectSector [%s at %s, %s]: Patched for version 113.'
+        .[
+          this.assignedcontrolled.debugname,
+          this.assignedcontrolled.sector.knownname,
+          this.assignedcontrolled.fleet.name
+        ]"
+      chance="$debugchance" />
   </patch>
   <patch sinceversion="114">
     <include_interrupt_actions ref="SetVersion" />
     <set_value name="$isAttackingNow" exact="false" />
     <include_interrupt_actions ref="ProtectSectorPrepareOrderParams" />
     <set_value name="$reScanCount" exact="0" />
-    <set_value name="$resupplyCheckLast" exact="player.age" />
+    <set_value name="$resupplyCheckLast" exact="0" />
+    <debug_text
+      text="'ProtectSector [%s at %s, %s]: Patched for version 114.'
+        .[
+          this.assignedcontrolled.debugname,
+          this.assignedcontrolled.sector.knownname,
+          this.assignedcontrolled.fleet.name
+        ]"
+      chance="$debugchance" />
   </patch>
   <patch sinceversion="115">
     <include_interrupt_actions ref="SetVersion" />
@@ -1295,6 +1377,33 @@
     <set_value name="$receivedDamageSensitivity" exact="2" />
     <set_value name="$ignoreBlackListsForAttack" exact="true" />
     <set_value name="$flyingToHomeSectorTurnsCount" exact="0" />
+    <debug_text
+      text="'ProtectSector [%s at %s, %s]: Patched for version 115. Damage sensitivity: %s. Ignore blacklists for attack: %s. Parking position: %s.'
+        .[
+          this.assignedcontrolled.debugname,
+          this.assignedcontrolled.sector.knownname,
+          this.assignedcontrolled.fleet.name,
+          $receivedDamageSensitivity,
+          $ignoreBlackListsForAttack,
+          $desiredParkingPosition
+        ]"
+      chance="$debugchance" />
+  </patch>
+  <patch sinceversion="116">
+    <include_interrupt_actions ref="SetVersion" />
+    <set_value name="$aggressiveSubordinates" exact="false" />
+    <debug_text
+      text="'ProtectSector [%s at %s, %s]: Patched for version 116. Aggressive subordinates: %s. Parking position: %s.'
+        .[
+          this.assignedcontrolled.debugname,
+          this.assignedcontrolled.sector.knownname,
+          this.assignedcontrolled.fleet.name,
+          $aggressiveSubordinates,
+          $desiredParkingPosition
+        ]"
+      chance="$debugchance" />
+    <edit_order_param order="this.assignedcontrolled.defaultorder" param="'desiredParkingPosition'" value="$desiredParkingPosition" />
+    <remove_value name="$isAttackingNow" />
   </patch>
   <attention min="unknown">
     <actions>
@@ -1324,7 +1433,6 @@
 
       <!-- SEARCH ******************************************************************************* -->
       <label name="targetSearching" />
-      <set_value name="$isAttackingNow" exact="false" />
       <debug_text text="'ProtectSector [%s at %s, %s]: Starting target search. Shield: %s. Hull: %s.'.
         [
           this.assignedcontrolled.debugname,
@@ -1375,7 +1483,6 @@
       <!-- SEARCHING  SHIP ************************************************************************ -->
 
       <label name="protectPlayerShipsCheck" />
-      <set_value name="$isAttackingNow" exact="false" />
 
       <debug_text
         text="'ProtectSector [%s at %s, %s]: Classes: %s, Classes possible: %s. Station attack: %s. Protect: %s. Response on: %s. Ships: %s'.
@@ -1683,7 +1790,6 @@
       </do_elseif>
 
       <label name="checkForEnemyStations" />
-      <set_value name="$isAttackingNow" exact="false" />
 
       <do_if value="$attackStations">
 
@@ -2044,7 +2150,6 @@
 
       <!-- APPROACHING ************************************************************************ -->
       <label name="targetApproaching" />
-      <set_value name="$isAttackingNow" exact="false" />
 
 
       <do_if value="$target? and $target != null and $target.exists and not $target.iswreck and $target.sector == $homeSector">
@@ -2269,7 +2374,6 @@
           <include_interrupt_actions ref="SubordinatesResetOrders" />
           <set_command command="command.patrol" />
           <set_command_action commandaction="commandaction.attackingto" param="$target" />
-          <set_value name="$isAttackingNow" exact="true" />
           <signal_objects object="this.assignedcontrolled" param="'ProtectSector.CheckSubordinatesAttack'" delay="30s" />
           <do_if value="@global.$kAAIT_Data != null">
             <debug_text
@@ -2317,7 +2421,6 @@
               <param name="debugchance" value="$debugchance" />
             </run_script>
           </do_else>
-          <set_value name="$isAttackingNow" exact="false" />
 
           <set_value name="$targetDistanceTo" exact="this.assignedcontrolled.distanceto.{$target}" />
 
@@ -2349,7 +2452,6 @@
       <include_interrupt_actions ref="SubordinatesResetOrders" />
 
       <resume label="goingIdle" />
-      <set_value name="$isAttackingNow" exact="false" />
 
       <!-- HOME ********************************************************************************* -->
       <label name="flightToHomeSector" />

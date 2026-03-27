@@ -30,6 +30,7 @@
       <t id="211">Ignore the threats of Hazardous zones. Some sectors contains a hazardous zones, which can destroy a ships. You will ignore it...</t>
       <t id="221">Received damage sensitivity. There is three levels: 1 - low, 2 - medium, 3 - high</t>
       <t id="231">Ignore blacklists</t>
+      <t id="241">Aggressive subordinates. Will force subordinates to attack more and more</t>
       <t id="901">Record to logbook</t>
       <t id="1000">..: Protect Sector :..</t>
       <t id="1001">ship</t>
