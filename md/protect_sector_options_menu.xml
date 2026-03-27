@@ -18,7 +18,7 @@
         <set_value name="$debugChance" exact="0" />
       </patch>
       <cues>
-        <library name="Ensure_Variables" purpose="include_actions" version="2">
+        <library name="Ensure_Variables" purpose="include_actions" version="3">
           <actions>
             <do_if value="@global.$chemODun == null">
               <set_value name="global.$chemODun" exact="table[]" />
@@ -49,13 +49,23 @@
                 ],
               ]" />
             </do_if>
+            <set_value name="$debugChance" exact="if global.$chemODun.$protectSector.$debugLog then 100 else 0" />
             <debug_text
               text="'ProtectSector Options: Ensured variables are initialized: Debug Log: %s, Hull Percentages: %s. All data: %s' .
               [@global.$chemODun.$protectSector.$debugLog, @global.$chemODun.$protectSector.$hullPercentages, @global.$chemODun.$protectSector]"
-              filter="scripts" />
-            <set_value name="$debugChance" exact="if global.$chemODun.$protectSector.$debugLog then 100 else 0" />
+              filter="scripts" chance="$debugChance" />
           </actions>
         </library>
+
+        <cue name="Refresh_On_Game_Load" instantiate="true" version="1">
+          <conditions>
+            <event_universe_generated />
+          </conditions>
+          <actions>
+            <include_actions ref="Ensure_Variables" />
+          </actions>
+        </cue>
+
 
         <cue name="Register_Menu" instantiate="true" version="2">
           <conditions>
