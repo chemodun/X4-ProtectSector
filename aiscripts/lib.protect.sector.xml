@@ -114,6 +114,7 @@
         </do_if>
       </actions>
       <actions name="ProtectSectorPrepareOrderParams">
+        <set_value name="$isAttackingNow" exact="@$target != null and $target.exists and not $target.iswreck and $target.isoperational" />
         <set_value name="$protectSectorParams" exact="table[
           $homeSector = $homeSector,
           $attackStations = $attackStations,
@@ -164,9 +165,11 @@
                 @$processed
               ]" chance="$debugchance" />
         </do_if>
+        <remove_value name="$isAttackingNow" />
       </actions>
       <actions name="ProtectSectorCheckAndSignalForDamage">
         <set_value name="$hullPercentages" exact="@global.$chemODun.$protectSector.$hullPercentages" />
+        <set_value name="$isAttackingNow" exact="@$target != null and $target.exists and not $target.iswreck and $target.isoperational" />
         <set_value name="$stateId" exact="if $isAttackingNow then '$attack' else '$idle'" />
         <set_value name="$shipIsDamaged" exact="false" />
         <debug_text text="'ProtectSector [%s at %s, %s]: CheckAndSignalForDamage: Checking and signaling for damage for ship %s. Hull: %s. Attacking now: %s. State ID: %s. Received damage sensitivity: %s. Percentages: %s.' .
@@ -228,6 +231,7 @@
             <signal_objects object="$shipForDamageCheck" param="'resupply'" param2="[$shipForDamageCheck.hullpercentage lt 100]" param3="$debugchance" delay="100ms" />
           </do_if>
         </do_if>
+        <remove_value name="$isAttackingNow" />
       </actions>
       <actions name="PlayerShipsRestockWorkaround">
         <do_if value="(@$resupplystations_interrupt.count le 0) and not @$onlyuseresupplierships and this.isplayerowned and (player.age - @this.$playerOwnedWorkaroundForRestock) le 10s">
