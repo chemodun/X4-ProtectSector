@@ -852,6 +852,45 @@
         </do_else>
       </actions>
     </handler>
+    <handler>
+      <conditions>
+        <check_any>
+          <event_gravidar_has_scanned object="this.assignedcontrolled" />
+          <event_object_changed_zone object="$target" check="false" />
+        </check_any>
+        <check_value value="@$isAttackingTarget" />
+        <check_value value="@$target != null" />
+        <check_value value="@$target.isclass.ship" />
+        <check_value value="@$target.exists and not @$target.iswreck" />
+        <check_value value="this.assignedcontrolled.order.id == 'ProtectSector'" />
+        <check_any>
+          <check_value value="not this.assignedcontrolled.cansee.{$target}" />
+          <check_value value="this.assignedcontrolled.distanceto.{$target} gt $targetOptimalDistanceForAttack" />
+        </check_any>
+      </conditions>
+      <actions>
+        <debug_text
+          text="'ProtectSector [%s at %s, %s]: target %s {%s} lost or out of engage range while attacking (cansee: %s, distance: %s, limit: %s). Breaking off. Pursue fleeing target: %s.'.
+          [
+            @this.assignedcontrolled.debugname,
+            @this.assignedcontrolled.sector.knownname,
+            @this.assignedcontrolled.fleet.name,
+            @$target.debugname,
+            @$target.class,
+            this.assignedcontrolled.cansee.{$target},
+            this.assignedcontrolled.distanceto.{$target},
+            $targetOptimalDistanceForAttack,
+            $pursueFleeingTarget
+          ]" chance="$debugchance" />
+        <set_value name="$isAttackingTarget" exact="false" />
+        <do_if value="$pursueFleeingTarget and @$target.sector == $homeSector">
+          <abort_called_scripts resume="targetApproaching" />
+        </do_if>
+        <do_else>
+          <abort_called_scripts resume="targetSearching" />
+        </do_else>
+      </actions>
+    </handler>
     <handler consume="false">
       <conditions>
         <event_object_signalled object="player.entity" param="'ProtectSectorGlobalReScan'" />
@@ -1026,6 +1065,7 @@
     <set_value name="$oneSecond" exact="1s" />
     <set_value name="$delayBetweenScansInSeconds" exact="$oneSecond * $delayBetweenScans" />
     <set_value name="$macrosToSkip" exact="[macro.asteroid_turret_m_01_macro]" />
+    <set_value name="$isAttackingTarget" exact="false" />
 
     <include_interrupt_actions ref="RelationsConversionList" />
 
@@ -2375,6 +2415,7 @@
           <set_command command="command.patrol" />
           <set_command_action commandaction="commandaction.attackingto" param="$target" />
           <signal_objects object="this.assignedcontrolled" param="'ProtectSector.CheckSubordinatesAttack'" delay="30s" />
+          <set_value name="$isAttackingTarget" exact="true" />
           <do_if value="@global.$kAAIT_Data != null">
             <debug_text
               text="'ProtectSector [%s at %s, %s]: KUDA AI tweaks detected, applying avoiding code to attack the target: %s {%s} '
@@ -2421,6 +2462,8 @@
               <param name="debugchance" value="$debugchance" />
             </run_script>
           </do_else>
+
+          <set_value name="$isAttackingTarget" exact="false" />
 
           <set_value name="$targetDistanceTo" exact="this.assignedcontrolled.distanceto.{$target}" />
 
