@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.18] - 2026-07-08
+
+- Fixed
+  - Fixed idling ships (or fleet leaders) drifting well past their intended 10km idle-wander radius. Vanilla's `move.idle` script was reworked in game version 8.0 to use `get_safe_pos` for picking wander points, which treats its distance limit as a search preference rather than a hard cap, so it can pick points much farther away in crowded or hazardous sectors. Ships with a defined parking position now return to it directly instead of relying on the wander leash; ships without one are now watched and corrected if they drift past the intended radius.
+
+## [1.17] - 2026-07-07
+
+- Fixed
+  - Fixed a bug where the ship (or fleet leader) could get stuck endlessly re-engaging a target that fled out of sensor range while still remaining in the sector, causing it to ignore other hostile threats (e.g. a nearby Kha'ak attack) until manually reset. The ship now correctly breaks off and searches for a new target once it can no longer detect the current one and it has moved beyond effective engagement distance.
+
 ## [1.16] - 2026-03-27
 
 - Added

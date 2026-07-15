@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="iso-8859-1"?>
-<aiscript name="order.fight.protect.sector" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="aiscripts.xsd" version="116">
+<aiscript name="order.fight.protect.sector" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="aiscripts.xsd" version="118">
   <order id="ProtectSector" name="{1972092401, 1}" description="{1972092401, 2}" category="combat" infinite="true" allowinloop="false">
     <params>
       <param name="homeSector"
@@ -490,7 +490,7 @@
           chance="$debugchance" />
       </actions>
       <actions name="SetVersion">
-        <set_value name="$scriptVersion" exact="116" />
+        <set_value name="$scriptVersion" exact="118" />
       </actions>
       <actions name="ProtectSectorGlobalApply">
         <debug_text
@@ -1445,11 +1445,16 @@
     <edit_order_param order="this.assignedcontrolled.defaultorder" param="'desiredParkingPosition'" value="$desiredParkingPosition" />
     <remove_value name="$isAttackingNow" />
   </patch>
+  <patch sinceversion="117">
+    <include_interrupt_actions ref="SetVersion" />
+    <set_value name="$isAttackingTarget" exact="false" />
+  </patch>
   <attention min="unknown">
     <actions>
       <!-- START ******************************************************************************* -->
 
       <label name="start" />
+      <set_value name="$isAttackingTarget" exact="false" />
 
       <set_value name="$flyingToHomeSectorTurnsCount" exact="0" />
 
@@ -1473,6 +1478,7 @@
 
       <!-- SEARCH ******************************************************************************* -->
       <label name="targetSearching" />
+      <set_value name="$isAttackingTarget" exact="false" />
       <debug_text text="'ProtectSector [%s at %s, %s]: Starting target search. Shield: %s. Hull: %s.'.
         [
           this.assignedcontrolled.debugname,
@@ -2053,6 +2059,7 @@
       <!-- IDLE ************************************************************************ -->
 
       <label name="goingIdle" />
+      <set_value name="$isAttackingTarget" exact="false" />
 
       <do_if value="$idleDelay?" negate="true">
         <resume label="targetSearching" />
@@ -2165,12 +2172,28 @@
               </run_script>
             </do_if>
             <do_else>
-              <run_script name="'move.idle'">
-                <param name="TimeOut" value="$idleDelay" />
-                <param name="anchorpos_sector" value="$positionIdle" />
-                <param name="MaxDistance" value="10km" />
-                <param name="debugchance" value="$debugchance" />
-              </run_script>
+              <do_if value="@$parkingPosition != null">
+                <!-- Ship has a defined parking spot: rather than trust move.idle's own wander leash
+                     (loosened since the 8.0 space-reservation rework, get_safe_pos.max is a search
+                     preference, not a hard cap), just go re-park - forces the move_to-based travel
+                     block above, which does bound properly. -->
+                <remove_value name="$parkedAtPosition" />
+                <resume label="goingIdle" />
+              </do_if>
+              <do_else>
+                <!-- Own wander implementation instead of vanilla's move.idle: get_safe_pos has no
+                     direction constraint, so consecutive vanilla wander picks can land on opposite
+                     sides of the anchor (still within MaxDistance individually, but far apart from
+                     each other), making the ship swing across the whole area instead of loitering
+                     near it. move.protectsector.idle steps from the ship's current position instead
+                     of re-rolling relative to the anchor every iteration. -->
+                <run_script name="'move.protectsector.idle'">
+                  <param name="TimeOut" value="$idleDelay" />
+                  <param name="anchorpos_sector" value="$positionIdle" />
+                  <param name="MaxDistance" value="10km" />
+                  <param name="debugchance" value="$debugchance" />
+                </run_script>
+              </do_else>
             </do_else>
             <set_value name="$idleTill" exact="0" />
             <do_if value="$idleTill gt player.age">
@@ -2190,6 +2213,7 @@
 
       <!-- APPROACHING ************************************************************************ -->
       <label name="targetApproaching" />
+      <set_value name="$isAttackingTarget" exact="false" />
 
 
       <do_if value="$target? and $target != null and $target.exists and not $target.iswreck and $target.sector == $homeSector">
@@ -2498,6 +2522,7 @@
 
       <!-- HOME ********************************************************************************* -->
       <label name="flightToHomeSector" />
+      <set_value name="$isAttackingTarget" exact="false" />
       <set_value name="$flyingToHomeSectorTurnsCount" operation="add" />
 
       <do_if value="this.assignedcontrolled.sector == $homeSector">

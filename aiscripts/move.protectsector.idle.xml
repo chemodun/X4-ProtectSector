@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="utf-8"?>
+<aiscript name="move.protectsector.idle" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="aiscripts.xsd" version="1">
+  <!--
+
+  ProtectSector's own idle-wander movement, replacing vanilla's move.idle for the case where no
+  MaxDistance from an anchor absolutely has to be respected.
+
+  Why not just use move.idle: its wander points are picked via get_safe_pos with no direction
+  constraint relative to the anchor, only a distance range from it. Two consecutive picks can both
+  be inside MaxDistance individually while sitting on opposite sides of the anchor from each other,
+  so the ship swings across the whole area every ~100-500ms instead of loitering near the anchor.
+
+  This script steps from the ship's own current position each iteration (bounded by StepDistance),
+  only pulling back toward the anchor when a step would exceed MaxDistance from it. get_safe_pos is
+  still used for each step, so obstacle/collision avoidance is unchanged from vanilla.
+
+  -->
+  <params>
+    <param name="TimeOut" default="-1" comment="Duration of the idle wander, in seconds. No timeout provided means infinite idle." />
+    <param name="anchorpos_sector" default="null" comment="Center point to wander around, in sector coordinates." />
+    <param name="MaxDistance" default="10km" comment="Maximum distance from anchorpos_sector the ship is allowed to wander." />
+    <param name="StepDistance" default="2km" comment="Maximum distance moved per wander hop." />
+    <param name="debugchance" default="0" />
+  </params>
+  <attention min="unknown">
+    <actions>
+
+      <do_if value="not $anchorpos_sector or not this.sector">
+        <debug_text text="'move.protectsector.idle: %1 %2 has no anchor position or is not in a sector. aborting.'.[this.ship.idcode, this.ship.knownname]" filter="error" />
+        <resume label="cleanup" />
+      </do_if>
+
+      <do_if value="$TimeOut gt 0">
+        <set_value name="$TimeOut" exact="player.age + $TimeOut" />
+      </do_if>
+
+      <set_value name="$anchorDistance" exact="this.ship.distanceto.{$anchorpos_sector}" />
+
+      <do_while value="(player.age lt $TimeOut) or ($TimeOut lt 0)">
+
+        <do_if value="$anchorDistance gt $MaxDistance">
+          <!-- already outside the leash (e.g. idle just started away from the anchor): head straight
+               back in rather than taking a step that could wander further away still -->
+          <get_safe_pos result="$wanderTarget" sector="this.sector" value="$anchorpos_sector" object="this.sector"
+            radius="this.ship.safesize / 2m" ignored="this.ship" />
+        </do_if>
+        <do_else>
+          <get_safe_pos result="$wanderTarget" sector="this.sector" object="this.ship" randomoffset="$StepDistance"
+            radius="this.ship.safesize / 2m" ignored="this.ship" />
+          <do_if value="$wanderTarget.distanceto.{$anchorpos_sector} gt $MaxDistance">
+            <!-- step would leave the leash: bias the candidate back toward the anchor instead -->
+            <get_safe_pos result="$wanderTarget" sector="this.sector" value="$anchorpos_sector" object="this.sector"
+              min="[$MaxDistance - $StepDistance, 0km].max" max="$MaxDistance" radius="this.ship.safesize / 2m" ignored="this.ship" />
+          </do_if>
+        </do_else>
+
+        <debug_text text="'move.protectsector.idle: %1 %2 idling at %3, anchor distance %4, moving to %5.'.
+          [this.ship.idcode, this.ship.knownname, this.ship.position, $anchorDistance, $wanderTarget]" chance="$debugchance" />
+
+        <do_if value="$TimeOut gt 0">
+          <move_to object="this.ship" destination="this.sector" finishonapproach="true" uselocalhighways="false" forceposition="false" commandaction="false">
+            <position value="$wanderTarget" />
+            <interrupt_after_time time="$TimeOut - player.age" />
+          </move_to>
+        </do_if>
+        <do_else>
+          <move_to object="this.ship" destination="this.sector" finishonapproach="true" uselocalhighways="false" forceposition="false" commandaction="false">
+            <position value="$wanderTarget" />
+          </move_to>
+        </do_else>
+
+        <set_value name="$anchorDistance" exact="this.ship.distanceto.{$anchorpos_sector}" />
+
+        <wait min="100ms" max="500ms" />
+
+      </do_while>
+
+      <label name="end" />
+
+      <get_safe_pos result="$anchorpos_sector" sector="this.sector" value="$anchorpos_sector" object="this.sector" radius="this.ship.safesize / 2m" />
+      <move_to object="this.ship" destination="this.sector" finishonapproach="true" commandaction="false">
+        <position value="$anchorpos_sector" />
+      </move_to>
+
+      <stop_moving object="this.ship" />
+
+      <label name="cleanup" />
+
+    </actions>
+  </attention>
+  <on_abort>
+    <do_if value="this.ship.isoperational">
+      <stop_moving object="this.ship" />
+    </do_if>
+  </on_abort>
+</aiscript>
