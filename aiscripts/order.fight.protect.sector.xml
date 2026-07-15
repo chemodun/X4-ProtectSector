@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="iso-8859-1"?>
-<aiscript name="order.fight.protect.sector" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="aiscripts.xsd" version="116">
+<aiscript name="order.fight.protect.sector" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="aiscripts.xsd" version="117">
   <order id="ProtectSector" name="{1972092401, 1}" description="{1972092401, 2}" category="combat" infinite="true" allowinloop="false">
     <params>
       <param name="homeSector"
@@ -490,7 +490,7 @@
           chance="$debugchance" />
       </actions>
       <actions name="SetVersion">
-        <set_value name="$scriptVersion" exact="116" />
+        <set_value name="$scriptVersion" exact="117" />
       </actions>
       <actions name="ProtectSectorGlobalApply">
         <debug_text
@@ -1445,11 +1445,16 @@
     <edit_order_param order="this.assignedcontrolled.defaultorder" param="'desiredParkingPosition'" value="$desiredParkingPosition" />
     <remove_value name="$isAttackingNow" />
   </patch>
+  <patch sinceversion="117">
+    <include_interrupt_actions ref="SetVersion" />
+    <set_value name="$isAttackingTarget" exact="false" />
+  </patch>
   <attention min="unknown">
     <actions>
       <!-- START ******************************************************************************* -->
 
       <label name="start" />
+      <set_value name="$isAttackingTarget" exact="false" />
 
       <set_value name="$flyingToHomeSectorTurnsCount" exact="0" />
 
@@ -1473,6 +1478,7 @@
 
       <!-- SEARCH ******************************************************************************* -->
       <label name="targetSearching" />
+      <set_value name="$isAttackingTarget" exact="false" />
       <debug_text text="'ProtectSector [%s at %s, %s]: Starting target search. Shield: %s. Hull: %s.'.
         [
           this.assignedcontrolled.debugname,
@@ -2053,6 +2059,7 @@
       <!-- IDLE ************************************************************************ -->
 
       <label name="goingIdle" />
+      <set_value name="$isAttackingTarget" exact="false" />
 
       <do_if value="$idleDelay?" negate="true">
         <resume label="targetSearching" />
@@ -2190,6 +2197,7 @@
 
       <!-- APPROACHING ************************************************************************ -->
       <label name="targetApproaching" />
+      <set_value name="$isAttackingTarget" exact="false" />
 
 
       <do_if value="$target? and $target != null and $target.exists and not $target.iswreck and $target.sector == $homeSector">
@@ -2498,6 +2506,7 @@
 
       <!-- HOME ********************************************************************************* -->
       <label name="flightToHomeSector" />
+      <set_value name="$isAttackingTarget" exact="false" />
       <set_value name="$flyingToHomeSectorTurnsCount" operation="add" />
 
       <do_if value="this.assignedcontrolled.sector == $homeSector">

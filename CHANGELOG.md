@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.17] - 2026-07-15
+
+- Fixed
+  - Fixed a bug where the ship (or fleet leader) could get stuck endlessly re-engaging a target that fled out of sensor range while still remaining in the sector, causing it to ignore other hostile threats (e.g. a nearby Kha'ak attack) until manually reset. The ship now correctly breaks off and searches for a new target once it can no longer detect the current one and it has moved beyond effective engagement distance.
+
 ## [1.16] - 2026-03-27
 
 - Added
