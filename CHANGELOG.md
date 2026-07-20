@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.18] - 2026-07-20
+
+- Fixed
+  - Resetting subordinates order moved to an idle state, instead immediately after target is destroyed/lost/etc...
+
 ## [1.17] - 2026-07-15
 
 - Fixed
@@ -9,6 +14,7 @@
 
 - Added
   - New `Aggressive subordinates` option to make subordinates more aggressive in attacking targets. It was introduced in version `1.13` as the default behavior; with this update, it becomes optional and is disabled by default.
+
 - Fixed
   - Fixed a bug with `Aggressive subordinates` where subordinates were forced to attack targets outside the sector where the leader is.
   - In some cases the `Park exactly there` option was assumed by the game engine as a null value, which prevented the `Behavior tab` from being opened on order failure.
