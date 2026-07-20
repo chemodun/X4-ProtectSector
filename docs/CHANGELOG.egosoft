@@ -1,5 +1,12 @@
 [size=140][u]Changelog[/u][/size]
 
+[size=130][u][1.18] - 2026-07-20[/u][/size]
+[list]
+[*] Fixed
+[list]
+[*] Resetting subordinates order moved to an idle state, instead immediately after target is destroyed/lost/etc...
+[/list]
+[/list]
 [size=130][u][1.17] - 2026-07-15[/u][/size]
 [list]
 [*] Fixed
