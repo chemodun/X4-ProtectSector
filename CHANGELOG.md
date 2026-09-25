@@ -1,5 +1,32 @@
 # Changelog
 
+## [1.19] - 2026-09-??
+
+- Fixed
+  - An idle ship (or fleet leader) did not re-scan its sector every few seconds as intended, a regression since version `1.13`. It reacted to a new enemy only when its idle delay ran out: 4 minutes for S/M, 9 for L, 15 for XL. The periodic re-scan works again.
+  - Fewer script errors in the debug log after loading a save.
+  - An idle ship could stay idle for good, never waking for its periodic re-scan or its idle timeout, in roughly one idle out of fifteen.
+  - Subordinates set to mimic a commander running `Protect Sector` ignored the commander's parking, damage sensitivity, ignore blacklists and aggressive subordinates settings and used the defaults, logging a script error each time they started the order.
+  - A ship set to park in its sector could fail to see that it had already reached its parking position and repeat the parking move every few seconds for as long as it was idle.
+  - A ship could stay locked in one attack for an hour or more, mostly against Kha'ak out of the player's sector: the attack restarted every few seconds on a target the ship could not see, and was never broken off. It now breaks off within a minute and leaves that target alone for five minutes, also across an order restart or a save reload, unless the target attacks one of your ships.
+  - The experimental `Attack Station` mode could stop with a script error when the ship came into contact with the station.
+  - The station check could log a script error when a station or build storage found by the scan had disappeared, or could not be measured, by the time the ship got to it.
+  - An idle ship could run its periodic re-scan of the sector two to six times as often as intended after an interrupted idle, which cost extra script time in busy sectors and inflated the scan count.
+  - An idle ship with station attacks enabled woke every 30 seconds for the build storage of a hostile station under construction that it never attacks, restarting its idle each time.
+  - A ship parked in a sector with a hazardous region drifted away from its parking point while idle and kept flying back to it.
+
+- Changed
+  - The `Extension options` page is now built with `Options Helper`: the damage sensitivity thresholds are sliders, and a `Debug Level` dropdown (`None`, `Debug`, `Trace`) replaces the `Enable debug log` checkbox. Settings from the old page are carried over once.
+  - `Mod Support APIs`, `Options Helper` and `Print Extension List` are now required, which raises the minimum game version to `8.00`. For `7.50` and `7.60` use version `1.18`.
+  - Loading a save from an earlier version restarts `Protect Sector` once on every ship running it, with the same settings, so the order runs entirely on the new logic.
+  - When both station attack modes are selected, the `Coordinate Attack` one is now unchecked on order start, leaving the experimental `Attack Station`, which was already the one used.
+  - A ship with `Park on delay` now stays at its parking point while idle, as described, instead of flying off to patrol after arriving, and returns to it after a fight.
+  - While a `Protect Sector` ship approaches or attacks its target, the game's own reaction to being attacked (the ship's `When attacked` setting) no longer replaces the order with a short attack on the attacker, which dropped the current fight and restarted the order. While the ship has no target, the setting works as before.
+
+- Added
+  - A `Protect Sector overview` screen, opened from the right-click menu of a ship running the order or assisting one: every fleet on the order by home sector on the left; kills, attacks, time in combat, broken-off attacks, idle share, lowest hull, the subordinates with their own kills and the targets the fleet could not catch on the right. With the history on (`Extension options`, depth 3 to 48 hours, default 24) the numbers are shown for a window of 15 minutes to 24 hours that can be moved over the history; with it off, the totals since the counters started. A double-click on a target in `Targets tried` narrows the list on the left to the sector, then to the fleet, that tried it most; a double-click on a fleet opens the map on its ship.
+  - The `Debug` level writes one compact line per state change of the order, meant for troubleshooting long unattended sessions. `Trace` adds the detailed output of the previous `Enable debug log` option.
+
 ## [1.18] - 2026-07-20
 
 - Fixed

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <diff>
   <add sel="/aiscript/attention/actions/set_value[@name='$defaultorder']" pos="after">
-    <do_if value="@$defaultorder.id != 'ProtectSector'">
+    <do_if value="@$defaultorder.id == 'ProtectSector'">
       <set_value name="$speak" exact="false" />
     </do_if>
   </add>

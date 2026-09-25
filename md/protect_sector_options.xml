@@ -1,0 +1,261 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mdscript name="ProtectSector_Options" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="md.xsd">
+
+  <cues>
+    <cue name="Init" instantiate="false">
+      <cues>
+
+        <library name="ReadDebugChances" purpose="include_actions">
+          <actions>
+            <set_value name="$psDebugLevel" exact="if @player.entity.$ProtectSectorConfig.$debugLevel != null
+              then player.entity.$ProtectSectorConfig.$debugLevel else 'none'" />
+            <set_value name="$debugChance" exact="if @$psDebugLevel == null or @$psDebugLevel == 'none' then 0 else 100" />
+            <set_value name="$traceChance" exact="if @$psDebugLevel == 'trace' then 100 else 0" />
+            <remove_value name="$psDebugLevel" />
+          </actions>
+        </library>
+
+        <library name="ClearDebugChances" purpose="include_actions">
+          <actions>
+            <remove_value name="$debugChance" />
+            <remove_value name="$traceChance" />
+          </actions>
+        </library>
+
+        <!-- hull keys: $hull_<class>_<state>_<sensitivity>, read by lib.protect.sector CheckAndSignalForDamage -->
+        <!-- $historyDepth in hours, 0 = no history -->
+        <library name="Defaults" purpose="include_actions" version="3">
+          <actions>
+            <set_value name="$cfg" exact="table[
+              $debugLevel = 'none',
+              $historyDepth = 24,
+              $hull_ship_s_idle_1 = 80, $hull_ship_s_idle_2 = 90, $hull_ship_s_idle_3 = 100,
+              $hull_ship_s_attack_1 = 70, $hull_ship_s_attack_2 = 80, $hull_ship_s_attack_3 = 90,
+              $hull_ship_m_idle_1 = 60, $hull_ship_m_idle_2 = 75, $hull_ship_m_idle_3 = 90,
+              $hull_ship_m_attack_1 = 55, $hull_ship_m_attack_2 = 70, $hull_ship_m_attack_3 = 85,
+              $hull_ship_l_idle_1 = 50, $hull_ship_l_idle_2 = 70, $hull_ship_l_idle_3 = 90,
+              $hull_ship_l_attack_1 = 40, $hull_ship_l_attack_2 = 60, $hull_ship_l_attack_3 = 80,
+              $hull_ship_xl_idle_1 = 40, $hull_ship_xl_idle_2 = 60, $hull_ship_xl_idle_3 = 80,
+              $hull_ship_xl_attack_1 = 30, $hull_ship_xl_attack_2 = 50, $hull_ship_xl_attack_3 = 70,
+            ]" />
+          </actions>
+        </library>
+
+        <library name="Ensure_Config" purpose="include_actions">
+          <actions>
+            <include_actions ref="Defaults" />
+            <do_if value="@player.entity.$ProtectSectorConfig == null">
+              <set_value name="player.entity.$ProtectSectorConfig" exact="$cfg" />
+            </do_if>
+            <do_else>
+              <do_for_each name="$key" in="$cfg">
+                <do_if value="@player.entity.$ProtectSectorConfig.{$key} == null">
+                  <set_value name="player.entity.$ProtectSectorConfig.{$key}" exact="$cfg.{$key}" />
+                </do_if>
+              </do_for_each>
+            </do_else>
+            <remove_value name="$cfg" />
+            <!-- keys of the dropped 1.19 logbook report -->
+            <do_if value="@player.entity.$ProtectSectorConfig.$reportInterval != null">
+              <remove_value name="player.entity.$ProtectSectorConfig.$reportInterval" />
+            </do_if>
+            <do_if value="@player.entity.$ProtectSectorConfig.$reportSkipQuiet != null">
+              <remove_value name="player.entity.$ProtectSectorConfig.$reportSkipQuiet" />
+            </do_if>
+
+            <!-- one-time move from the pre-1.19 storage, which is then dropped -->
+            <set_value name="$oldConfig" exact="@global.$chemODun.$protectSector" />
+            <do_if value="$oldConfig != null">
+              <do_if value="@$oldConfig.$debugLog == true">
+                <set_value name="player.entity.$ProtectSectorConfig.$debugLevel" exact="'debug'" />
+              </do_if>
+              <do_if value="@$oldConfig.$hullPercentages != null">
+                <do_for_each name="$classId" in="['ship_s', 'ship_m', 'ship_l', 'ship_xl']">
+                  <do_for_each name="$stateId" in="['idle', 'attack']">
+                    <do_all exact="3" counter="$level">
+                      <set_value name="$oldValue" exact="@$oldConfig.$hullPercentages.{'$%s'.[$classId]}.{'$%s'.[$stateId]}.{$level}" />
+                      <do_if value="$oldValue != null">
+                        <set_value name="player.entity.$ProtectSectorConfig.{'$hull_%s_%s_%s'.[$classId, $stateId, $level]}" exact="$oldValue" />
+                      </do_if>
+                    </do_all>
+                  </do_for_each>
+                </do_for_each>
+                <remove_value name="$oldValue" />
+              </do_if>
+              <remove_value name="global.$chemODun.$protectSector" />
+              <include_actions ref="ReadDebugChances" />
+              <debug_text text="'ProtectSector: Options: migrated the pre-1.19 settings, debug level %s'.[player.entity.$ProtectSectorConfig.$debugLevel]"
+                chance="$debugChance" />
+              <include_actions ref="ClearDebugChances" />
+            </do_if>
+            <remove_value name="$oldConfig" />
+          </actions>
+        </library>
+
+        <cue name="Register_Menu" instantiate="true">
+          <conditions>
+            <event_cue_signalled cue="md.Simple_Menu_API.Reloaded" />
+          </conditions>
+          <actions>
+            <include_actions ref="Ensure_Config" />
+            <!-- running orders read the level at start or load, before this config may exist -->
+            <signal_objects object="player.entity" param="'ProtectSectorGlobalReScan'" />
+
+            <include_actions ref="ReadDebugChances" />
+            <debug_text text="'ProtectSector: Options: registering menu. Debug level: %s'.[player.entity.$ProtectSectorConfig.$debugLevel]"
+              chance="$debugChance" />
+            <include_actions ref="ClearDebugChances" />
+
+            <signal_cue_instantly cue="md.Simple_Menu_API.Register_Options_Menu"
+              param="table[
+                $id      = 'protect_sector_options_menu',
+                $columns = 12,
+                $title   = {1972092401, 1},
+                $onOpen  = Options_Menu,
+              ]" />
+          </actions>
+        </cue>
+
+        <cue name="Options_Menu" instantiate="true" version="3">
+          <conditions>
+            <event_cue_signalled />
+          </conditions>
+          <actions>
+            <do_if value="@player.entity.$ProtectSectorConfig != null">
+              <set_value name="$cfg" exact="player.entity.$ProtectSectorConfig" />
+
+              <run_actions ref="md.Options_Helper.Add_Title_Row">
+                <param name="title" value="{1972092401, 90000}" />
+              </run_actions>
+
+              <set_value name="$classIds" exact="['ship_s', 'ship_m', 'ship_l', 'ship_xl']" />
+              <set_value name="$classNames" exact="[{1001, 51}, {1001, 50}, {1001, 49}, {1001, 48}]" />
+              <set_value name="$stateIds" exact="['idle', 'attack']" />
+              <set_value name="$stateNames" exact="[{1972092401, 90005}, {1972092401, 90006}]" />
+              <set_value name="$levelNames" exact="[{1001, 7736}, {1001, 7737}, {1001, 7738}]" />
+              <do_for_each name="$classId" in="$classIds" counter="$classIndex">
+                <do_for_each name="$stateId" in="$stateIds" counter="$stateIndex">
+                  <do_for_each name="$levelName" in="$levelNames" counter="$level">
+                    <run_actions ref="md.Options_Helper.Add_Slider">
+                      <param name="id" value="'hull_%s_%s_%s'.[$classId, $stateId, $level]" />
+                      <param name="text" value="'%s, %s: %s'.[$classNames.{$classIndex}, $stateNames.{$stateIndex}, $levelName]" />
+                      <param name="textColSpan" value="4" />
+                      <param name="colSpan" value="8" />
+                      <param name="min" value="10" />
+                      <param name="max" value="100" />
+                      <param name="step" value="5" />
+                      <param name="suffix" value="'%'" />
+                      <param name="data" value="$cfg" />
+                      <param name="handle" value="Handle_Slider_Changed" />
+                    </run_actions>
+                  </do_for_each>
+                </do_for_each>
+              </do_for_each>
+              <remove_value name="$classIds" />
+              <remove_value name="$classNames" />
+              <remove_value name="$stateIds" />
+              <remove_value name="$stateNames" />
+              <remove_value name="$levelNames" />
+
+              <run_actions ref="md.Options_Helper.Add_Title_Row">
+                <param name="title" value="{1972092401, 90100}" />
+              </run_actions>
+              <run_actions ref="md.Options_Helper.Add_Slider">
+                <param name="id" value="'historyDepth'" />
+                <param name="text" value="{1972092401, 90101}" />
+                <param name="textColSpan" value="4" />
+                <param name="colSpan" value="8" />
+                <param name="min" value="0" />
+                <param name="max" value="48" />
+                <param name="step" value="3" />
+                <param name="suffix" value="' %s'.[{1001, 102}]" />
+                <param name="data" value="$cfg" />
+                <param name="handle" value="Handle_Slider_Changed" />
+              </run_actions>
+
+              <run_actions ref="md.Options_Helper.Add_Title_Row">
+                <param name="title" value="{1972092401, 90900}" />
+              </run_actions>
+
+              <set_value name="$debugLevelOptions" exact="[
+                table[$text = {1972092401, 90911}, $value = 'none'],
+                table[$text = {1972092401, 90912}, $value = 'debug'],
+                table[$text = {1972092401, 90913}, $value = 'trace']
+              ]" />
+              <set_value name="$debugLevelIndexes" exact="['none', 'debug', 'trace']" />
+              <set_value name="$debugLevelCurrentIndex" exact="$debugLevelIndexes.indexof.{@$cfg.$debugLevel}" />
+              <do_if value="$debugLevelCurrentIndex == 0">
+                <set_value name="$debugLevelCurrentIndex" exact="1" />
+              </do_if>
+
+              <run_actions ref="md.Options_Helper.Add_Dropdown">
+                <param name="id" value="'debugLevel'" />
+                <param name="options" value="$debugLevelOptions" />
+                <param name="currentIndex" value="$debugLevelCurrentIndex" />
+                <param name="col" value="1" />
+                <param name="textColSpan" value="6" />
+                <param name="text" value="{1972092401, 90910}" />
+                <param name="dropdownColSpan" value="6" />
+                <param name="handle" value="Handle_Dropdown_Changed" />
+              </run_actions>
+
+              <remove_value name="$debugLevelOptions" />
+              <remove_value name="$debugLevelIndexes" />
+              <remove_value name="$debugLevelCurrentIndex" />
+              <remove_value name="$cfg" />
+            </do_if>
+          </actions>
+        </cue>
+
+        <cue name="Handle_Slider_Changed" instantiate="true" version="2">
+          <conditions>
+            <event_cue_signalled />
+          </conditions>
+          <actions>
+            <set_value name="$resultTable" exact="player.entity.$ProtectSectorConfig" />
+            <include_actions ref="md.Options_Helper.Process_Slider_Changed" />
+            <remove_value name="$resultTable" />
+            <!-- 0 = off: the stored history goes with it, so the interact-menu entry disappears -->
+            <do_if value="event.param.$echo.$valueId == '$historyDepth' and @event.param.$value == 0 and @player.entity.$ProtectSectorHistory != null">
+              <remove_value name="player.entity.$ProtectSectorHistory" />
+            </do_if>
+            <include_actions ref="ReadDebugChances" />
+            <debug_text text="'ProtectSector: Options: %s set to %s'.[event.param.$echo.$valueId, @event.param.$value]" chance="$debugChance" />
+            <include_actions ref="ClearDebugChances" />
+          </actions>
+        </cue>
+
+        <cue name="Handle_Checkbox_Changed" instantiate="true">
+          <conditions>
+            <event_cue_signalled />
+          </conditions>
+          <actions>
+            <set_value name="$resultTable" exact="player.entity.$ProtectSectorConfig" />
+            <include_actions ref="md.Options_Helper.Process_Checkbox_Changed" />
+            <remove_value name="$resultTable" />
+            <include_actions ref="ReadDebugChances" />
+            <debug_text text="'ProtectSector: Options: %s set to %s'.[event.param.$echo.$valueId, @event.param.$checked]" chance="$debugChance" />
+            <include_actions ref="ClearDebugChances" />
+          </actions>
+        </cue>
+
+        <cue name="Handle_Dropdown_Changed" instantiate="true">
+          <conditions>
+            <event_cue_signalled />
+          </conditions>
+          <actions>
+            <set_value name="$resultTable" exact="player.entity.$ProtectSectorConfig" />
+            <include_actions ref="md.Options_Helper.Process_Dropdown_Changed" />
+            <remove_value name="$resultTable" />
+            <signal_objects object="player.entity" param="'ProtectSectorGlobalReScan'" />
+            <include_actions ref="ReadDebugChances" />
+            <debug_text text="'ProtectSector: Options: %s set to %s'.[event.param.$echo.$valueId, @event.param.$option.$value]" chance="$debugChance" />
+            <include_actions ref="ClearDebugChances" />
+          </actions>
+        </cue>
+
+      </cues>
+    </cue>
+  </cues>
+
+</mdscript>

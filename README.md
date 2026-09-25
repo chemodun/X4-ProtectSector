@@ -5,7 +5,19 @@ This is useful when you want to prevent hostile ships to attack your ships and s
 
 ## Compatibility
 
-Compatible with `X4: Foundations 7.50` and upper.
+Compatible with `X4: Foundations 8.00` and upper. For `7.50` and `7.60` use the version `1.18` of this extension.
+
+## Requirements
+
+- `Mod Support APIs` by [SirNukes](https://next.nexusmods.com/profile/sirnukes?gameId=2659) to be installed and enabled. Version `1.95` and upper is required.
+  - It is available via Steam - [SirNukes Mod Support APIs](https://steamcommunity.com/sharedfiles/filedetails/?id=2042901274)
+  - Or via the Nexus Mods - [Mod Support APIs](https://www.nexusmods.com/x4foundations/mods/503)
+- `Options Helper`, to provide the in-game options page. Version `1.10` and upper is required.
+  - It is available via Steam - [Options Helper](https://steamcommunity.com/sharedfiles/filedetails/?id=3715253556)
+  - Or via the Nexus Mods - [Options Helper](https://www.nexusmods.com/x4foundations/mods/2089)
+- `Print Extension List`, to record the game version and the enabled extensions in the log. Version `1.00` and upper is required.
+  - It is available via Steam - [Print Extension List](https://steamcommunity.com/sharedfiles/filedetails/?id=3770927339)
+  - Or via the Nexus Mods - [Print Extension List](https://www.nexusmods.com/x4foundations/mods/2191)
 
 ## Features
 
@@ -193,11 +205,9 @@ If enabled, the ship will record the events to the logbook. I.e. starts, travel 
 
 ## Protect Sector common options
 
-These options is accessible via the `Extension options` menu in case the `Mod Support APIs` by [SirNukes](https://next.nexusmods.com/profile/sirnukes?gameId=2659) is installed and enabled.
+These options are on the `Protect Sector` page of the `Extension options` menu.
 
 ![Extension Options](docs/images/extension_options.png)
-
-There are several options available under the `Protect Sector` section in the `Extension options` menu.
 
 ![Protect Sector Options](docs/images/protect_sector_options.png)
 
@@ -206,6 +216,15 @@ There are several options available under the `Protect Sector` section in the `E
 In this section you can set the hull percentage thresholds for the ship to react on the received damage. The ship will try to move out for repair when the hull percentage is less than defined threshold for the current sensitivity level.
 The thresholds are defined for three levels of sensitivity: `Low`, `Medium` and `High`. The higher level, the more likely the ship will try to move out for repair.
 In addition there is an extra separation by ship sizes and its states - `Idle` or `Attack`. Currently the thresholds for attack state are lower than for idle state, because the ship is more likely to be damaged in attack state. But you can set it as you want.
+Each combination has its own slider, from `10%` to `100%` in steps of `5%`.
+
+### Debug Level
+
+Sets how much the order writes to the game's debug log:
+
+- `None` - nothing, the default.
+- `Debug` - one compact line per state change of the order: target search, target selected, attack started and finished, going idle, re-scan, and similar. Please use this level for a log attached to a problem report.
+- `Trace` - in addition, the detailed step-by-step output.
 
 ## Situation when nothing to attack
 

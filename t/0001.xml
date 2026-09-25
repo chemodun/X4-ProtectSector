@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- English -->
 <diff>
   <add sel="/language">
     <page id="1972092401" voice="no" title="Protect Sector" descr="Text for Protect Sector">
@@ -52,6 +53,46 @@
       <t id="1044">%s: %s in %s is too fast</t>
       <t id="1101">%s: The %s contains a \033Rhazardous\033X zones. Stopping to work...</t>
       <t id="1102">%s: The %s is not reachable. Stopping to work...</t>
+      <t id="1300">Protect Sector overview</t>
+      <t id="1301">All fleets</t>
+      <t id="1302">Loading the history...</t>
+      <t id="1303">No Protect Sector fleets.</t>
+      <t id="1304">Window</t>
+      <t id="1305">Last %s</t>
+      <t id="1306">%s, ending %s ago</t>
+      <t id="1307">Now</t>
+      <t id="1308">%s, assisting %s</t>
+      <t id="1309">Fleet %s, leader %s</t>
+      <t id="1310">No longer on the order</t>
+      <t id="1311">Nothing recorded in this window</t>
+      <t id="1312">Kills</t>
+      <t id="1313">Fleets</t>
+      <t id="1314">Period covered</t>
+      <t id="1320">Kills by the ship</t>
+      <t id="1321">Kills by subordinates</t>
+      <t id="1322">Targets destroyed by others</t>
+      <t id="1323">Attacks</t>
+      <t id="1324">Time in combat</t>
+      <t id="1325">Broken off, out of sight</t>
+      <t id="1326">Broken off, out of range</t>
+      <t id="1327">Too fast to approach</t>
+      <t id="1328">Idle share</t>
+      <t id="1329">Interrupted by other orders</t>
+      <t id="1330">Handed over to the station attack</t>
+      <t id="1331">Lowest hull</t>
+      <t id="1332">Scans, empty</t>
+      <t id="1333">Attack reactions</t>
+      <t id="1334">Ships lost</t>
+      <t id="1340">Targets tried</t>
+      <t id="1341">%s attempts over %s, too fast: %s m/s against our %s m/s</t>
+      <t id="1342">%s attempts over %s, stays out of sight</t>
+      <t id="1343">%s attempts over %s</t>
+      <t id="1344">Could not catch</t>
+      <t id="1345">Gone</t>
+      <t id="1346">All time, the history is off</t>
+      <t id="1350">Kills by the fleet</t>
+      <t id="1351">Broken off</t>
+      <t id="1352">Per 15-min sample</t>
       <t id="10001">Attack Station</t>
       <t id="10011">An experimental order to attack only stations. Available only for L and XL ships</t>
       <t id="20001">Smart Station Attack</t>
@@ -63,8 +104,13 @@
       <t id="90004">Hull percentage threshold \(lower than\)</t>
       <t id="90005">Idle</t>
       <t id="90006">Attack</t>
-      <t id="99000">Other:</t>
-      <t id="99010">Enable debug log</t>
+      <t id="90100">Fleet report history</t>
+      <t id="90101">History depth, 0 = off</t>
+      <t id="90900">Debug</t>
+      <t id="90910">Debug Level</t>
+      <t id="90911">None</t>
+      <t id="90912">Debug</t>
+      <t id="90913">Trace</t>
     </page>
   </add>
 </diff>

@@ -11,7 +11,7 @@
         <input_param name="class" value="[class.ship_l]" />
       </param>
       <param name="debugchance" type="bool" advanced="true" text="{1041, 10086}" comment="Print debug output"
-        default="if @global.$chemODun.$protectSector.$debugLog == true then 100 else 0">
+        default="if @player.entity.$ProtectSectorConfig.$debugLevel == 'trace' then 100 else 0">
         <input_param name="truevalue" value="100" />
       </param>
     </params>
@@ -450,16 +450,16 @@
       </actions>
       <actions name="AttackStationInSectorGlobalApply">
         <debug_text
-          text="'AttackStationInSector [%s]: debugLog %s, debugchance %s.'
+          text="'AttackStationInSector [%s]: debugLevel %s, debugchance %s.'
           .[
             this.assignedcontrolled.debugname,
-            @global.$chemODun.$protectSector.$debugLog,
+            @player.entity.$ProtectSectorConfig.$debugLevel,
             @$debugchance
           ]"
           chance="$debugchance" />
         <do_if value="@$isInit == null or @$isInit != true">
           <set_value name="$debugchance" exact="0" />
-          <do_if value="@global.$chemODun.$protectSector.$debugLog == true">
+          <do_if value="@player.entity.$ProtectSectorConfig.$debugLevel == 'trace'">
             <set_value name="$debugchance" exact="100" />
             <debug_text
               text="'AttackStationInSector [%s]: Debug enabled.'.
@@ -2104,7 +2104,13 @@
           </do_if>
           <do_else>
             <set_value name="$positionDelta" exact="[$currentDistanceToTarget * 0.05, $thisRadius].max" />
-            <set_value name="$positionRatio" exact="1 - $positionDelta / $currentDistanceToTarget" />
+            <!-- bbox distance is 0 once in contact: stay where we are -->
+            <do_if value="$currentDistanceToTarget gt $positionDelta">
+              <set_value name="$positionRatio" exact="1 - $positionDelta / $currentDistanceToTarget" />
+            </do_if>
+            <do_else>
+              <set_value name="$positionRatio" exact="1" />
+            </do_else>
             <set_value name="$previousPositionForAttackRelative" exact="$positionRelativeToTarget" />
             <create_position name="$positionForAttack"
               object="$target"
