@@ -224,7 +224,7 @@
               <do_if value="@$psF.$ship.pilot.$protectSectorTargets != null">
                 <do_for_each name="$pshTarget" valuename="$pshT" in="$psF.$ship.pilot.$protectSectorTargets">
                   <set_value name="$pshSize" exact="if $pshT.$class == class.ship_xl then {1001, 48} else if $pshT.$class == class.ship_l then {1001, 49} else if $pshT.$class == class.ship_m then {1001, 50} else if $pshT.$class == class.ship_s then {1001, 51} else '-'" />
-                  <append_to_list name="$psEntry.$targets" exact="table[$name = $pshT.$name, $idcode = $pshT.$idcode, $size = $pshSize, $speed = ($pshT.$speed)i, $ourSpeed = ($psF.$ship.maxspeed)i, $attempts = $pshT.$attempts, $sight = $pshT.$hardBreaks + $pshT.$fogBreaks, $outran = $pshT.$rangeBreaks + $pshT.$bailouts, $firstAge = ($pshT.$firstAge / 1s)i, $lastAge = ($pshT.$lastAge / 1s)i, $exists = @$pshTarget.exists]" />
+                  <append_to_list name="$psEntry.$targets" exact="table[$name = $pshT.$name, $idcode = $pshT.$idcode, $size = $pshSize, $attempts = $pshT.$attempts, $sight = $pshT.$hardBreaks + $pshT.$fogBreaks, $outran = $pshT.$rangeBreaks + $pshT.$bailouts, $firstAge = ($pshT.$firstAge / 1s)i, $lastAge = ($pshT.$lastAge / 1s)i, $exists = (@$pshTarget.exists and not $pshTarget.iswreck)]" />
                 </do_for_each>
               </do_if>
               <!-- the history, when this fleet has one: buckets and the names of subordinates that scored and are gone -->

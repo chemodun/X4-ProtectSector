@@ -23,12 +23,13 @@
         </library>
 
         <!-- hull keys: $hull_<class>_<state>_<sensitivity>, read by lib.protect.sector CheckAndSignalForDamage -->
-        <!-- $historyDepth in hours, 0 = no history -->
+        <!-- $historyDepth in hours, 0 = no history; $overviewRefresh in seconds, 0 = no auto-refresh -->
         <library name="Defaults" purpose="include_actions" version="3">
           <actions>
             <set_value name="$cfg" exact="table[
               $debugLevel = 'none',
               $historyDepth = 24,
+              $overviewRefresh = 30,
               $hull_ship_s_idle_1 = 80, $hull_ship_s_idle_2 = 90, $hull_ship_s_idle_3 = 100,
               $hull_ship_s_attack_1 = 70, $hull_ship_s_attack_2 = 80, $hull_ship_s_attack_3 = 90,
               $hull_ship_m_idle_1 = 60, $hull_ship_m_idle_2 = 75, $hull_ship_m_idle_3 = 90,
@@ -116,7 +117,7 @@
           </actions>
         </cue>
 
-        <cue name="Options_Menu" instantiate="true" version="3">
+        <cue name="Options_Menu" instantiate="true" version="4">
           <conditions>
             <event_cue_signalled />
           </conditions>
@@ -169,6 +170,18 @@
                 <param name="max" value="48" />
                 <param name="step" value="3" />
                 <param name="suffix" value="' %s'.[{1001, 102}]" />
+                <param name="data" value="$cfg" />
+                <param name="handle" value="Handle_Slider_Changed" />
+              </run_actions>
+              <run_actions ref="md.Options_Helper.Add_Slider">
+                <param name="id" value="'overviewRefresh'" />
+                <param name="text" value="{1972092401, 90102}" />
+                <param name="textColSpan" value="4" />
+                <param name="colSpan" value="8" />
+                <param name="min" value="0" />
+                <param name="max" value="600" />
+                <param name="step" value="30" />
+                <param name="suffix" value="' %s'.[{1001, 100}]" />
                 <param name="data" value="$cfg" />
                 <param name="handle" value="Handle_Slider_Changed" />
               </run_actions>

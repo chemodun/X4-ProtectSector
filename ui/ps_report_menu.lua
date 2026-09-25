@@ -12,7 +12,9 @@
 -- reads it back from the player blackboard when HistoryReady arrives: the live
 -- fleets with their current counters, plus the 15-min history buckets when the
 -- history is on. Every sum over a window is computed here; with the history off the
--- window is everything since the counters started.
+-- window is everything since the counters started. Every `overviewRefresh` seconds
+-- (Options, 0 = off) it asks again; a snapshot with the same game time (paused) is
+-- dropped so the frame stays put.
 
 ---@diagnostic disable-next-line: unresolved-require
 local ffi = require("ffi")
@@ -33,10 +35,12 @@ local DEFAULT_WIDTH_INDEX = 3
 -- Bucket counter keys as the sampler writes them.
 local COUNTER_KEYS = { "a", "rp", "l", "t", "ks", "kb", "ko", "f", "h", "r", "b", "i", "e", "s", "sc", "se" }
 local UNCATCHABLE_BREAKS = 3
+local DEFAULT_REFRESH = 30 -- seconds, when the Options key is missing
 
 local menu = {
   name            = "ProtectSectorReportMenu",
   lastRefreshTime = 0.0,
+  lastRequestTime = 0.0,
   updateInterval  = 0.1,
 }
 
@@ -65,8 +69,9 @@ local Y_STEPS = { 1, 2, 5, 10, 20, 50, 100, 200, 500, 1000 }
 local X_STEPS = { 0.25, 0.5, 1, 2, 3, 4, 6, 8, 12 }
 
 local ps = {
-  playerId   = nil,
-  debugLevel = "none",
+  playerId        = nil,
+  debugLevel      = "none",
+  refreshInterval = 0.0,
 }
 
 -- *** debug helpers ***
@@ -83,12 +88,13 @@ local function traceLog(fmt, ...)
   end
 end
 
-local function readDebugLevel()
+local function readConfig()
   local cfg = GetNPCBlackboard(ps.playerId, "$ProtectSectorConfig")
-  if type(cfg) == "table" and cfg.debugLevel ~= nil then
-    return tostring(cfg.debugLevel)
+  if type(cfg) ~= "table" then
+    cfg = {}
   end
-  return "none"
+  ps.debugLevel = (cfg.debugLevel ~= nil) and tostring(cfg.debugLevel) or "none"
+  ps.refreshInterval = tonumber(cfg.overviewRefresh) or DEFAULT_REFRESH
 end
 
 -- *** formatting ***
@@ -220,7 +226,6 @@ local function parseView(raw)
     for _, target in ipairs(entry.targets or {}) do
       fleet.targets[#fleet.targets + 1] = {
         name = tostring(target.name or ""), idcode = tostring(target.idcode or ""), size = tostring(target.size or "-"),
-        speed = tonumber(target.speed) or 0, ourSpeed = tonumber(target.ourSpeed) or 0,
         attempts = tonumber(target.attempts) or 0, sight = tonumber(target.sight) or 0, outran = tonumber(target.outran) or 0,
         firstAge = tonumber(target.firstAge) or view.now, exists = toBool(target.exists),
       }
@@ -349,7 +354,7 @@ local function mergedTargets(fleets)
       local merged = byCode[target.idcode]
       if merged == nil then
         merged = {
-          name = target.name, idcode = target.idcode, size = target.size, speed = target.speed, ourSpeed = 0,
+          name = target.name, idcode = target.idcode, size = target.size,
           attempts = 0, sight = 0, outran = 0, firstAge = target.firstAge, exists = target.exists, tried = {},
         }
         byCode[target.idcode] = merged
@@ -360,8 +365,6 @@ local function mergedTargets(fleets)
       merged.sight    = merged.sight + target.sight
       merged.outran   = merged.outran + target.outran
       merged.firstAge = math.min(merged.firstAge, target.firstAge)
-      merged.ourSpeed = math.max(merged.ourSpeed, target.ourSpeed)
-      merged.speed    = math.max(merged.speed, target.speed)
       merged.exists   = merged.exists or target.exists
     end
   end
@@ -429,9 +432,11 @@ local function scopeFleets()
   return menu.view.fleets, ReadText(PAGE, 1301), nil
 end
 
-local function requestHistory()
+local function requestHistory(auto)
   menu.pending = true
-  traceLog("requesting a snapshot.")
+  menu.autoRequest = auto
+  menu.lastRequestTime = getElapsedTime()
+  traceLog("requesting a snapshot%s.", auto and " (auto-refresh)" or "")
   AddUITriggeredEvent("ProtectSector", "requestHistory")
 end
 
@@ -450,6 +455,7 @@ function menu.cleanup()
   menu.groups = nil
   menu.refreshQueued = nil
   menu.pending = nil
+  menu.autoRequest = nil
 end
 
 -- "back" points at the map explicitly; without a back-target Helper.closeMenu
@@ -470,7 +476,14 @@ local function onHistoryReady()
     debugLog("HistoryReady without a view table.")
     return
   end
-  menu.view = parseView(raw)
+  local view = parseView(raw)
+  if menu.autoRequest and menu.view ~= nil and view.now == menu.view.now then
+    menu.autoRequest = nil
+    traceLog("auto-refresh: game time unchanged, frame kept.")
+    return
+  end
+  menu.autoRequest = nil
+  menu.view = view
   menu.groups = buildGroups(menu.view)
   if menu.pendingSelectKey ~= nil then
     if menu.view.byKey[menu.pendingSelectKey] then
@@ -488,7 +501,7 @@ end
 -- `state` marks a return from the map; the picks the player left then stay.
 function menu.onShowMenu(state)
   menu.open = true
-  ps.debugLevel = readDebugLevel()
+  readConfig()
   if menu.widthIndex == nil then
     resetState()
   end
@@ -882,7 +895,7 @@ local function addTargetRows(ftable, targets)
     if not target.uncatchable then
       reason = pageText(1343, target.attempts, since)
     elseif target.outran > target.sight then
-      reason = pageText(1341, target.attempts, since, target.speed, target.ourSpeed)
+      reason = pageText(1341, target.attempts, since)
     else
       reason = pageText(1342, target.attempts, since)
     end
@@ -1174,6 +1187,10 @@ function menu.onUpdate()
   if menu.refreshQueued then
     menu.refreshQueued = nil
     return menu.createFrame()
+  end
+  if menu.open and ps.refreshInterval > 0 and (not menu.pending)
+      and getElapsedTime() - menu.lastRequestTime >= ps.refreshInterval then
+    requestHistory(true)
   end
   if menu.infoFrame then
     menu.infoFrame:update()

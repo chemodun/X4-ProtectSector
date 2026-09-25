@@ -144,7 +144,8 @@
       <actions name="SubordinatesResetOrders">
         <set_value name="$subsCancelled" exact="0" />
         <do_for_each name="$subordinate" in="this.assignedcontrolled.allsubordinates">
-          <do_if value="@$subordinate.order.id == 'Attack'">
+          <!-- after an unseen break that keeps the target, subordinates already attacking it keep at it -->
+          <do_if value="@$subordinate.order.id == 'Attack' and not (@$keepSubsTarget != null and @$keepSubsTarget == @$target and @$subordinate.order.$primarytarget == $keepSubsTarget)">
             <cancel_all_orders object="$subordinate" />
             <set_value name="$subsCancelled" operation="add" />
             <debug_text
@@ -375,6 +376,20 @@
           </do_for_each>
           <remove_value name="$fogShip" />
         </do_if>
+        <!-- a target vanilla would not fight (docked, highway, quick returns) stays skipped for its time -->
+        <set_value name="$targetSkipped" exact="0" />
+        <do_if value="@$targetSkip.keys.count gt 0">
+          <do_for_each name="$fogShip" in="$targetSkip.keys.list">
+            <do_if value="not @$fogShip.exists or $targetSkip.{$fogShip} le player.age">
+              <remove_value name="$targetSkip.{$fogShip}" />
+            </do_if>
+            <do_elseif value="$ships.indexof.{$fogShip}">
+              <remove_from_list name="$ships" exact="$fogShip" />
+              <set_value name="$targetSkipped" operation="add" />
+            </do_elseif>
+          </do_for_each>
+          <remove_value name="$fogShip" />
+        </do_if>
         <!-- <debug_text
           text="'ProtectSector [%,s at %s, %s] - ScanForEnemyShips: found %s ships.'.
             [
@@ -590,11 +605,13 @@
           <remove_value name="$psIdleStart" />
         </do_if>
       </actions>
-      <!-- $psField names the counter: '$hardBreaks', '$fogBreaks', '$rangeBreaks' or '$bailouts' -->
+      <!-- $psField names the counter: '$hardBreaks', '$fogBreaks', '$rangeBreaks' or '$bailouts'; the fleet counts it only as the outcome of an open engagement, $psKeepEngaged (pursue) leaves it open -->
       <actions name="PsTargetBreak">
         <include_interrupt_actions ref="PsStats" />
         <include_interrupt_actions ref="PsAttackClose" />
-        <set_value name="this.$protectSectorStats.{$psField}" operation="add" />
+        <do_if value="not @$psKeepEngaged">
+          <include_interrupt_actions ref="PsEngageClose" />
+        </do_if>
         <do_if value="@$target != null and this.$protectSectorTargets.{$target}?">
           <set_value name="this.$protectSectorTargets.{$target}.{$psField}" operation="add" />
           <set_value name="this.$protectSectorTargets.{$target}.$lastWhy" exact="$psField" />
@@ -602,12 +619,77 @@
         </do_if>
         <remove_value name="$psField" />
       </actions>
+      <!-- the outcome of the open engagement, counted once in $psField's counter; nothing when none is open -->
+      <actions name="PsEngageClose">
+        <do_if value="@$psEngaged != null">
+          <include_interrupt_actions ref="PsStats" />
+          <set_value name="this.$protectSectorStats.{$psField}" operation="add" />
+          <set_value name="$tel" exact="'outcome|id=%s|kind=%s'.[@$psEngaged.debugname, $psField]" />
+          <include_interrupt_actions ref="Telemetry" />
+          <set_value name="$psEngaged" exact="null" />
+        </do_if>
+      </actions>
+      <!-- $psWhere: '|rng=|gf=|tvis=|thz=|tzone=|tpos=x,y,z|pos=x,y,z': own current radar range and gravidar factor, target radar-visible, positions in the target's sector space; '' without a target -->
+      <actions name="PsTargetWhere">
+        <set_value name="$psWhere" exact="''" />
+        <do_if value="@$target.exists and @$target.sector != null">
+          <set_value name="$psTPos" exact="$target.relativeposition.{$target.sector}" />
+          <set_value name="$psOPos" exact="this.assignedcontrolled.relativeposition.{$target.sector}" />
+          <set_value name="$psWhere" exact="'|rng=%s|gf=%s|tvis=%s|thz=%s|tzone=%s|tpos=%s,%s,%s|pos=%s,%s,%s'.[(this.assignedcontrolled.currentradarrange)i, @this.assignedcontrolled.gravidarfactor, @$target.isradarvisible, @$target.isinhazardousregion, @$target.zone.macro.id, ($psTPos.x)i, ($psTPos.y)i, ($psTPos.z)i, ($psOPos.x)i, ($psOPos.y)i, ($psOPos.z)i]" />
+          <remove_value name="$psTPos" />
+          <remove_value name="$psOPos" />
+        </do_if>
+      </actions>
+      <!-- $psSubTel: '|sub=n/attack ours/attack other/escort/flee/resupply/other/far' over direct subordinates, '' without any -->
+      <actions name="PsSubsSnapshot">
+        <set_value name="$psSubTel" exact="''" />
+        <do_if value="@this.assignedcontrolled.subordinates.count gt 0">
+          <set_value name="$psSub" exact="table[$n = 0, $atk = 0, $atko = 0, $esc = 0, $flee = 0, $res = 0, $oth = 0, $far = 0]" />
+          <do_for_each name="$psSubShip" in="this.assignedcontrolled.subordinates">
+            <set_value name="$psSub.$n" operation="add" />
+            <set_value name="$psSubOrder" exact="@$psSubShip.order.id" />
+            <do_if value="$psSubOrder == 'Attack'">
+              <do_if value="@$target != null and @$psSubShip.order.$primarytarget == $target">
+                <set_value name="$psSub.$atk" operation="add" />
+              </do_if>
+              <do_else>
+                <set_value name="$psSub.$atko" operation="add" />
+              </do_else>
+            </do_if>
+            <do_elseif value="$psSubOrder == 'Escort'">
+              <set_value name="$psSub.$esc" operation="add" />
+            </do_elseif>
+            <do_elseif value="$psSubOrder == 'Flee'">
+              <set_value name="$psSub.$flee" operation="add" />
+            </do_elseif>
+            <do_elseif value="$psSubOrder == 'Resupply'">
+              <set_value name="$psSub.$res" operation="add" />
+            </do_elseif>
+            <do_else>
+              <set_value name="$psSub.$oth" operation="add" />
+            </do_else>
+            <do_if value="@$psSubShip.sector != this.assignedcontrolled.sector or @$psSubShip.distanceto.{this.assignedcontrolled} gt this.assignedcontrolled.maxradarrange * 0.6">
+              <set_value name="$psSub.$far" operation="add" />
+            </do_if>
+          </do_for_each>
+          <set_value name="$psSubTel" exact="'|sub=%s/%s/%s/%s/%s/%s/%s/%s'.[$psSub.$n, $psSub.$atk, $psSub.$atko, $psSub.$esc, $psSub.$flee, $psSub.$res, $psSub.$oth, $psSub.$far]" />
+          <remove_value name="$psSub" />
+          <remove_value name="$psSubShip" />
+          <remove_value name="$psSubOrder" />
+        </do_if>
+      </actions>
       <!-- entries of dead targets, of targets out of the sector for over an hour and entries idle for 6 h are dropped -->
       <actions name="PsTargetPick">
         <include_interrupt_actions ref="PsStats" />
+        <!-- an engagement on another target still open here ended without a counted outcome -->
+        <do_if value="@$psEngaged != null and $psEngaged != $target">
+          <set_value name="$psField" exact="'$rangeBreaks'" />
+          <include_interrupt_actions ref="PsEngageClose" />
+          <remove_value name="$psField" />
+        </do_if>
         <set_value name="$psPrune" exact="[]" />
         <do_for_each name="$psKey" valuename="$psEntry" in="this.$protectSectorTargets">
-          <do_if value="not @$psKey.exists or (@$psEntry.$leftAge != null and player.age - $psEntry.$leftAge gt 1h) or player.age - $psEntry.$lastAge gt 6h">
+          <do_if value="not @$psKey.exists or @$psKey.iswreck or (@$psEntry.$leftAge != null and player.age - $psEntry.$leftAge gt 1h) or player.age - $psEntry.$lastAge gt 6h">
             <append_to_list name="$psPrune" exact="$psKey" />
           </do_if>
         </do_for_each>
@@ -621,8 +703,63 @@
         <set_value name="this.$protectSectorTargets.{$target}.$attempts" operation="add" />
         <set_value name="this.$protectSectorTargets.{$target}.$lastAge" exact="player.age" />
         <set_value name="this.$protectSectorTargets.{$target}.$leftAge" exact="null" />
+        <!-- the follow-up group is the last target's fleet; a pick outside it drops the snapshot -->
+        <do_if value="this.$protectSectorTargetGroup?">
+          <do_if value="not this.$protectSectorTargetGroup.indexof.{$target}">
+            <clear_group group="this.$protectSectorTargetGroup" />
+          </do_if>
+        </do_if>
         <!-- the pick as peers see it (09 fleet coordination); cleared at search, idle, home and abort -->
         <set_value name="this.$protectSectorEngaged" exact="$target" />
+      </actions>
+      <!-- the follow-up after a target ends: its fleet as grouped at the attack start, then the subordinates' targets; both drawn from one sector scan so every filter and skip table applies; leaves the candidates in $ships -->
+      <actions name="PsFollowUp">
+        <set_value name="$fuAlive" exact="@$target.exists and not @$target.iswreck" />
+        <set_value name="$fuSkip" exact="''" />
+        <include_interrupt_actions ref="ResupplyWorkaroundRefresh" />
+        <do_if value="$isDamaged">
+          <set_value name="$fuSkip" exact="'damaged'" />
+          <clear_list list="$ships" />
+        </do_if>
+        <do_else>
+          <include_interrupt_actions ref="ScanForEnemyShips" />
+        </do_else>
+        <set_value name="$fuPool" exact="$ships.clone" />
+        <clear_list list="$ships" />
+        <set_value name="$fuGrp" exact="@this.$protectSectorTargetGroup.count" />
+        <set_value name="$fuGrpIn" exact="0" />
+        <do_if value="$fuGrp gt 0">
+          <do_for_each name="$fuShip" in="$fuPool">
+            <do_if value="this.$protectSectorTargetGroup.indexof.{$fuShip}">
+              <append_to_list name="$ships" exact="$fuShip" />
+              <set_value name="$fuGrpIn" operation="add" />
+            </do_if>
+          </do_for_each>
+        </do_if>
+        <set_value name="$fuSubs" exact="0" />
+        <set_value name="$fuSubsIn" exact="0" />
+        <do_for_each name="$fuSub" in="this.assignedcontrolled.allsubordinates">
+          <do_if value="@$fuSub.order.id == 'Attack' and @$fuSub.order.$primarytarget.exists">
+            <set_value name="$fuSubs" operation="add" />
+            <set_value name="$fuShip" exact="$fuSub.order.$primarytarget" />
+            <do_if value="$fuPool.indexof.{$fuShip} and not $ships.indexof.{$fuShip}">
+              <append_to_list name="$ships" exact="$fuShip" />
+              <set_value name="$fuSubsIn" operation="add" />
+            </do_if>
+          </do_if>
+        </do_for_each>
+        <set_value name="$tel" exact="'followup|why=%s|id=%s|alive=%s|skip=%s|pool=%s|grp=%s|grpin=%s|subs=%s|subsin=%s|n=%s|top=%s|dist=%s'.[@$fuWhy, @$target.debugname, $fuAlive, $fuSkip, $fuPool.count, $fuGrp, $fuGrpIn, $fuSubs, $fuSubsIn, $ships.count, @$ships.{1}.debugname, @$ships.{1}.distanceto.{this.assignedcontrolled}]" />
+        <include_interrupt_actions ref="Telemetry" />
+        <remove_value name="$fuWhy" />
+        <remove_value name="$fuAlive" />
+        <remove_value name="$fuSkip" />
+        <remove_value name="$fuPool" />
+        <remove_value name="$fuGrp" />
+        <remove_value name="$fuGrpIn" />
+        <remove_value name="$fuSubs" />
+        <remove_value name="$fuSubsIn" />
+        <remove_value name="$fuSub" />
+        <remove_value name="$fuShip" />
       </actions>
       <!-- 09 fleet coordination, telemetry only: what the coordination rules would see at this pick; foes are the target's faction within $pcRadius of it, peers the other Protect Sector commanders in the sector -->
       <actions name="PsCoordLine">
@@ -934,6 +1071,10 @@
         <check_value value="@event.param.isclass.{$classesForAttack}" />
         <check_value value="@$target == null" />
         <check_value value="@$targetOnResponse == null" />
+        <!-- a follow-up pick in progress is not preempted -->
+        <check_value value="@$followUp" negate="true" />
+        <!-- a hazard stop re-checks only at start; a wake here would patrol under a failed order -->
+        <check_value value="@$stoppingToWorkMessage == null" />
         <set_value name="$idleTill" exact="0" />
       </conditions>
       <actions>
@@ -1008,31 +1149,36 @@
         <include_interrupt_actions ref="Telemetry" />
         <do_if value="event.name == 'event_object_destroyed'">
           <include_interrupt_actions ref="PsStats" />
-          <!-- the killer's fleet: the first ship up its command chain that runs its own order script -->
-          <set_value name="$psKiller" exact="@event.param" />
-          <do_while value="$psKiller != null and $psKiller != this.assignedcontrolled and @$psKiller.defaultorder.id != 'Assist' and @$psKiller.defaultorder.id != 'ProtectSector'">
-            <set_value name="$psKiller" exact="@$psKiller.commander" />
-          </do_while>
-          <do_if value="@event.param == this.assignedcontrolled">
-            <set_value name="this.$protectSectorStats.$killsSelf" operation="add" />
+          <!-- a kill counts only as the outcome of an engagement on the target, not before the first attack -->
+          <do_if value="@$psEngaged == event.object">
+            <!-- the killer's fleet: the first ship up its command chain that runs its own order script -->
+            <set_value name="$psKiller" exact="@event.param" />
+            <do_while value="$psKiller != null and $psKiller != this.assignedcontrolled and @$psKiller.defaultorder.id != 'Assist' and @$psKiller.defaultorder.id != 'ProtectSector'">
+              <set_value name="$psKiller" exact="@$psKiller.commander" />
+            </do_while>
+            <do_if value="@event.param == this.assignedcontrolled">
+              <set_value name="$psField" exact="'$killsSelf'" />
+            </do_if>
+            <do_elseif value="$psKiller == this.assignedcontrolled">
+              <set_value name="$psField" exact="'$killsSubs'" />
+              <!-- per-subordinate count by the direct killer; tables from before 1.19 lack $killsBy -->
+              <do_if value="not this.$protectSectorStats.$killsBy?">
+                <set_value name="this.$protectSectorStats.$killsBy" exact="table[]" />
+              </do_if>
+              <set_value name="$psByKey" exact="'$%s'.[@event.param.idcode]" />
+              <do_if value="not this.$protectSectorStats.$killsBy.{$psByKey}?">
+                <set_value name="this.$protectSectorStats.$killsBy.{$psByKey}" exact="table[$name = @event.param.name, $n = 0]" />
+              </do_if>
+              <set_value name="this.$protectSectorStats.$killsBy.{$psByKey}.$n" operation="add" />
+              <remove_value name="$psByKey" />
+            </do_elseif>
+            <do_else>
+              <set_value name="$psField" exact="'$killsOther'" />
+            </do_else>
+            <include_interrupt_actions ref="PsEngageClose" />
+            <remove_value name="$psField" />
+            <remove_value name="$psKiller" />
           </do_if>
-          <do_elseif value="$psKiller == this.assignedcontrolled">
-            <set_value name="this.$protectSectorStats.$killsSubs" operation="add" />
-            <!-- per-subordinate count by the direct killer; tables from before 1.19 lack $killsBy -->
-            <do_if value="not this.$protectSectorStats.$killsBy?">
-              <set_value name="this.$protectSectorStats.$killsBy" exact="table[]" />
-            </do_if>
-            <set_value name="$psByKey" exact="'$%s'.[@event.param.idcode]" />
-            <do_if value="not this.$protectSectorStats.$killsBy.{$psByKey}?">
-              <set_value name="this.$protectSectorStats.$killsBy.{$psByKey}" exact="table[$name = @event.param.name, $n = 0]" />
-            </do_if>
-            <set_value name="this.$protectSectorStats.$killsBy.{$psByKey}.$n" operation="add" />
-            <remove_value name="$psByKey" />
-          </do_elseif>
-          <do_else>
-            <set_value name="this.$protectSectorStats.$killsOther" operation="add" />
-          </do_else>
-          <remove_value name="$psKiller" />
           <do_if value="this.$protectSectorTargets.{event.object}?">
             <remove_value name="this.$protectSectorTargets.{event.object}" />
           </do_if>
@@ -1040,6 +1186,12 @@
         <do_elseif value="event.name == 'event_object_changed_sector' and this.$protectSectorTargets.{event.object}?">
           <set_value name="this.$protectSectorTargets.{event.object}.$leftAge" exact="player.age" />
         </do_elseif>
+        <!-- an engaged target leaving the sector outran us; an abandoned one is out of the fight -->
+        <do_if value="event.name != 'event_object_destroyed' and @$psEngaged == event.object">
+          <set_value name="$psField" exact="if event.name == 'event_object_changed_sector' then '$bailouts' else '$killsOther'" />
+          <include_interrupt_actions ref="PsEngageClose" />
+          <remove_value name="$psField" />
+        </do_if>
         <set_value name="$searchReason" exact="if event.name == 'event_object_changed_sector' then 'lost' else 'kill'" />
         <debug_text
           text="'ProtectSector [%s at %s, %s]: Event: %s : %s{%s} status: iswreck: %s, isoperational: %s,  pilot: %s (%s), param: %s {%s}, target info - %s'
@@ -1073,7 +1225,14 @@
                 <write_to_logbook category="general" title="$textTitle" text="{1972092401, 1043}.[$textUnit, $textEnemy, $textHomeSector]"
                   interaction="showonmap" object="this.assignedcontrolled" />
               </do_if>
-              <abort_called_scripts resume="targetSearching" />
+              <set_value name="$fuWhy" exact="$searchReason" />
+              <include_interrupt_actions ref="PsFollowUp" />
+              <do_if value="$ships.count gt 0">
+                <abort_called_scripts resume="targetFollowUp" />
+              </do_if>
+              <do_else>
+                <abort_called_scripts resume="targetSearching" />
+              </do_else>
             </do_if>
           </do_if>
           <do_else>
@@ -1094,7 +1253,14 @@
               <set_value name="$targetDestroyedBy" exact="event.param" />
               <include_interrupt_actions ref="ApplyExperience" />
             </do_if>
-            <abort_called_scripts resume="targetSearching" />
+            <set_value name="$fuWhy" exact="$searchReason" />
+            <include_interrupt_actions ref="PsFollowUp" />
+            <do_if value="$ships.count gt 0">
+              <abort_called_scripts resume="targetFollowUp" />
+            </do_if>
+            <do_else>
+              <abort_called_scripts resume="targetSearching" />
+            </do_else>
           </do_else>
         </do_if>
       </actions>
@@ -1262,6 +1428,7 @@
         <check_any>
           <event_gravidar_has_scanned object="this.assignedcontrolled" />
           <event_object_changed_zone group="@$targets" check="false" />
+          <event_object_docked group="@$targets" check="false" />
           <event_object_signalled object="this.assignedcontrolled" param="'ProtectSector.AttackHeartbeat'" />
         </check_any>
         <!-- a heartbeat armed by an earlier attack must not fire the watchdog -->
@@ -1275,6 +1442,9 @@
         <check_any>
           <check_value value="not this.assignedcontrolled.cansee.{$target}" />
           <check_value value="this.assignedcontrolled.distanceto.{$target} gt $targetOptimalDistanceForAttack" />
+          <!-- vanilla 9.00 drops a docked or highway target at once and re-selects it in a loop -->
+          <check_value value="@$target.dock != null" />
+          <check_value value="@$target.zone.isclass.highway" />
         </check_any>
       </conditions>
       <actions>
@@ -1294,31 +1464,53 @@
               $pursueFleeingTarget
             ]" chance="$traceChance" />
           <set_value name="$isAttackingTarget" exact="false" />
+          <set_value name="$watchWhy" exact="if @$target.dock != null then 'dock' else (if @$target.zone.isclass.highway then 'highway' else (if not this.assignedcontrolled.cansee.{$target} then 'fog' else 'range'))" />
+          <!-- unseen by this ship but on the player's map: within radar range relaunch the attack, within twice that re-approach (the approach bails out if it cannot close in); subordinates on it keep attacking -->
+          <set_value name="$watchRadar" exact="[this.assignedcontrolled.currentradarrange, 2km].max" />
+          <set_value name="$watchMode" exact="if $watchWhy != 'fog' or not @$target.isinliveview then '' else (if this.assignedcontrolled.distanceto.{$target} le $watchRadar then 'relaunch' else (if this.assignedcontrolled.distanceto.{$target} le 2 * $watchRadar then 'reapproach' else ''))" />
           <!-- a heartbeat fog break means vanilla restarted on an unseen target for a minute: skip it for the full time and do not re-approach; other fog breaks skip it only while unseen -->
-          <set_value name="$fogHardBreak" exact="not this.assignedcontrolled.cansee.{$target} and event.param == 'ProtectSector.AttackHeartbeat'" />
-          <do_if value="$fogHardBreak">
+          <set_value name="$fogHardBreak" exact="$watchMode == '' and $watchWhy == 'fog' and event.param == 'ProtectSector.AttackHeartbeat'" />
+          <do_if value="$watchMode != ''">
+            <set_value name="$keepSubsTarget" exact="$target" />
+            <include_interrupt_actions ref="PsAttackClose" />
+          </do_if>
+          <do_elseif value="$fogHardBreak">
             <do_if value="not this.$protectSectorFogHard?">
               <set_value name="this.$protectSectorFogHard" exact="table[]" />
             </do_if>
             <set_value name="this.$protectSectorFogHard.{$target}" exact="player.age + 5min" />
-          </do_if>
-          <do_elseif value="not this.assignedcontrolled.cansee.{$target}">
+          </do_elseif>
+          <do_elseif value="$watchWhy == 'fog'">
             <do_if value="not $fogIgnore?">
               <set_value name="$fogIgnore" exact="table[]" />
             </do_if>
             <set_value name="$fogIgnore.{$target}" exact="player.age + 5min" />
           </do_elseif>
-          <set_value name="$psField" exact="if $fogHardBreak then '$hardBreaks' else (if this.assignedcontrolled.cansee.{$target} then '$rangeBreaks' else '$fogBreaks')" />
-          <include_interrupt_actions ref="PsTargetBreak" />
-          <set_value name="$tel" exact="'watchdog|id=%s|cansee=%s|dist=%s|limit=%s|why=%s|trigger=%s|dur=%s|to=%s|hard=%s|att=%s|radar=%s|tsec=%s|tatt=%s|tlive=%s|tdock=%s|thw=%s'.[
+          <do_elseif value="$watchWhy == 'dock' or $watchWhy == 'highway'">
+            <do_if value="not $targetSkip?">
+              <set_value name="$targetSkip" exact="table[]" />
+            </do_if>
+            <set_value name="$targetSkip.{$target}" exact="player.age + 60s" />
+          </do_elseif>
+          <set_value name="$watchSearch" exact="$watchMode == '' and ($fogHardBreak or $watchWhy == 'dock' or $watchWhy == 'highway' or not $pursueFleeingTarget or @$target.sector != $homeSector)" />
+          <do_if value="$watchMode == ''">
+            <set_value name="$keepSubsTarget" exact="null" />
+            <set_value name="$psField" exact="if $fogHardBreak then '$hardBreaks' else (if $watchWhy == 'fog' then '$fogBreaks' else '$rangeBreaks')" />
+            <set_value name="$psKeepEngaged" exact="not $watchSearch" />
+            <include_interrupt_actions ref="PsTargetBreak" />
+            <remove_value name="$psKeepEngaged" />
+          </do_if>
+          <include_interrupt_actions ref="PsSubsSnapshot" />
+          <include_interrupt_actions ref="PsTargetWhere" />
+          <set_value name="$tel" exact="'watchdog|id=%s|cansee=%s|dist=%s|limit=%s|why=%s|trigger=%s|dur=%s|to=%s|hard=%s|att=%s|radar=%s|tsec=%s|tatt=%s|tlive=%s|tdock=%s|thw=%s%s%s'.[
             @$target.debugname,
             this.assignedcontrolled.cansee.{$target},
             this.assignedcontrolled.distanceto.{$target},
             $targetOptimalDistanceForAttack,
-            if not this.assignedcontrolled.cansee.{$target} then 'fog' else 'range',
+            $watchWhy,
             @event.name,
             player.age - @$attackStartedAt,
-            if $pursueFleeingTarget and @$target.sector == $homeSector and not $fogHardBreak then 'approach' else 'search',
+            if $watchMode != '' then $watchMode else (if $watchSearch then 'search' else 'approach'),
             $fogHardBreak,
             this.assignedcontrolled.attention,
             @this.assignedcontrolled.maxradarrange,
@@ -1326,15 +1518,27 @@
             @$target.attention,
             @$target.isinliveview,
             @$target.dock != null,
-            @$target.zone.isclass.highway
+            @$target.zone.isclass.highway,
+            $psWhere,
+            $psSubTel
           ]" />
           <include_interrupt_actions ref="Telemetry" />
-          <do_if value="$pursueFleeingTarget and @$target.sector == $homeSector and not $fogHardBreak">
-            <remove_value name="$fogHardBreak" />
-            <abort_called_scripts resume="targetApproaching" />
+          <remove_value name="$watchWhy" />
+          <remove_value name="$watchRadar" />
+          <remove_value name="$fogHardBreak" />
+          <do_if value="$watchMode == 'relaunch'">
+            <remove_value name="$watchMode" />
+            <remove_value name="$watchSearch" />
+            <abort_called_scripts resume="targetAttacking" />
           </do_if>
+          <do_elseif value="not $watchSearch">
+            <remove_value name="$watchMode" />
+            <remove_value name="$watchSearch" />
+            <abort_called_scripts resume="targetApproaching" />
+          </do_elseif>
           <do_else>
-            <remove_value name="$fogHardBreak" />
+            <remove_value name="$watchMode" />
+            <remove_value name="$watchSearch" />
             <set_value name="$searchReason" exact="'watchdog'" />
             <abort_called_scripts resume="targetSearching" />
           </do_else>
@@ -1347,6 +1551,8 @@
         <event_object_signalled object="this.assignedcontrolled" param="'ProtectSector.AttackHeartbeat'" />
         <check_value value="event.param2 == @$attackHeartbeat" />
         <check_value value="@$isAttackingTarget" />
+        <!-- a heartbeat in the kill's tick: the group handler has already left the attack -->
+        <check_value value="@$target.exists and not @$target.iswreck" />
       </conditions>
       <actions>
         <set_value name="$tel" exact="'attackhb|id=%s|dur=%s|dist=%s|limit=%s|cansee=%s|alive=%s|thull=%s|tshield=%s|hull=%s|shield=%s|att=%s|vcmd=%s|vtarget=%s|tdock=%s|thw=%s|tsec=%s|tatt=%s|tlive=%s'.[
@@ -1387,6 +1593,10 @@
     <handler>
       <conditions>
         <event_object_signalled object="this.assignedcontrolled" param="'ProtectSector.CheckSubordinatesAttack'" />
+        <!-- one chain per attack: a hop of an earlier attack's chain carries an older token -->
+        <check_value value="event.param2 == @$subsCheckToken" />
+        <!-- during an approach the next pass would cancel what this orders; the next attack starts a new chain -->
+        <check_value value="@$isAttackingTarget" />
         <check_value value="@$target != null" />
         <check_value value="@$target.isclass.ship" />
         <check_value value="@$target.exists and not @$target.iswreck and @$target.isoperational" />
@@ -1520,13 +1730,9 @@
             </do_if>
           </do_if>
         </do_for_each>
-        <set_value name="$tel" exact="'subs|checked=%s|cancelled=%s|ordered=%s|target=%s'.[$subsChecked, $subsCancelled, $subsOrdered, @$target.debugname]" />
-        <do_if value="$subsCancelled + $subsOrdered gt 0">
-          <include_interrupt_actions ref="Telemetry" />
-        </do_if>
-        <do_else>
-          <include_interrupt_actions ref="TelemetryTrace" />
-        </do_else>
+        <include_interrupt_actions ref="PsSubsSnapshot" />
+        <set_value name="$tel" exact="'subs|checked=%s|cancelled=%s|ordered=%s|target=%s%s'.[$subsChecked, $subsCancelled, $subsOrdered, @$target.debugname, $psSubTel]" />
+        <include_interrupt_actions ref="Telemetry" />
         <remove_value name="$subsChecked" />
         <remove_value name="$subsCancelled" />
         <remove_value name="$subsOrdered" />
@@ -1535,7 +1741,7 @@
         <set_value name="$isDamaged" exact="@$shipIsDamaged == true" />
         <do_if value="this.assignedcontrolled.order.id == 'ProtectSector'">
           <set_value name="$signalDelay" min="20s" max="50s" />
-          <signal_objects object="this.assignedcontrolled" param="'ProtectSector.CheckSubordinatesAttack'" delay="$signalDelay" />
+          <signal_objects object="this.assignedcontrolled" param="'ProtectSector.CheckSubordinatesAttack'" param2="event.param2" delay="$signalDelay" />
           <debug_text
             text="'ProtectSector [%s at %s, %s]: CheckSubordinatesAttack: New signal scheduled in %s.'.
               [
@@ -2008,6 +2214,10 @@
 
       <!-- SEARCH ******************************************************************************* -->
       <label name="targetSearching" />
+      <set_value name="$keepSubsTarget" exact="null" />
+      <remove_value name="$followUp" />
+      <remove_value name="$fuPick" />
+      <clear_list list="$ships" />
       <include_interrupt_actions ref="PsIdleClose" />
       <include_interrupt_actions ref="PsAttackClose" />
       <include_interrupt_actions ref="RestoreAttackResponse" />
@@ -2068,7 +2278,29 @@
       <set_command_action commandaction="commandaction.scanningto" param="$homeSector" />
 
       <wait min="1s" max="2s" />
+      <resume label="protectPlayerShipsCheck" />
 
+
+      <!-- FOLLOW-UP ****************************************************************************** -->
+      <!-- candidates left in $ships by PsFollowUp, checked like a scan; an attack on another ship does not preempt it -->
+      <label name="targetFollowUp" />
+      <set_value name="$keepSubsTarget" exact="null" />
+      <include_interrupt_actions ref="PsIdleClose" />
+      <include_interrupt_actions ref="PsAttackClose" />
+      <set_value name="$isAttackingTarget" exact="false" />
+      <remove_value name="$searchReason" />
+      <set_value name="$scanSrc" exact="'followup'" />
+      <set_value name="$followUp" exact="true" />
+      <set_value name="$target" exact="null" />
+      <set_value name="this.$protectSectorEngaged" exact="null" />
+      <do_if value="not $targets? or $targets == null">
+        <create_group groupname="$targets" />
+      </do_if>
+      <clear_group group="$targets" />
+      <do_if value="not $targetInfo? or $targetInfo == null">
+        <set_value name="$targetInfo" exact="table[]" />
+      </do_if>
+      <clear_table table="$targetInfo" />
 
       <!-- SEARCHING  SHIP ************************************************************************ -->
 
@@ -2110,6 +2342,7 @@
           <!-- no scan on a response, so nothing skipped -->
           <set_value name="$fogSkipped" exact="0" />
           <set_value name="$hardSkipped" exact="0" />
+          <set_value name="$targetSkipped" exact="0" />
           <debug_text
             text="'ProtectSector [%s at %s, %s]: Response on attack by: %s. List of ships: %s. Target: %s'.
               [
@@ -2281,10 +2514,22 @@
         <do_if value="$target == null">
           <set_value name="this.$protectSectorStats.$scansEmpty" operation="add" />
         </do_if>
-        <set_value name="$tel" exact="'scan|src=%s|n=%s|checked=%s|top=%s|dist=%s|rel=%s|picked=%s|fogskip=%s|hardskip=%s'.[if @$targetOnResponse then 'response' else 'scan', $ships.count, $indexShips - 1, @$ships.{1}.debugname, @$ships.{1}.distanceto.{this.assignedcontrolled}, @$ships.{1}.relationto.{this.owner}, @$target.debugname, @$fogSkipped, @$hardSkipped]" />
+        <set_value name="$tel" exact="'scan|src=%s|n=%s|checked=%s|top=%s|dist=%s|rel=%s|picked=%s|fogskip=%s|hardskip=%s|vskip=%s'.[if @$targetOnResponse then 'response' else (if @$scanSrc != null then $scanSrc else 'scan'), $ships.count, $indexShips - 1, @$ships.{1}.debugname, @$ships.{1}.distanceto.{this.assignedcontrolled}, @$ships.{1}.relationto.{this.owner}, @$target.debugname, @$fogSkipped, @$hardSkipped, @$targetSkipped]" />
         <include_interrupt_actions ref="Telemetry" />
         <clear_list list="$ships" />
         <set_value name="$targetOnResponse" exact="null" />
+        <!-- a follow-up pick continues the engagement: no new attack on the overview -->
+        <set_value name="$fuPick" exact="@$followUp == true" />
+        <do_if value="@$followUp">
+          <remove_value name="$followUp" />
+          <remove_value name="$scanSrc" />
+          <do_if value="$target == null">
+            <set_value name="$searchReason" exact="'followup'" />
+            <resume label="targetSearching" />
+          </do_if>
+          <!-- subordinates already on the pick keep their attack -->
+          <set_value name="$keepSubsTarget" exact="$target" />
+        </do_if>
         <do_if value="$target != null">
 
           <do_if value="$target.coverowner">
@@ -2643,6 +2888,9 @@
 
       <set_value name="$idleWhy" exact="'nothing'" />
       <label name="goingIdle" />
+      <set_value name="$keepSubsTarget" exact="null" />
+      <remove_value name="$followUp" />
+      <remove_value name="$fuPick" />
       <include_interrupt_actions ref="PsIdleClose" />
       <include_interrupt_actions ref="PsAttackClose" />
       <include_interrupt_actions ref="RestoreAttackResponse" />
@@ -2835,8 +3083,9 @@
 
         <set_value name="$targetDistanceTo" exact="this.assignedcontrolled.distanceto.{$target}" />
 
+        <!-- the radar range as it is now: a region can cut it far below the maximum -->
         <set_value name="$targetOptimalDistanceForAttack"
-          exact="this.assignedcontrolled.size / 2 + this.assignedcontrolled.maxradarrange * $attackDistanceAsPercentageOfRadarRange * 0.01 + $target.size / 2" />
+          exact="this.assignedcontrolled.size / 2 + [this.assignedcontrolled.currentradarrange, 2km].max * $attackDistanceAsPercentageOfRadarRange * 0.01 + $target.size / 2" />
 
         <debug_text
           text="'ProtectSector [%s at %s, %s]: move iteration : %s {%s} status: iswreck: %s, isoperational: %s,  pilot: %s (%s), distance - %s, radar percentage: %s, acceptable distance - %s'
@@ -2857,18 +3106,20 @@
           chance="$traceChance" />
 
         <set_value name="$approachingIterationsCount" operation="add" />
-        <set_value name="$tel" exact="'approach|iter=%s|id=%s|dist=%s|optimal=%s|notdec=%s|cut=%s'.[$approachingIterationsCount, $target.debugname, $targetDistanceTo, $targetOptimalDistanceForAttack, @$targetDistanceToIsNotDecreasing, @$approachCut]" />
+        <set_value name="$tel" exact="'approach|iter=%s|id=%s|dist=%s|optimal=%s|notdec=%s|cut=%s|rng=%s|cansee=%s'.[$approachingIterationsCount, $target.debugname, $targetDistanceTo, $targetOptimalDistanceForAttack, @$targetDistanceToIsNotDecreasing, @$approachCut, (this.assignedcontrolled.currentradarrange)i, this.assignedcontrolled.cansee.{$target}]" />
         <do_if value="$approachingIterationsCount == 1">
           <include_interrupt_actions ref="Telemetry" />
         </do_if>
         <do_else>
           <include_interrupt_actions ref="TelemetryTrace" />
         </do_else>
+        <set_value name="$approachWasCut" exact="$approachCut?" />
         <remove_value name="$approachCut" />
 
         <do_if value="$targetDistanceTo gt $targetOptimalDistanceForAttack">
 
-          <do_if value="$targetPreviousDistanceTo? and $targetPreviousDistanceTo != null">
+          <!-- a pass cut short by the target's zone change says nothing about closing in -->
+          <do_if value="$targetPreviousDistanceTo? and $targetPreviousDistanceTo != null and not $approachWasCut">
             <do_if value="$targetPreviousDistanceTo le $targetDistanceTo">
               <do_if
                 value="not $targetDistanceToIsNotDecreasing? or @$targetDistanceToIsNotDecreasing == null or @$targetDistanceToIsNotDecreasing lt 1">
@@ -2930,12 +3181,11 @@
           </do_if>
           <create_position name="$targetPos" space="$target.sector" object="$target" />
           <create_position name="$ourPos" space="$target.sector" object="this.assignedcontrolled" />
-          <do_if value="$targetPos.y gt $ourPos.y">
-            <set_value name="$destY" exact="$targetPos.y - ($target.size / 2 + $radius)" />
+          <!-- the side is chosen once per approach: a ship level with its target flipped sides every pass -->
+          <do_if value="$approachingIterationsCount == 1 or not $approachSide?">
+            <set_value name="$approachSide" exact="if $targetPos.y gt $ourPos.y then -1 else 1" />
           </do_if>
-          <do_else>
-            <set_value name="$destY" exact="$targetPos.y + ($target.size / 2 + $radius)" />
-          </do_else>
+          <set_value name="$destY" exact="$targetPos.y + $approachSide * ($target.size / 2 + $radius)" />
           <create_position name="$destination" space="$target.sector" x="$targetPos.x" z="$targetPos.z" y="$destY" />
           <set_value name="$targetPreviousDistanceTo" exact="$targetDistanceTo" />
           <debug_text
@@ -3018,6 +3268,11 @@
       </do_if>
       <do_else>
 
+        <set_value name="$fuWhy" exact="'targetgone'" />
+        <include_interrupt_actions ref="PsFollowUp" />
+        <do_if value="$ships.count gt 0">
+          <resume label="targetFollowUp" />
+        </do_if>
         <set_value name="$idleWhy" exact="'targetgone'" />
         <resume label="goingIdle" />
 
@@ -3064,15 +3319,54 @@
           <include_interrupt_actions ref="SubordinatesResetOrders" />
           <set_command command="command.patrol" />
           <set_command_action commandaction="commandaction.attackingto" param="$target" />
-          <signal_objects object="this.assignedcontrolled" param="'ProtectSector.CheckSubordinatesAttack'" delay="30s" />
+          <set_value name="$subsCheckToken" exact="if $subsCheckToken? then $subsCheckToken + 1 else 1" />
+          <signal_objects object="this.assignedcontrolled" param="'ProtectSector.CheckSubordinatesAttack'" param2="$subsCheckToken" delay="30s" />
           <set_value name="$isAttackingTarget" exact="true" />
+          <!-- a later approach after a range break is a new approach, not more passes of the old one -->
+          <set_value name="$approachingIterationsCount" exact="0" />
+          <set_value name="$targetPreviousDistanceTo" exact="null" />
+          <set_value name="$targetDistanceToIsNotDecreasing" exact="0" />
           <set_value name="$attackStartedAt" exact="player.age" />
           <include_interrupt_actions ref="PsStats" />
-          <set_value name="this.$protectSectorStats.$attacks" operation="add" />
+          <!-- one attack per engagement: a relaunch or a re-attack on the same target is not a new one -->
+          <do_if value="@$psEngaged != $target">
+            <do_if value="not @$fuPick">
+              <set_value name="this.$protectSectorStats.$attacks" operation="add" />
+            </do_if>
+            <set_value name="$psEngaged" exact="$target" />
+          </do_if>
           <set_value name="this.$protectSectorStats.$attackOpenAt" exact="player.age" />
           <set_value name="$psAttackOpen" exact="true" />
-          <set_value name="$tel" exact="'attack|id=%s|dist=%s|optimal=%s|subs=%s|noresp=%s|may=%s'.[$target.debugname, $targetDistanceTo, @$targetOptimalDistanceForAttack, @this.assignedcontrolled.subordinates.count, @this.$noattackresponse, @this.assignedcontrolled.mayattack.{$target}]" />
+          <!-- TEMP: vanilla attack debug for a target unseen at the start or already broken off on the heartbeat, 5 attacks per ship -->
+          <set_value name="$attackDebugChance" exact="$traceChance" />
+          <do_if value="@$vanillaDebugLeft == null">
+            <set_value name="$vanillaDebugLeft" exact="5" />
+          </do_if>
+          <do_if value="$vanillaDebugLeft gt 0 and (not this.assignedcontrolled.cansee.{$target} or @this.$protectSectorTargets.{$target}.$hardBreaks gt 0)">
+            <set_value name="$attackDebugChance" exact="100" />
+            <set_value name="$vanillaDebugLeft" operation="subtract" />
+          </do_if>
+          <!-- the target's fleet as it stands now: the first follow-up source once this target is gone -->
+          <do_if value="not this.$protectSectorTargetGroup?">
+            <create_group groupname="this.$protectSectorTargetGroup" />
+          </do_if>
+          <clear_group group="this.$protectSectorTargetGroup" />
+          <set_value name="$fuTop" exact="if @$target.toplevelcommander.exists then $target.toplevelcommander else $target" />
+          <set_value name="$fuFleet" exact="[$fuTop]" />
+          <append_list_elements name="$fuFleet" other="$fuTop.allsubordinates" />
+          <do_for_each name="$fuShip" in="$fuFleet">
+            <do_if value="$fuShip.isclass.ship and $fuShip.exists and not $fuShip.iswreck and $fuShip.isoperational and $fuShip.sector == $target.sector">
+              <do_if value="$fuShip.distanceto.{$target} le this.assignedcontrolled.currentradarrange">
+                <add_to_group groupname="this.$protectSectorTargetGroup" object="$fuShip" />
+              </do_if>
+            </do_if>
+          </do_for_each>
+          <include_interrupt_actions ref="PsTargetWhere" />
+          <set_value name="$tel" exact="'attack|id=%s|dist=%s|optimal=%s|subs=%s|noresp=%s|may=%s|cansee=%s|tlive=%s|vdebug=%s|grp=%s|gtop=%s%s'.[$target.debugname, $targetDistanceTo, @$targetOptimalDistanceForAttack, @this.assignedcontrolled.subordinates.count, @this.$noattackresponse, @this.assignedcontrolled.mayattack.{$target}, this.assignedcontrolled.cansee.{$target}, @$target.isinliveview, $attackDebugChance, this.$protectSectorTargetGroup.count, @$fuTop.debugname, $psWhere]" />
           <include_interrupt_actions ref="Telemetry" />
+          <remove_value name="$fuTop" />
+          <remove_value name="$fuFleet" />
+          <remove_value name="$fuShip" />
           <include_interrupt_actions ref="AttackHeartbeatArm" />
           <do_if value="@global.$kAAIT_Data != null">
             <debug_text
@@ -3100,7 +3394,7 @@
               <param name="forceprimarytarget" value="true" />
               <param name="kAAITParam_isAvoidHighRisk" value="false" />
               <param name="kAAITParam_isStepForwardWithdraw" value="false" />
-              <param name="debugchance" value="$traceChance" />
+              <param name="debugchance" value="$attackDebugChance" />
             </run_script>
           </do_if>
           <do_else>
@@ -3117,7 +3411,7 @@
               <param name="targetclasses" value="$classesAcceptableForAttack" />
               <param name="allowboost" value="true" />
               <param name="forceprimarytarget" value="true" />
-              <param name="debugchance" value="$traceChance" />
+              <param name="debugchance" value="$attackDebugChance" />
             </run_script>
           </do_else>
 
@@ -3125,8 +3419,39 @@
 
           <set_value name="$targetDistanceTo" exact="this.assignedcontrolled.distanceto.{$target}" />
           <include_interrupt_actions ref="PsAttackClose" />
-          <set_value name="$tel" exact="'attackret|id=%s|dur=%s|dist=%s|alive=%s|reason=normal'.[@$target.debugname, player.age - $attackStartedAt, $targetDistanceTo, @$target.exists and not @$target.iswreck]" />
+          <!-- vanilla leaves some targets at once (no DPS, beyond pursuedistance, steering early-outs): the third quick return in a row skips the target -->
+          <do_if value="player.age - $attackStartedAt lt 3s and @$target.canbeattacked">
+            <do_if value="@$quickReturnTarget == $target">
+              <set_value name="$quickReturns" operation="add" />
+            </do_if>
+            <do_else>
+              <set_value name="$quickReturnTarget" exact="$target" />
+              <set_value name="$quickReturns" exact="1" />
+            </do_else>
+          </do_if>
+          <do_else>
+            <set_value name="$quickReturnTarget" exact="null" />
+            <set_value name="$quickReturns" exact="0" />
+          </do_else>
+          <set_value name="$attackRetReason" exact="if $quickReturns ge 3 then 'quick' else 'normal'" />
+          <include_interrupt_actions ref="PsSubsSnapshot" />
+          <include_interrupt_actions ref="PsTargetWhere" />
+          <set_value name="$tel" exact="'attackret|id=%s|dur=%s|dist=%s|alive=%s|reason=%s|qr=%s|cansee=%s|tlive=%s%s%s'.[@$target.debugname, player.age - $attackStartedAt, $targetDistanceTo, @$target.exists and not @$target.iswreck, $attackRetReason, $quickReturns, @this.assignedcontrolled.cansee.{$target}, @$target.isinliveview, $psWhere, $psSubTel]" />
           <include_interrupt_actions ref="Telemetry" />
+          <do_if value="$attackRetReason == 'quick'">
+            <do_if value="not $targetSkip?">
+              <set_value name="$targetSkip" exact="table[]" />
+            </do_if>
+            <set_value name="$targetSkip.{$target}" exact="player.age + 120s" />
+            <set_value name="$quickReturnTarget" exact="null" />
+            <set_value name="$quickReturns" exact="0" />
+            <set_value name="$psField" exact="'$rangeBreaks'" />
+            <include_interrupt_actions ref="PsEngageClose" />
+            <remove_value name="$psField" />
+            <include_interrupt_actions ref="SubordinatesResetOrders" />
+            <set_value name="$searchReason" exact="'quick'" />
+            <resume label="targetSearching" />
+          </do_if>
 
           <debug_text
             text="'ProtectSector [%s at %s, %s]: After run order.fight.attack.object : %s {%s} status: iswreck: %s, isoperational: %s,  pilot: %s (%s), distance - %s, acceptable distance - %s'
@@ -3152,6 +3477,17 @@
         <do_else>
           <resume label="targetApproaching" />
         </do_else>
+      </do_if>
+      <!-- the attack ended on a live target that is not pursued: an unsuccessful engagement -->
+      <do_if value="@$target.exists and not @$target.iswreck">
+        <set_value name="$psField" exact="'$rangeBreaks'" />
+        <include_interrupt_actions ref="PsEngageClose" />
+        <remove_value name="$psField" />
+      </do_if>
+      <set_value name="$fuWhy" exact="'afterattack'" />
+      <include_interrupt_actions ref="PsFollowUp" />
+      <do_if value="$ships.count gt 0">
+        <resume label="targetFollowUp" />
       </do_if>
       <include_interrupt_actions ref="SubordinatesResetOrders" />
 
@@ -3286,24 +3622,28 @@
           interaction="showonmap" object="this.assignedcontrolled" />
       </do_if>
 
+      <!-- a move_to position is relative to its destination: the safe pos to the zone, the parking position to the sector -->
+      <set_value name="$homeDestination" exact="$homeLocation" />
       <do_if value="@$desiredParkingPosition != null and @$desiredParkingPosition.{2} != null">
         <set_value name="$destinationAtHome" exact="@$desiredParkingPosition.{2}" />
+        <set_value name="$homeDestination" exact="$homeSector" />
       </do_if>
 
       <do_if value="$ignoreBlackListsForAttack">
-        <move_to object="this.assignedcontrolled" destination="$homeLocation" travel="true" forceposition="false" finishonapproach="true" boost="true" uselocalhighways="true"
+        <move_to object="this.assignedcontrolled" destination="$homeDestination" travel="true" forceposition="false" finishonapproach="true" boost="true" uselocalhighways="true"
           useknownpath="true" commandaction="false">
           <position value="$destinationAtHome" min="5km" max="6km" />
         </move_to>
       </do_if>
       <do_else>
-        <move_to object="this.assignedcontrolled" destination="$homeLocation" travel="true" forceposition="false" finishonapproach="true" useblacklist="$blacklistGroup" boost="true" uselocalhighways="true"
+        <move_to object="this.assignedcontrolled" destination="$homeDestination" travel="true" forceposition="false" finishonapproach="true" useblacklist="$blacklistGroup" boost="true" uselocalhighways="true"
           useknownpath="true" commandaction="false">
           <position value="$destinationAtHome" min="5km" max="6km" />
         </move_to>
       </do_else>
 
       <remove_value name="$homeLocation" />
+      <remove_value name="$homeDestination" />
       <remove_value name="$destinationAtHome" />
 
       <wait min="5ms" max="15ms" profile="flat" />
@@ -3329,7 +3669,7 @@
         <resume label="flightToHomeSector" />
       </do_if>
 
-      <set_value name="$tel" exact="'home|state=arrive|turns=%s'.[$flyingToHomeSectorTurnsCount]" />
+      <set_value name="$tel" exact="'home|state=arrive|turns=%s|pdist=%s'.[$flyingToHomeSectorTurnsCount, if @$desiredParkingPosition.{2} != null then this.assignedcontrolled.distanceto.[$homeSector, $desiredParkingPosition.{2}] else -1]" />
       <include_interrupt_actions ref="Telemetry" />
       <set_value name="$searchReason" exact="'home'" />
       <resume label="targetSearching" />
@@ -3390,10 +3730,12 @@
       <include_interrupt_actions ref="PsIdleClose" />
       <include_interrupt_actions ref="PsAttackClose" />
       <set_value name="this.$protectSectorEngaged" exact="null" />
-      <!-- not the order restarting itself and not a station hand-off -->
+      <remove_value name="this.$protectSectorTargetGroup" />
+      <!-- not the order restarting itself and not a station hand-off; counted only as the outcome of an open engagement -->
       <do_if value="not @$psInternalEnd and @this.assignedcontrolled.order.id != 'ProtectSector' and (@this.assignedcontrolled.defaultorder.id == 'ProtectSector' or @this.assignedcontrolled.defaultorder.id == 'Assist')">
-        <include_interrupt_actions ref="PsStats" />
-        <set_value name="this.$protectSectorStats.$outsideEnds" operation="add" />
+        <set_value name="$psField" exact="'$outsideEnds'" />
+        <include_interrupt_actions ref="PsEngageClose" />
+        <remove_value name="$psField" />
       </do_if>
     </do_if>
     <include_interrupt_actions ref="RestoreAttackResponse" />

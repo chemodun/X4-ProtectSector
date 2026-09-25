@@ -218,6 +218,13 @@ The thresholds are defined for three levels of sensitivity: `Low`, `Medium` and 
 In addition there is an extra separation by ship sizes and its states - `Idle` or `Attack`. Currently the thresholds for attack state are lower than for idle state, because the ship is more likely to be damaged in attack state. But you can set it as you want.
 Each combination has its own slider, from `10%` to `100%` in steps of `5%`.
 
+### Fleet overview
+
+Two sliders for the `Protect Sector overview` screen, opened from the right-click menu of a ship running the order.
+
+- `History depth` - how many hours of 15-minute samples are kept for the screen, from `3` to `48`, default `24`. `0` turns the history off and drops what was recorded; the screen then shows the totals since the counters started.
+- `Auto-refresh` - how often the open screen fetches fresh numbers, from `30` seconds to `10` minutes in steps of `30` seconds, default `30` seconds. `0` leaves it to the `Refresh` button.
+
 ### Debug Level
 
 Sets how much the order writes to the game's debug log:

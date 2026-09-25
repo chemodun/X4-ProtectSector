@@ -84,7 +84,7 @@
       <t id="1333">Attack reactions</t>
       <t id="1334">Ships lost</t>
       <t id="1340">Targets tried</t>
-      <t id="1341">%s attempts over %s, too fast: %s m/s against our %s m/s</t>
+      <t id="1341">%s attempts over %s, too fast</t>
       <t id="1342">%s attempts over %s, stays out of sight</t>
       <t id="1343">%s attempts over %s</t>
       <t id="1344">Could not catch</t>
@@ -104,8 +104,9 @@
       <t id="90004">Seuil de pourcentage de coque \(plus bas que\)</t>
       <t id="90005">Inactif</t>
       <t id="90006">Attaque</t>
-      <t id="90100">Fleet report history</t>
+      <t id="90100">Fleet overview</t>
       <t id="90101">History depth, 0 = off</t>
+      <t id="90102">Auto-refresh, 0 = off</t>
       <t id="90900">Débogage</t>
       <t id="90910">Niveau de débogage</t>
       <t id="90911">Aucun</t>
