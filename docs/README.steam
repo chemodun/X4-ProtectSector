@@ -5,15 +5,33 @@ This is useful when you want to prevent hostile ships to attack your ships and s
 
 [h2][b]Compatibility[/b][/h2]
 
-Compatible with [b]X4: Foundations 7.50[/b] and upper.
+Compatible with [b]X4: Foundations 8.00[/b] and upper. For [b]7.50[/b] and [b]7.60[/b] use the version [b]1.18[/b] of this extension.
 
+[h2][b]Requirements[/b][/h2]
+[list]
+[*] [b]Mod Support APIs[/b] by [url=https://next.nexusmods.com/profile/sirnukes?gameId=2659]SirNukes[/url] to be installed and enabled. Version [b]1.95[/b] and upper is required.
+[list]
+[*] It is available via Steam - [url=https://steamcommunity.com/sharedfiles/filedetails/?id=2042901274]SirNukes Mod Support APIs[/url]
+[*] Or via the Nexus Mods - [url=https://www.nexusmods.com/x4foundations/mods/503]Mod Support APIs[/url]
+[/list]
+[*] `Options Helper`, to provide the in-game options page. Version [b]1.10[/b] and upper is required.
+[list]
+[*] It is available via Steam - [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3715253556]Options Helper[/url]
+[*] Or via the Nexus Mods - [url=https://www.nexusmods.com/x4foundations/mods/2089]Options Helper[/url]
+[/list]
+[*] `Print Extension List`, to record the game version and the enabled extensions in the log. Version [b]1.00[/b] and upper is required.
+[list]
+[*] It is available via Steam - [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3770927339]Print Extension List[/url]
+[*] Or via the Nexus Mods - [url=https://www.nexusmods.com/x4foundations/mods/2191]Print Extension List[/url]
+[/list]
+[/list]
 [h2][b]Features[/b][/h2]
 [list]
 [*] Always the closest possible target will be selected to attack.
 [*] Several ships/fleets with one order can work in one sector or crossed sectors.
 [*] [b]Mimic[/b] order in a fleet is fully supported. But, again, not set single ship to mimic mode - use the fleet instead.
 [*] The [b]Lost Ship Replacement[/b] feature is fully supported.
-[*] The own ([b]Experimental[/b]) order for station attacks is available.
+[*] The own (`Experimental`) order for station attacks is available.
 [*] The workaround for player ships repairing/restocking not only in current sector is implemented based on received damage sensitivity levels.
 [/list]
 [h2][b]Download[/b][/h2]
@@ -101,9 +119,9 @@ If enabled, the ship will attack only hostile targets. It will use the appropria
 
 [h2]By negative relation[/h2]
 
-This is a slider to define the relation to the [b]Player[/b]. Take in account - relation is shown as [b]positive[/b] value, due to limitation of the game engine.
-So, if you want to attack the ships with relation [b]-10[/b] and lower - you have to set the value to [b]10[/b].
-Default value is [b]25[/b], i.e. attack the ships with relation [b]-25[/b] and lower.
+This is a slider to define the relation to the `Player`. Take in account - relation is shown as [b]positive[/b] value, due to limitation of the game engine.
+So, if you want to attack the ships with relation [b]-10[/b] and lower - you have to set the value to `10`.
+Default value is `25`, i.e. attack the ships with relation [b]-25[/b] and lower.
 
 Please take in account -  when previous parameter is enabled, you can set this one in between 25 and 30 (-25 and -30 relation).
 If the [b]Attack only hostile targets[/b] is disabled - the value can be set in between 0 and 30 (0 and -30 relation).
@@ -154,12 +172,12 @@ By default, it is [b]0 percent[/b] - i.e. disabled this check.
 
 [h2]Received damage sensitivity[/h2]
 
-There is three levels: 1 - [b]Low[/b], 2 - [b]Medium[/b], 3 - [b]High[/b]. Default value is [b]2[/b] - [b]Medium[/b]. Use it to set the sensitivity of the ship to the received damage. The higher value, the more likely the ship will try to move out for repair. Appropriate hull percentage thresholds can be set in the [b]Extension options[/b] menu.
+There is three levels: 1 - `Low`, 2 - `Medium`, 3 - `High`. Default value is [b]2[/b] - `Medium`. Use it to set the sensitivity of the ship to the received damage. The higher value, the more likely the ship will try to move out for repair. Appropriate hull percentage thresholds can be set in the [b]Extension options[/b] menu.
 
 [h2]Ignore blacklists[/h2]
 
 [b]Disabled[/b] by default, but in case of "upgrade" from the previous versions, it will be enabled by default to keep the same behavior as before.
-If enabled, the ship will ignore blacklists when going to and protecting the [b]Home sector[/b]. Equal to the behavior of the order before version [b]1.15[/b]. Otherwise, when not set, the order will use [b]military[/b] blacklist group to reach and protect the [b]Home sector[/b].
+If enabled, the ship will ignore blacklists when going to and protecting the `Home sector`. Equal to the behavior of the order before version `1.15`. Otherwise, when not set, the order will use [b]military[/b] blacklist group to reach and protect the `Home sector`.
 
 [h2]Park on delay[/h2]
 
@@ -173,14 +191,14 @@ It's [b]optional[/b] parameter, it means - it can be skipped to set. By default 
 
 [h2]Delay between scans, seconds[/h2]
 
-Default value is [b]4 seconds[/b].
+Default value is `4 seconds`.
 If you want - you can set it in between 1 and 90 seconds, with step 4 seconds. Bigger value will make less load on the CPU...
 
 [h2]Ignore the threats of Hazardous zones[/h2]
 
 [b]Disabled[/b] by default.
 
-Please take in account, some sectors are not safe, even if the ship is not attacked. For example, the sectors with the hazardous zones, like [b]The Void[/b]. If ship is in the hazardous zone it's shield and then hull will be continuously damaged.
+Please take in account, some sectors are not safe, even if the ship is not attacked. For example, the sectors with the hazardous zones, like `The Void`. If ship is in the hazardous zone it's shield and then hull will be continuously damaged.
 From version 1.15 [b]Protect Sector[/b] order will raise a fault state for order. Appropriate message will be shown in the logbook.
 
 If you still want to use this order in the hazardous zone - you can enable this option. But please be aware - the ships can be destroyed in the hazardous zone, as there is no good solutions to avoid such zones.
@@ -193,20 +211,34 @@ If enabled, the ship will record the events to the logbook. I.e. starts, travel 
 
 [h2][b]Protect Sector common options[/b][/h2]
 
-These options is accessible via the [b]Extension options[/b] menu in case the [b]Mod Support APIs[/b] by [url=https://next.nexusmods.com/profile/sirnukes?gameId=2659]SirNukes[/url] is installed and enabled.
+These options are on the [b]Protect Sector[/b] page of the [b]Extension options[/b] menu.
 
 [img]https://raw.githubusercontent.com/chemodun/X4-ProtectSector/refs/heads/main/docs/images/extension_options.png[/img]
-
-There are several options available under the [b]Protect Sector[/b] section in the [b]Extension options[/b] menu.
 
 [img]https://raw.githubusercontent.com/chemodun/X4-ProtectSector/refs/heads/main/docs/images/protect_sector_options.png[/img]
 
 [h2]Ship Received Damage Sensitivity Thresholds[/h2]
 
 In this section you can set the hull percentage thresholds for the ship to react on the received damage. The ship will try to move out for repair when the hull percentage is less than defined threshold for the current sensitivity level.
-The thresholds are defined for three levels of sensitivity: [b]Low[/b], [b]Medium[/b] and [b]High[/b]. The higher level, the more likely the ship will try to move out for repair.
-In addition there is an extra separation by ship sizes and its states - [b]Idle[/b] or [b]Attack[/b]. Currently the thresholds for attack state are lower than for idle state, because the ship is more likely to be damaged in attack state. But you can set it as you want.
+The thresholds are defined for three levels of sensitivity: `Low`, [b]Medium[/b] and `High`. The higher level, the more likely the ship will try to move out for repair.
+In addition there is an extra separation by ship sizes and its states - [b]Idle[/b] or `Attack`. Currently the thresholds for attack state are lower than for idle state, because the ship is more likely to be damaged in attack state. But you can set it as you want.
+Each combination has its own slider, from [b]10%[/b] to [b]100%[/b] in steps of `5%`.
 
+[h2]Fleet overview[/h2]
+
+Two sliders for the [b]Protect Sector overview[/b] screen, opened from the right-click menu of a ship running the order.
+[list]
+[*] [b]History depth[/b] - how many hours of 15-minute samples are kept for the screen, from [b]3[/b] to `48`, default `24`. [b]0[/b] turns the history off and drops what was recorded; the screen then shows the totals since the counters started.
+[*] [b]Auto-refresh[/b] - how often the open screen fetches fresh numbers, from [b]30[/b] seconds to [b]10[/b] minutes in steps of [b]30[/b] seconds, default [b]30[/b] seconds. [b]0[/b] leaves it to the [b]Refresh[/b] button.
+[/list]
+[h2]Debug Level[/h2]
+
+Sets how much the order writes to the game's debug log:
+[list]
+[*] [b]None[/b] - nothing, the default.
+[*] [b]Debug[/b] - one compact line per state change of the order: target search, target selected, attack started and finished, going idle, re-scan, and similar. Please use this level for a log attached to a problem report.
+[*] [b]Trace[/b] - in addition, the detailed step-by-step output.
+[/list]
 [h2][b]Situation when nothing to attack[/b][/h2]
 
 If no Attack target is selected (i.e. no station and no any ship types are selected) - the ship's captain will periodically call to the player to inform about absence of the order.

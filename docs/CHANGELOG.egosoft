@@ -1,5 +1,46 @@
 [size=140][u]Changelog[/u][/size]
 
+[size=130][u][1.19] - 2026-09-??[/u][/size]
+[list]
+[*] Fixed
+[list]
+[*] An idle ship (or fleet leader) did not re-scan its sector every few seconds as intended, a regression since version `1.13`. It reacted to a new enemy only when its idle delay ran out: 4 minutes for S/M, 9 for L, 15 for XL. The periodic re-scan works again.
+[*] Fewer script errors in the debug log after loading a save.
+[*] An idle ship could stay idle for good, never waking for its periodic re-scan or its idle timeout, in roughly one idle out of fifteen.
+[*] Subordinates set to mimic a commander running [b]Protect Sector[/b] ignored the commander's parking, damage sensitivity, ignore blacklists and aggressive subordinates settings and used the defaults, logging a script error each time they started the order.
+[*] A ship set to park in its sector could fail to see that it had already reached its parking position and repeat the parking move every few seconds for as long as it was idle.
+[*] A ship could stay locked in one attack for an hour or more, mostly against Kha'ak out of the player's sector: the attack restarted every few seconds on a target the ship could not see, and was never broken off. It now breaks off within a minute and leaves that target alone for five minutes, also across an order restart or a save reload, unless the target attacks one of your ships.
+[*] The experimental [b]Attack Station[/b] mode could stop with a script error when the ship came into contact with the station.
+[*] The station check could log a script error when a station or build storage found by the scan had disappeared, or could not be measured, by the time the ship got to it.
+[*] An idle ship could run its periodic re-scan of the sector two to six times as often as intended after an interrupted idle, which cost extra script time in busy sectors and inflated the scan count.
+[*] An idle ship with station attacks enabled woke every 30 seconds for the build storage of a hostile station under construction that it never attacks, restarting its idle each time.
+[*] A ship parked in a sector with a hazardous region drifted away from its parking point while idle and kept flying back to it.
+[*] A fleet leader in a long fight ran one extra check of its subordinates for every attack in that fight instead of a single one; with [b]Aggressive subordinates[/b] on, their attack orders were cancelled and re-issued more often than intended.
+[*] A ship that had to chase its target again after breaking off at long range could give the chase up too early, because the approach attempts from earlier in the same fight still counted.
+[*] A ship stopped by a hazardous region in its sector (with [b]Ignore the threats of Hazardous zones[/b] off) went back to patrolling when one of your ships there was attacked, while the order was still shown as failed. It now stays stopped until the next hazard check.
+[*] A ship flying back to its sector from elsewhere arrived at a point that depended on the gate it came through, not at its parking position.
+[*] A ship could hang next to an enemy that had docked or entered a highway, with its subordinates' orders flipping several times a second: the game's attack drops such a target at once and then picks it again. The ship now leaves that target alone for a minute. A target that the game's attack drops within 3 seconds, three times in a row, is left alone for two minutes.
+[*] A ship chasing a large target could fly up and down instead of closing in, and often gave up the chase. It chose again every few seconds whether to pass above or below the target, and short legs cut off by the target's zone changes counted as not closing in. It now keeps one side for the whole approach.
+[*] With [b]Aggressive subordinates[/b] on, subordinates were ordered to attack while their leader was still approaching the target, and those orders were cancelled at the leader's next step. They are now ordered to attack only once the leader attacks.
+[*] In areas that reduce radar range, a ship started its attack from farther away than its radar could reach, then flew at the target for a minute without firing and gave up. The attack distance now follows the ship's current radar range.
+[*] A ship that lost sight of its target mid-attack gave it up at once and called its subordinates back, even when the target was still on the map and close. While the target is on the map and within radar range, the ship now restarts the attack; within twice that range it flies after it and gives up only if it cannot close in. Subordinates already attacking it carry on.
+[/list]
+[*] Changed
+[list]
+[*] The [b]Extension options[/b] page is now built with `Options Helper`: the damage sensitivity thresholds are sliders, and a [b]Debug Level[/b] dropdown (`None`, `Debug`, `Trace`) replaces the [b]Enable debug log[/b] checkbox. Settings from the old page are carried over once.
+[*] `Mod Support APIs`, [b]Options Helper[/b] and [b]Print Extension List[/b] are now required, which raises the minimum game version to `8.00`. For [b]7.50[/b] and [b]7.60[/b] use version `1.18`.
+[*] Loading a save from an earlier version restarts [b]Protect Sector[/b] once on every ship running it, with the same settings, so the order runs entirely on the new logic.
+[*] When both station attack modes are selected, the [b]Coordinate Attack[/b] one is now unchecked on order start, leaving the experimental `Attack Station`, which was already the one used.
+[*] A ship with [b]Park on delay[/b] now stays at its parking point while idle, as described, instead of flying off to patrol after arriving, and returns to it after a fight.
+[*] While a [b]Protect Sector[/b] ship approaches or attacks its target, the game's own reaction to being attacked (the ship's [b]When attacked[/b] setting) no longer replaces the order with a short attack on the attacker, which dropped the current fight and restarted the order. While the ship has no target, the setting works as before.
+[*] When a target is destroyed, lost or the attack on it ends, the ship first looks for its next target among the rest of that target's fleet as it stood at the start of the attack, then among the targets its own subordinates are already fighting, and only then searches the whole sector again. The usual filters apply, and an attack on another of your ships does not interrupt that choice.
+[/list]
+[*] Added
+[list]
+[*] A [b]Protect Sector overview[/b] screen, opened from the right-click menu of a ship running the order or assisting one: every fleet on the order by home sector on the left; kills, attacks, time in combat, broken-off attacks, idle share, lowest hull, the subordinates with their own kills and the targets the fleet could not catch on the right. With the history on (`Extension options`, depth 3 to 48 hours, default 24) the numbers are shown for a window of 15 minutes to 24 hours that can be moved over the history; with it off, the totals since the counters started. A double-click on a target in [b]Targets tried[/b] narrows the list on the left to the sector, then to the fleet, that tried it most; a double-click on a fleet opens the map on its ship. The screen refreshes itself every 30 seconds; [b]Extension options[/b] sets the interval from 30 seconds to 10 minutes, or 0 for no automatic refresh.
+[*] The [b]Debug[/b] level writes one compact line per state change of the order, meant for troubleshooting long unattended sessions. [b]Trace[/b] adds the detailed output of the previous [b]Enable debug log[/b] option.
+[/list]
+[/list]
 [size=130][u][1.18] - 2026-07-20[/u][/size]
 [list]
 [*] Fixed
