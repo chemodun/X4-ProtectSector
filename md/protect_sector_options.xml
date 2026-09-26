@@ -23,13 +23,14 @@
         </library>
 
         <!-- hull keys: $hull_<class>_<state>_<sensitivity>, read by lib.protect.sector CheckAndSignalForDamage -->
-        <!-- $historyDepth in hours, 0 = no history; $overviewRefresh in seconds, 0 = no auto-refresh -->
-        <library name="Defaults" purpose="include_actions" version="3">
+        <!-- $historyDepth in hours, 0 = no history; $overviewRefresh in seconds, 0 = no auto-refresh; $coordination: the order reads it at every use, on it overrides the share-targets order parameter -->
+        <library name="Defaults" purpose="include_actions" version="4">
           <actions>
             <set_value name="$cfg" exact="table[
               $debugLevel = 'none',
               $historyDepth = 24,
               $overviewRefresh = 30,
+              $coordination = true,
               $hull_ship_s_idle_1 = 80, $hull_ship_s_idle_2 = 90, $hull_ship_s_idle_3 = 100,
               $hull_ship_s_attack_1 = 70, $hull_ship_s_attack_2 = 80, $hull_ship_s_attack_3 = 90,
               $hull_ship_m_idle_1 = 60, $hull_ship_m_idle_2 = 75, $hull_ship_m_idle_3 = 90,
@@ -56,13 +57,6 @@
               </do_for_each>
             </do_else>
             <remove_value name="$cfg" />
-            <!-- keys of the dropped 1.19 logbook report -->
-            <do_if value="@player.entity.$ProtectSectorConfig.$reportInterval != null">
-              <remove_value name="player.entity.$ProtectSectorConfig.$reportInterval" />
-            </do_if>
-            <do_if value="@player.entity.$ProtectSectorConfig.$reportSkipQuiet != null">
-              <remove_value name="player.entity.$ProtectSectorConfig.$reportSkipQuiet" />
-            </do_if>
 
             <!-- one-time move from the pre-1.19 storage, which is then dropped -->
             <set_value name="$oldConfig" exact="@global.$chemODun.$protectSector" />
@@ -117,7 +111,7 @@
           </actions>
         </cue>
 
-        <cue name="Options_Menu" instantiate="true" version="4">
+        <cue name="Options_Menu" instantiate="true" version="5">
           <conditions>
             <event_cue_signalled />
           </conditions>
@@ -185,6 +179,27 @@
                 <param name="data" value="$cfg" />
                 <param name="handle" value="Handle_Slider_Changed" />
               </run_actions>
+
+              <run_actions ref="md.Options_Helper.Add_Title_Row">
+                <param name="title" value="{1972092401, 90200}" />
+              </run_actions>
+              <run_actions ref="md.Options_Helper.Add_Checkbox">
+                <param name="id" value="'coordination'" />
+                <param name="col" value="1" />
+                <param name="textColSpan" value="11" />
+                <param name="text" value="{1972092401, 90201}" />
+                <param name="data" value="$cfg" />
+                <param name="handle" value="Handle_Checkbox_Changed" />
+              </run_actions>
+              <signal_cue_instantly cue="md.Simple_Menu_API.Add_Row" param="table[$selectable = false]" />
+              <signal_cue_instantly cue="md.Simple_Menu_API.Make_Text"
+                param="table[
+                  $col = 1,
+                  $colSpan = 12,
+                  $halign = 'left',
+                  $wordwrap = true,
+                  $text = {1972092401, 90202},
+                ]" />
 
               <run_actions ref="md.Options_Helper.Add_Title_Row">
                 <param name="title" value="{1972092401, 90900}" />

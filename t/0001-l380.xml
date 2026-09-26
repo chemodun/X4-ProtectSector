@@ -81,7 +81,7 @@
       <t id="1330">Handed over to the station attack</t>
       <t id="1331">Lowest hull</t>
       <t id="1332">Scans, empty</t>
-      <t id="1333">Attack reactions</t>
+      <t id="1333"> - including reactions to attacks</t>
       <t id="1334">Ships lost</t>
       <t id="1340">Targets tried</t>
       <t id="1341">%s attempts over %s, too fast</t>
@@ -107,6 +107,9 @@
       <t id="90100">Fleet overview</t>
       <t id="90101">History depth, 0 = off</t>
       <t id="90102">Auto-refresh, 0 = off</t>
+      <t id="90200">Fleet coordination</t>
+      <t id="90201">Coordinate the fleets in a sector</t>
+      <t id="90202">The fleets on the order in one sector pick their targets together: a target another fleet already handles is left to it, one out of reach or too fast is skipped, a group too strong for one fleet is taken on together or held off. The order's "Share target with other" is ignored while on.</t>
       <t id="90900">Налагодження</t>
       <t id="90910">Рівень налагодження</t>
       <t id="90911">Відсутній</t>

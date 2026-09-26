@@ -150,6 +150,8 @@ If enabled, the subordinates will be more aggressive in attacking the targets. I
 
 If you have more than one ship or squad with the same order, you can disable this option to prevent them from attacking the same target.
 
+While `Fleet coordination` is on in the `Extension options` (see below), this parameter is ignored on every running order: the fleets of a sector share their targets and decide together who attacks what.
+
 ### Attack distance: percentage of radar range
 
 This setting allows you to define the ship behavior when the target is identified and selected.
@@ -224,6 +226,19 @@ Two sliders for the `Protect Sector overview` screen, opened from the right-clic
 
 - `History depth` - how many hours of 15-minute samples are kept for the screen, from `3` to `48`, default `24`. `0` turns the history off and drops what was recorded; the screen then shows the totals since the counters started.
 - `Auto-refresh` - how often the open screen fetches fresh numbers, from `30` seconds to `10` minutes in steps of `30` seconds, default `30` seconds. `0` leaves it to the `Refresh` button.
+
+### Fleet coordination
+
+`Enabled` by default.
+
+With the option on, the fleets running `Protect Sector` in the same sector pick their targets together. Before a fleet leader attacks a group of enemies, it weighs its own firepower and that of the fleets already fighting there against the group's:
+
+- a target that fleets nearer to it already handle with enough force is left to them; a fleet farther away than the leader does not count, so the leader attacks a close target itself rather than wait for it;
+- a target too far away, or too fast for the leader to catch, is skipped at once instead of being chased across the sector;
+- a group too strong for one fleet is taken on together: the leader calls the idle fleets nearby, or holds off with a logbook entry and a notification when no help is near;
+- a fleet whose fight turns against it calls for help once and breaks off if none comes.
+
+While the option is on, every running order behaves as if `Share target with other` were enabled; the order parameter itself is not changed. Turning the option off restores the previous behaviour at once, on every running order, without a restart.
 
 ### Debug Level
 
