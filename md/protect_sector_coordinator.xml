@@ -1,0 +1,1127 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mdscript name="ProtectSector_Coordinator" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="md.xsd">
+
+  <!-- The board every Protect Sector commander reports to and the only place a coordination decision is taken (claude/protectsector/13-central-coordinator-build.md).
+       player.entity.$ProtectSectorBoard = table[$fleets = table[{commander} = entry], $targets = table[{target} = entry]].
+       Ship to MD: signal 'ProtectSector.Board' on player.entity, param2 the commander, param3 table[$op, $state, $target, $vtarget, $why, $cands, $classes, $rel, $share, $home, $visibleOnly, $protect, $nonMil].
+       MD to ship: 'ProtectSector.Answer' (param2 target or null, param3 table[$why, $rule, $skips, $from, $victim]) and 'ProtectSector.BreakOff' (param2 target). -->
+  <cues>
+    <cue name="Coordinator" instantiate="false">
+      <actions>
+        <set_value name="Coordinator.$started" exact="player.age" />
+      </actions>
+      <cues>
+
+        <library name="Consts" purpose="include_actions">
+          <actions>
+            <set_value name="$ksolo" exact="1.5" />
+            <set_value name="$kmin" exact="0.7" />
+            <set_value name="$kbreak" exact="0.4" />
+            <set_value name="$radius" exact="10km" />
+            <set_value name="$reach" exact="100km" />
+            <set_value name="$speedFactor" exact="0.9" />
+            <set_value name="$handoffMargin" exact="5km" />
+            <set_value name="$groupCache" exact="5s" />
+            <set_value name="$powerCache" exact="10s" />
+            <set_value name="$assignTtl" exact="20s" />
+            <set_value name="$resendTtl" exact="10s" />
+            <set_value name="$helpWait" exact="60s" />
+            <set_value name="$requestTtl" exact="10min" />
+            <set_value name="$respCooldown" exact="30s" />
+            <set_value name="$declineTtl" exact="5min" />
+            <set_value name="$psV900" exact="player.gameversion ge 900" />
+            <set_value name="$psPolicy" exact="@player.entity.$ProtectSectorConfig.$coordination == true" />
+            <set_value name="$psPreemptOn" exact="@player.entity.$ProtectSectorConfig.$respPriority == true" />
+            <!-- engagements an attack response never takes a fleet off -->
+            <set_value name="$preemptKeep" exact="['resp', 'help', 'release']" />
+            <include_actions ref="md.ProtectSector_Options.ReadDebugChances" />
+          </actions>
+        </library>
+
+        <library name="BoardEnsure" purpose="include_actions">
+          <actions>
+            <do_if value="@player.entity.$ProtectSectorBoard == null">
+              <set_value name="player.entity.$ProtectSectorBoard" exact="table[$fleets = table[], $targets = table[]]" />
+            </do_if>
+            <set_value name="$psB" exact="player.entity.$ProtectSectorBoard" />
+          </actions>
+        </library>
+
+        <!-- $psF the commander, $psP the payload: makes or refreshes the fleet entry $psFE; the settings are taken from every message that carries them -->
+        <library name="FleetEntry" purpose="include_actions">
+          <actions>
+            <do_if value="not $psB.$fleets.{$psF}?">
+              <set_value name="$psB.$fleets.{$psF}" exact="table[$state = 'idle', $target = null, $since = player.age, $assigned = null, $assignedAt = null, $power = 0.0, $powerAt = null, $share = true]" />
+            </do_if>
+            <set_value name="$psFE" exact="$psB.$fleets.{$psF}" />
+            <do_if value="@$psP.$classes != null">
+              <set_value name="$psFE.$classes" exact="$psP.$classes" />
+              <set_value name="$psFE.$rel" exact="$psP.$rel" />
+              <set_value name="$psFE.$share" exact="@$psP.$share == true" />
+              <set_value name="$psFE.$home" exact="@$psP.$home" />
+              <set_value name="$psFE.$visibleOnly" exact="@$psP.$visibleOnly == true" />
+              <set_value name="$psFE.$protect" exact="@$psP.$protect == true" />
+              <set_value name="$psFE.$nonMil" exact="@$psP.$nonMil == true" />
+            </do_if>
+          </actions>
+        </library>
+
+        <!-- $psT the target: makes or refreshes the target entry $psTE; $psVia ('scan', 'attack' or null) is kept only by a new entry -->
+        <library name="TargetEntry" purpose="include_actions">
+          <actions>
+            <do_if value="not $psB.$targets.{$psT}?">
+              <set_value name="$psB.$targets.{$psT}" exact="table[$engaged = [], $pledged = [], $assigned = [], $declined = table[], $busy = false, $group = 0.0, $foes = 0, $fast = null, $groupAt = null, $ratio = null, $help = null, $holdNotified = null, $respAt = null, $via = @$psVia, $seen = player.age]" />
+            </do_if>
+            <set_value name="$psTE" exact="$psB.$targets.{$psT}" />
+            <set_value name="$psTE.$seen" exact="player.age" />
+          </actions>
+        </library>
+
+        <!-- takes $psF off every target's engaged and assigned lists; $psKeepPledge true leaves its pledges, $psKeepAssigned true its assignments -->
+        <library name="Detach" purpose="include_actions">
+          <actions>
+            <do_for_each name="$psDk" valuename="$psDe" in="$psB.$targets">
+              <do_if value="$psDe.$engaged.indexof.{$psF}">
+                <set_value name="$psDl" exact="$psDe.$engaged" />
+                <remove_from_list name="$psDl" exact="$psF" />
+                <set_value name="$psDe.$engaged" exact="$psDl" />
+              </do_if>
+              <do_if value="not @$psKeepAssigned and $psDe.$assigned.indexof.{$psF}">
+                <set_value name="$psDl" exact="$psDe.$assigned" />
+                <remove_from_list name="$psDl" exact="$psF" />
+                <set_value name="$psDe.$assigned" exact="$psDl" />
+              </do_if>
+              <do_if value="not @$psKeepPledge and $psDe.$pledged.indexof.{$psF}">
+                <set_value name="$psDl" exact="$psDe.$pledged" />
+                <remove_from_list name="$psDl" exact="$psF" />
+                <set_value name="$psDe.$pledged" exact="$psDl" />
+              </do_if>
+              <set_value name="$psDe.$busy" exact="$psDe.$engaged.count gt 0 or $psDe.$assigned.count gt 0" />
+            </do_for_each>
+            <remove_value name="$psDk" />
+            <remove_value name="$psDe" />
+            <remove_value name="$psDl" />
+          </actions>
+        </library>
+
+        <!-- drops fleets that left the order and targets that are gone or idle on the board for a minute -->
+        <library name="Prune" purpose="include_actions">
+          <actions>
+            <set_value name="$psDrop" exact="[]" />
+            <do_for_each name="$psPk" valuename="$psPe" in="$psB.$fleets">
+              <do_if value="not @$psPk.exists or not $psPk.isoperational or $psPk.iswreck or @$psPk.defaultorder.id != 'ProtectSector'">
+                <append_to_list name="$psDrop" exact="$psPk" />
+              </do_if>
+            </do_for_each>
+            <do_for_each name="$psPk" in="$psDrop">
+              <set_value name="$psF" exact="$psPk" />
+              <include_actions ref="Detach" />
+              <remove_value name="$psB.$fleets.{$psPk}" />
+            </do_for_each>
+            <set_value name="$psDrop" exact="[]" />
+            <do_for_each name="$psPk" valuename="$psPe" in="$psB.$targets">
+              <do_if value="not @$psPk.exists or $psPk.iswreck or ($psPe.$engaged.count == 0 and $psPe.$pledged.count == 0 and $psPe.$assigned.count == 0 and $psPe.$help == null and player.age - $psPe.$seen gt 60s)">
+                <append_to_list name="$psDrop" exact="$psPk" />
+              </do_if>
+              <do_else>
+                <!-- an assignment the ship never confirmed -->
+                <do_for_each name="$psPa" in="$psPe.$assigned.clone">
+                  <do_if value="not $psB.$fleets.{$psPa}? or (player.age - @$psB.$fleets.{$psPa}.$assignedAt gt $assignTtl)">
+                    <set_value name="$psDl" exact="$psPe.$assigned" />
+                    <remove_from_list name="$psDl" exact="$psPa" />
+                    <set_value name="$psPe.$assigned" exact="$psDl" />
+                    <do_if value="$psB.$fleets.{$psPa}? and @$psB.$fleets.{$psPa}.$assigned == $psPk">
+                      <set_value name="$psB.$fleets.{$psPa}.$assigned" exact="null" />
+                    </do_if>
+                  </do_if>
+                </do_for_each>
+                <set_value name="$psPe.$busy" exact="$psPe.$engaged.count gt 0 or $psPe.$assigned.count gt 0" />
+              </do_else>
+            </do_for_each>
+            <do_for_each name="$psPk" in="$psDrop">
+              <remove_value name="$psB.$targets.{$psPk}" />
+            </do_for_each>
+            <remove_value name="$psDrop" />
+            <remove_value name="$psPk" />
+            <remove_value name="$psPe" />
+            <remove_value name="$psPa" />
+            <remove_value name="$psDl" />
+          </actions>
+        </library>
+
+        <!-- $psPwF a commander, $psPwE its entry: $psPower = dps x hit points of it and its subordinates in its sector, cached -->
+        <library name="FleetPower" purpose="include_actions">
+          <actions>
+            <do_if value="@$psPwE.$powerAt == null or player.age - $psPwE.$powerAt gt $powerCache">
+              <set_value name="$psPwDps" exact="0.0" />
+              <set_value name="$psPwHp" exact="0" />
+              <do_if value="$psPwF.exists and $psPwF.isoperational and not $psPwF.iswreck">
+                <set_value name="$psPwDps" exact="$psPwF.dps.all" />
+                <set_value name="$psPwHp" exact="$psPwF.hull + $psPwF.shield" />
+                <do_for_each name="$psPwS" in="$psPwF.allsubordinates">
+                  <do_if value="$psPwS.exists and $psPwS.isoperational and not $psPwS.iswreck and $psPwS.sector == $psPwF.sector">
+                    <set_value name="$psPwDps" operation="add" exact="$psPwS.dps.all" />
+                    <set_value name="$psPwHp" operation="add" exact="$psPwS.hull + $psPwS.shield" />
+                  </do_if>
+                </do_for_each>
+              </do_if>
+              <set_value name="$psPwE.$power" exact="$psPwDps * $psPwHp" />
+              <set_value name="$psPwE.$powerAt" exact="player.age" />
+            </do_if>
+            <set_value name="$psPower" exact="$psPwE.$power" />
+          </actions>
+        </library>
+
+        <!-- $psT, $psTE: the target's faction within $radius of it as $psGroup (dps x hit points), $psFoes, $psFast; cached on the entry -->
+        <library name="GroupEval" purpose="include_actions">
+          <actions>
+            <do_if value="@$psTE.$groupAt == null or player.age - $psTE.$groupAt gt $groupCache">
+              <set_value name="$psGeDps" exact="0.0" />
+              <set_value name="$psGeHp" exact="0" />
+              <set_value name="$psGeN" exact="0" />
+              <set_value name="$psGeFast" exact="@$psT.maxspeed" />
+              <do_if value="@$psT.sector != null">
+                <find_ship name="$psGeList" space="$psT.sector" trueowner="$psT.trueowner" class="[class.ship_xs, class.ship_s, class.ship_m, class.ship_l, class.ship_xl]"
+                  multiple="true" recursive="true" checkoperational="true" docked="false" sortbydistanceto="$psT" sortdescending="false">
+                  <match_pilot race="race.drone" negate="true" />
+                </find_ship>
+                <do_for_each name="$psGeF" in="$psGeList">
+                  <do_if value="$psGeF.distanceto.{$psT} gt $radius">
+                    <break />
+                  </do_if>
+                  <set_value name="$psGeN" operation="add" />
+                  <set_value name="$psGeDps" operation="add" exact="$psGeF.dps.all" />
+                  <set_value name="$psGeHp" operation="add" exact="$psGeF.hull + $psGeF.shield" />
+                  <do_if value="$psGeF.maxspeed gt $psGeFast">
+                    <set_value name="$psGeFast" exact="$psGeF.maxspeed" />
+                  </do_if>
+                </do_for_each>
+              </do_if>
+              <set_value name="$psTE.$group" exact="$psGeDps * $psGeHp" />
+              <set_value name="$psTE.$foes" exact="$psGeN" />
+              <set_value name="$psTE.$fast" exact="$psGeFast" />
+              <set_value name="$psTE.$groupAt" exact="player.age" />
+              <remove_value name="$psGeList" />
+              <remove_value name="$psGeF" />
+            </do_if>
+            <set_value name="$psGroup" exact="$psTE.$group" />
+            <set_value name="$psFoes" exact="$psTE.$foes" />
+            <set_value name="$psFast" exact="$psTE.$fast" />
+          </actions>
+        </library>
+
+        <!-- $psH a fleet, $psHE its entry, $psT, $psTE, $psMulti, $psPreempt: $psOk when it may take $psT now, by its own settings; $psHD its distance, $psNo the first rule it failed -->
+        <library name="Eligible" purpose="include_actions">
+          <actions>
+            <set_value name="$psHD" exact="null" />
+            <set_value name="$psNo" exact="null" />
+            <do_if value="not $psH.exists or not $psH.isoperational or $psH.iswreck or @$psH.defaultorder.id != 'ProtectSector'">
+              <set_value name="$psNo" exact="'gone'" />
+            </do_if>
+            <do_elseif value="$psH.order != $psH.defaultorder">
+              <set_value name="$psNo" exact="'order'" />
+            </do_elseif>
+            <!-- $psPreempt (attack response, option on): a fleet on an ordinary pick may be taken off it -->
+            <do_elseif value="$psHE.$state != 'idle' and not (@$psPreempt and $psHE.$state == 'engaged' and not $preemptKeep.indexof.{@$psHE.$why})">
+              <set_value name="$psNo" exact="$psHE.$state" />
+            </do_elseif>
+            <do_elseif value="@$psHE.$assigned != null and player.age - $psHE.$assignedAt le $assignTtl">
+              <set_value name="$psNo" exact="'assigned'" />
+            </do_elseif>
+            <do_elseif value="@$psHE.$classes == null">
+              <set_value name="$psNo" exact="'nosettings'" />
+            </do_elseif>
+            <do_elseif value="@$psTE.$declined.{$psH} != null and player.age - $psTE.$declined.{$psH} le $declineTtl">
+              <set_value name="$psNo" exact="'declined'" />
+            </do_elseif>
+            <do_elseif value="$psH.sector != $psT.sector">
+              <set_value name="$psNo" exact="'sector'" />
+            </do_elseif>
+            <do_elseif value="$psHE.$home != $psH.sector">
+              <set_value name="$psNo" exact="'home'" />
+            </do_elseif>
+            <do_elseif value="not $psT.isclass.{$psHE.$classes}">
+              <set_value name="$psNo" exact="'class'" />
+            </do_elseif>
+            <do_elseif value="$psT.relationto.{faction.player} gt $psHE.$rel">
+              <set_value name="$psNo" exact="'rel'" />
+            </do_elseif>
+            <do_elseif value="$psHE.$visibleOnly and not $psT.isinliveview">
+              <set_value name="$psNo" exact="'vis'" />
+            </do_elseif>
+            <do_elseif value="@$psH.pilot.$protectSectorFogHard.{$psT} != null and $psH.pilot.$protectSectorFogHard.{$psT} gt player.age">
+              <set_value name="$psNo" exact="'fog'" />
+            </do_elseif>
+            <do_elseif value="$psMulti and not $psHE.$share">
+              <set_value name="$psNo" exact="'share'" />
+            </do_elseif>
+            <do_else>
+              <set_value name="$psHD" exact="$psH.distanceto.{$psT}" />
+              <set_value name="$psHS" exact="if $psV900 and @$psH.unboostedmaxspeed != null then @$psH.unboostedmaxspeed else @$psH.maxspeed" />
+              <set_value name="$psTS" exact="if $psV900 and @$psT.unboostedmaxspeed != null then @$psT.unboostedmaxspeed else @$psT.maxspeed" />
+              <do_if value="$psHD gt $reach">
+                <set_value name="$psNo" exact="'reach'" />
+              </do_if>
+              <do_elseif value="$psHD gt $radius and @$psTS != null and @$psHS != null and $psHS lt $psTS * $speedFactor">
+                <set_value name="$psNo" exact="'speed'" />
+              </do_elseif>
+            </do_else>
+            <set_value name="$psOk" exact="$psNo == null" />
+          </actions>
+        </library>
+
+        <!-- $psF the asker (or null), $psT, $psTE, $psDist: the fleets already on the target other than the asker -->
+        <library name="Peers" purpose="include_actions">
+          <actions>
+            <set_value name="$psCommitted" exact="0.0" />
+            <set_value name="$psCommittedNear" exact="0.0" />
+            <set_value name="$psSameNear" exact="null" />
+            <set_value name="$psOthers" exact="0" />
+            <set_value name="$psExcl" exact="false" />
+            <set_value name="$psAllShare" exact="true" />
+            <set_value name="$psPrList" exact="$psTE.$engaged.clone" />
+            <do_for_each name="$psPr" in="$psTE.$assigned">
+              <do_if value="not $psPrList.indexof.{$psPr}">
+                <append_to_list name="$psPrList" exact="$psPr" />
+              </do_if>
+            </do_for_each>
+            <do_for_each name="$psPr" in="$psPrList">
+              <do_if value="$psPr != @$psF and $psB.$fleets.{$psPr}? and $psPr.exists">
+                <set_value name="$psPwF" exact="$psPr" />
+                <set_value name="$psPwE" exact="$psB.$fleets.{$psPr}" />
+                <include_actions ref="FleetPower" />
+                <set_value name="$psOthers" operation="add" />
+                <set_value name="$psCommitted" operation="add" exact="$psPower" />
+                <set_value name="$psPrD" exact="$psPr.distanceto.{$psT}" />
+                <do_if value="@$psDist != null and $psPrD lt $psDist">
+                  <set_value name="$psCommittedNear" operation="add" exact="$psPower" />
+                </do_if>
+                <!-- not $psSameNear == null: a distance of 0 compares equal to null -->
+                <do_if value="$psOthers == 1 or $psPrD lt $psSameNear">
+                  <set_value name="$psSameNear" exact="$psPrD" />
+                </do_if>
+                <do_if value="not $psPwE.$share">
+                  <set_value name="$psExcl" exact="true" />
+                  <set_value name="$psAllShare" exact="false" />
+                </do_if>
+              </do_if>
+            </do_for_each>
+            <remove_value name="$psPrList" />
+            <remove_value name="$psPr" />
+            <remove_value name="$psPrD" />
+          </actions>
+        </library>
+
+        <!-- $psF the asker (or null), $psT, $psTE: the registered fleets in the target's sector; $psHelpers the sharing idle ones that may take it, $psNearestIdle the nearest idle one whatever its share flag -->
+        <library name="Helpers" purpose="include_actions">
+          <actions>
+            <set_value name="$psHelpers" exact="[]" />
+            <set_value name="$psNearestIdle" exact="null" />
+            <set_value name="$psNearestIdleDist" exact="null" />
+            <set_value name="$psPeersN" exact="0" />
+            <set_value name="$psIdleN" exact="0" />
+            <set_value name="$psBusyN" exact="0" />
+            <set_value name="$psNearAny" exact="null" />
+            <do_for_each name="$psH" valuename="$psHE" in="$psB.$fleets">
+              <do_if value="$psH != @$psF and $psH.exists and $psH.sector == $psT.sector">
+                <set_value name="$psPeersN" operation="add" />
+                <do_if value="$psHE.$state == 'engaged'">
+                  <set_value name="$psBusyN" operation="add" />
+                </do_if>
+                <do_else>
+                  <set_value name="$psIdleN" operation="add" />
+                </do_else>
+                <set_value name="$psHD0" exact="$psH.distanceto.{$psT}" />
+                <do_if value="$psNearAny == null or $psHD0 lt $psNearAny">
+                  <set_value name="$psNearAny" exact="$psHD0" />
+                </do_if>
+                <set_value name="$psMulti" exact="false" />
+                <include_actions ref="Eligible" />
+                <do_if value="$psOk">
+                  <do_if value="$psNearestIdle == null or $psHD lt $psNearestIdleDist">
+                    <set_value name="$psNearestIdle" exact="$psH" />
+                    <set_value name="$psNearestIdleDist" exact="$psHD" />
+                  </do_if>
+                  <do_if value="$psHE.$share">
+                    <append_to_list name="$psHelpers" exact="$psH" />
+                  </do_if>
+                </do_if>
+              </do_if>
+            </do_for_each>
+            <remove_value name="$psH" />
+            <remove_value name="$psHE" />
+            <remove_value name="$psHD0" />
+          </actions>
+        </library>
+
+        <!-- $psAnF the fleet, $psAnT the target, $psAnWhy, $psAnRule, $psAnFrom, $psAnVictim, $psAnSkips: records the assignment and signals the ship -->
+        <library name="Answer" purpose="include_actions">
+          <actions>
+            <do_if value="$psB.$fleets.{$psAnF}?">
+              <set_value name="$psB.$fleets.{$psAnF}.$assigned" exact="$psAnT" />
+              <set_value name="$psB.$fleets.{$psAnF}.$assignedAt" exact="player.age" />
+              <!-- kept for one re-send at the fleet's next ask: a signal landing while the ship resumes is never handled -->
+              <set_value name="$psB.$fleets.{$psAnF}.$answer" exact="table[$why = $psAnWhy, $rule = @$psAnRule, $from = @$psAnFrom, $victim = @$psAnVictim]" />
+              <set_value name="$psB.$fleets.{$psAnF}.$resent" exact="false" />
+              <set_value name="$psB.$fleets.{$psAnF}.$brokeOff" exact="null" />
+            </do_if>
+            <do_if value="$psB.$targets.{$psAnT}?">
+              <set_value name="$psAnTE" exact="$psB.$targets.{$psAnT}" />
+              <do_if value="not $psAnTE.$assigned.indexof.{$psAnF} and not $psAnTE.$engaged.indexof.{$psAnF}">
+                <set_value name="$psDl" exact="$psAnTE.$assigned" />
+                <append_to_list name="$psDl" exact="$psAnF" />
+                <set_value name="$psAnTE.$assigned" exact="$psDl" />
+              </do_if>
+              <set_value name="$psAnTE.$busy" exact="true" />
+              <remove_value name="$psAnTE" />
+              <remove_value name="$psDl" />
+            </do_if>
+            <signal_objects object="$psAnF" param="'ProtectSector.Answer'" param2="$psAnT" param3="table[$why = $psAnWhy, $rule = @$psAnRule, $skips = @$psAnSkips, $from = @$psAnFrom, $victim = @$psAnVictim, $preempt = @$psAnPreempt == true]" />
+            <debug_text text="'PS1|%s|%s|%s|%s|board|op=answer|target=%s|why=%s|rule=%s|from=%s|skips=%s'.[player.age, $psAnF.debugname, $psAnF.class, @$psAnF.sector.debugname, $psAnT.debugname, $psAnWhy, @$psAnRule, @$psAnFrom.debugname, @$psAnSkips.count]" chance="$traceChance" />
+          </actions>
+        </library>
+
+        <!-- $psT, $psTE: releases the pledged fleets together once their power with the committed one reaches Kmin x group; $psReleased; the asker $psF gets $psSkips with its answer -->
+        <library name="Release" purpose="include_actions">
+          <actions>
+            <set_value name="$psReleased" exact="false" />
+            <do_if value="$psTE.$pledged.count gt 0">
+              <include_actions ref="GroupEval" />
+              <set_value name="$psRlPower" exact="0.0" />
+              <set_value name="$psRlKeep" exact="[]" />
+              <do_for_each name="$psRl" in="$psTE.$pledged">
+                <do_if value="$psB.$fleets.{$psRl}? and $psRl.exists and $psRl.isoperational and @$psB.$fleets.{$psRl}.$state == 'idle' and $psRl.sector == $psT.sector">
+                  <set_value name="$psPwF" exact="$psRl" />
+                  <set_value name="$psPwE" exact="$psB.$fleets.{$psRl}" />
+                  <include_actions ref="FleetPower" />
+                  <set_value name="$psRlPower" operation="add" exact="$psPower" />
+                  <append_to_list name="$psRlKeep" exact="$psRl" />
+                </do_if>
+              </do_for_each>
+              <set_value name="$psTE.$pledged" exact="$psRlKeep" />
+              <do_for_each name="$psRl" in="$psTE.$engaged">
+                <do_if value="$psB.$fleets.{$psRl}? and $psRl.exists">
+                  <set_value name="$psPwF" exact="$psRl" />
+                  <set_value name="$psPwE" exact="$psB.$fleets.{$psRl}" />
+                  <include_actions ref="FleetPower" />
+                  <set_value name="$psRlPower" operation="add" exact="$psPower" />
+                </do_if>
+              </do_for_each>
+              <do_if value="$psRlKeep.count gt 0 and ($psGroup le 0 or $psRlPower ge $kmin * $psGroup)">
+                <do_for_each name="$psRl" in="$psRlKeep">
+                  <set_value name="$psAnF" exact="$psRl" />
+                  <set_value name="$psAnT" exact="$psT" />
+                  <set_value name="$psAnWhy" exact="'release'" />
+                  <set_value name="$psAnRule" exact="''" />
+                  <set_value name="$psAnFrom" exact="null" />
+                  <set_value name="$psAnVictim" exact="null" />
+                  <set_value name="$psAnSkips" exact="if $psRl == @$psF then @$psSkips else []" />
+                  <include_actions ref="Answer" />
+                </do_for_each>
+                <set_value name="$psTE.$pledged" exact="[]" />
+                <set_value name="$psReleased" exact="true" />
+              </do_if>
+              <remove_value name="$psRlPower" />
+              <remove_value name="$psRlKeep" />
+              <remove_value name="$psRl" />
+            </do_if>
+          </actions>
+        </library>
+
+        <!-- one logbook entry and one notification per target per hour, on the fleet $psF -->
+        <library name="HoldNotify" purpose="include_actions">
+          <actions>
+            <do_if value="@$psTE.$holdNotified == null or player.age - $psTE.$holdNotified ge 1h">
+              <set_value name="$psTE.$holdNotified" exact="player.age" />
+              <set_value name="$psHnUnit" exact="{1972092401, 1011}.[$psF.name, $psF.idcode]" />
+              <set_value name="$psHnEnemy" exact="{1972092401, 1013}.[if $psT.isclass.station then {1972092401, 1002} else {1972092401, 1001}, $psT.name, $psT.idcode]" />
+              <set_value name="$psHnText" exact="{1972092401, 1051}.[$psHnUnit, $psHnEnemy, {1972092401, 1003}.[@$psT.sector.knownname], @$psFoes, (if @$psRatioAll != null and $psRatioAll ge 0 then ($psRatioAll * 100)i else 0)]" />
+              <write_to_logbook category="general" title="{1972092401, 1000}" text="$psHnText" interaction="showonmap" object="$psF" />
+              <show_notification text="'%s\n%s'.[{1972092401, 1000}, $psHnText]" priority="1" />
+              <remove_value name="$psHnUnit" />
+              <remove_value name="$psHnEnemy" />
+              <remove_value name="$psHnText" />
+            </do_if>
+          </actions>
+        </library>
+
+        <!-- $psF the asker, $psFE, $psT, $psTE: $psWhy in yield, solo, handoff, join, help, hold and $psRule; fills the numbers the coord line prints -->
+        <library name="Verdict" purpose="include_actions">
+          <actions>
+            <set_value name="$psRule" exact="''" />
+            <set_value name="$psHelpers" exact="[]" />
+            <set_value name="$psNearestIdle" exact="null" />
+            <set_value name="$psRatio" exact="null" />
+            <set_value name="$psRatioAll" exact="null" />
+            <!-- the coord line of a later candidate in the same ask must not show this one's numbers -->
+            <set_value name="$psGroup" exact="null" />
+            <set_value name="$psFoes" exact="null" />
+            <set_value name="$psFast" exact="null" />
+            <set_value name="$psPower" exact="null" />
+            <set_value name="$psPeersN" exact="null" />
+            <set_value name="$psIdleN" exact="null" />
+            <set_value name="$psBusyN" exact="null" />
+            <set_value name="$psNearAny" exact="null" />
+            <set_value name="$psDist" exact="$psF.distanceto.{$psT}" />
+            <include_actions ref="Peers" />
+            <set_value name="$psTakeover" exact="false" />
+            <set_value name="$psVdFS" exact="if $psV900 and @$psF.unboostedmaxspeed != null then @$psF.unboostedmaxspeed else @$psF.maxspeed" />
+            <set_value name="$psVdTS" exact="if $psV900 and @$psT.unboostedmaxspeed != null then @$psT.unboostedmaxspeed else @$psT.maxspeed" />
+            <!-- the scan's busy pre-filter again: the target may have turned busy after the ship filtered -->
+            <do_if value="$psPolicy and $psOthers gt 0 and $psDist gt $reach">
+              <set_value name="$psWhy" exact="'yield'" />
+              <set_value name="$psRule" exact="'reach'" />
+            </do_if>
+            <do_elseif value="$psPolicy and $psOthers gt 0 and $psDist gt $radius and @$psVdTS != null and @$psVdFS != null and $psVdFS lt $psVdTS * $speedFactor">
+              <set_value name="$psWhy" exact="'yield'" />
+              <set_value name="$psRule" exact="'speed'" />
+            </do_elseif>
+            <!-- an exclusive target stays with the nearest fleet: a farther one on it is released, else vanilla's self-defence takes it from the asker -->
+            <do_elseif value="$psOthers gt 0 and ($psExcl or not $psFE.$share) and $psDist lt $psSameNear - $handoffMargin">
+              <set_value name="$psWhy" exact="'solo'" />
+              <set_value name="$psRule" exact="'nearer'" />
+              <set_value name="$psTakeover" exact="true" />
+            </do_elseif>
+            <do_elseif value="$psOthers gt 0 and ($psExcl or not $psFE.$share)">
+              <set_value name="$psWhy" exact="'yield'" />
+              <set_value name="$psRule" exact="'excl'" />
+            </do_elseif>
+            <do_elseif value="not $psPolicy">
+              <set_value name="$psWhy" exact="'solo'" />
+              <set_value name="$psRule" exact="'off'" />
+            </do_elseif>
+            <do_else>
+              <include_actions ref="GroupEval" />
+              <set_value name="$psPwF" exact="$psF" />
+              <set_value name="$psPwE" exact="$psFE" />
+              <include_actions ref="FleetPower" />
+              <set_value name="$psRatio" exact="if $psGroup gt 0 then $psPower / $psGroup else -1" />
+              <set_value name="$psRatioAll" exact="if $psGroup gt 0 then ($psPower + $psCommitted) / $psGroup else -1" />
+              <include_actions ref="Helpers" />
+              <!-- a yield to a farther peer would leak a close target to vanilla's attacked response -->
+              <do_if value="$psOthers gt 0 and $psSameNear lt $psDist and $psCommittedNear ge $ksolo * $psGroup">
+                <set_value name="$psWhy" exact="'yield'" />
+              </do_if>
+              <do_elseif value="$psGroup le 0 or $psRatio ge $ksolo">
+                <set_value name="$psWhy" exact="if $psNearestIdle != null and $psNearestIdleDist lt $psDist - $handoffMargin then 'handoff' else 'solo'" />
+                <!-- enough alone and nearer than every fleet on it: those are released, as on an exclusive target -->
+                <do_if value="$psWhy == 'solo' and $psOthers gt 0 and $psDist lt $psSameNear - $handoffMargin">
+                  <set_value name="$psRule" exact="'nearer'" />
+                  <set_value name="$psTakeover" exact="true" />
+                </do_if>
+              </do_elseif>
+              <do_elseif value="$psOthers gt 0 and $psRatioAll ge $ksolo and $psFE.$share and $psAllShare">
+                <set_value name="$psWhy" exact="'join'" />
+              </do_elseif>
+              <do_elseif value="$psFE.$share">
+                <set_value name="$psWhy" exact="if $psRatioAll ge $kmin or $psHelpers.count gt 0 then 'help' else 'hold'" />
+              </do_elseif>
+              <!-- an exclusive fleet goes alone where a sharing one would go and call for help -->
+              <do_elseif value="$psRatio ge $kmin">
+                <set_value name="$psWhy" exact="'solo'" />
+                <set_value name="$psRule" exact="'lone'" />
+              </do_elseif>
+              <do_else>
+                <set_value name="$psWhy" exact="'hold'" />
+              </do_else>
+            </do_else>
+          </actions>
+        </library>
+
+        <!-- $psF took $psT from the other fleets on it: each gets a BreakOff 'nearer' -->
+        <library name="Takeover" purpose="include_actions">
+          <actions>
+            <set_value name="$psBoList" exact="$psTE.$engaged.clone" />
+            <do_for_each name="$psBo" in="$psTE.$assigned">
+              <do_if value="not $psBoList.indexof.{$psBo}">
+                <append_to_list name="$psBoList" exact="$psBo" />
+              </do_if>
+            </do_for_each>
+            <do_for_each name="$psBo" in="$psBoList">
+              <do_if value="$psBo != $psF">
+                <set_value name="$psDl" exact="$psTE.$engaged" />
+                <remove_from_list name="$psDl" exact="$psBo" />
+                <set_value name="$psTE.$engaged" exact="$psDl" />
+                <set_value name="$psDl" exact="$psTE.$assigned" />
+                <remove_from_list name="$psDl" exact="$psBo" />
+                <set_value name="$psTE.$assigned" exact="$psDl" />
+                <signal_objects object="$psBo" param="'ProtectSector.BreakOff'" param2="$psT" param3="'nearer'" />
+                <!-- re-sent if the fleet still reports this target (the signal may have been lost) -->
+                <do_if value="$psB.$fleets.{$psBo}?">
+                  <set_value name="$psB.$fleets.{$psBo}.$brokeOff" exact="$psT" />
+                  <set_value name="$psB.$fleets.{$psBo}.$brokeOffAt" exact="player.age" />
+                  <do_if value="@$psB.$fleets.{$psBo}.$assigned == $psT">
+                    <set_value name="$psB.$fleets.{$psBo}.$assigned" exact="null" />
+                  </do_if>
+                </do_if>
+              </do_if>
+            </do_for_each>
+            <set_value name="$psTE.$busy" exact="$psTE.$engaged.count gt 0 or $psTE.$assigned.count gt 0" />
+            <remove_value name="$psBoList" />
+            <remove_value name="$psBo" />
+            <remove_value name="$psDl" />
+          </actions>
+        </library>
+
+        <!-- the calibration line, in the ship's column so the scanner attributes it to the fleet -->
+        <library name="CoordLine" purpose="include_actions">
+          <actions>
+            <debug_text text="'PS1|%s|%s|%s|%s|coord|id=%s|tclass=%s|tdist=%s|tspeed=%s|foes=%s|ffast=%s|group=%s|power=%s|ospeed=%s|ratio=%s|peers=%s|pidle=%s|pbusy=%s|psame=%s|pnear=%s|why=%s|rule=%s|cratio=%s|helpers=%s|snear=%s|ncratio=%s|policy=%s|src=%s|rall=%s|go=%s|rej=%s|far=%s'.[
+              player.age, $psF.debugname, $psF.class, @$psF.sector.debugname,
+              $psT.debugname, $psT.class, @$psDist,
+              if $psV900 and @$psT.unboostedmaxspeed != null then @$psT.unboostedmaxspeed else @$psT.maxspeed,
+              @$psFoes, @$psFast, @$psGroup, @$psPower,
+              if $psV900 and @$psF.unboostedmaxspeed != null then @$psF.unboostedmaxspeed else @$psF.maxspeed,
+              @$psRatio, @$psPeersN, @$psIdleN, @$psBusyN, @$psOthers, @$psNearAny, @$psWhy, @$psRule,
+              if @$psGroup gt 0 then $psCommitted / $psGroup else -1, @$psHelpers.count, @$psSameNear,
+              if @$psGroup gt 0 then $psCommittedNear / $psGroup else -1,
+              if $psPolicy then 'on' else 'off', @$psSrc, @$psRatioAll, @$psGo.count, @$psRej, if @$psFarUsed then 1 else 0
+            ]" chance="$debugChance" />
+            <!-- response-only fields: the next ask or tick line must not repeat them -->
+            <remove_value name="$psGo" />
+            <remove_value name="$psRej" />
+            <remove_value name="$psFarUsed" />
+          </actions>
+        </library>
+
+        <!-- opens the help request on $psT and offers it to $psHelpers; $psF the fleet asking -->
+        <library name="OfferHelp" purpose="include_actions">
+          <actions>
+            <do_if value="$psTE.$help == null">
+              <set_value name="$psTE.$help" exact="player.age" />
+            </do_if>
+            <do_for_each name="$psOh" in="$psHelpers">
+              <set_value name="$psAnF" exact="$psOh" />
+              <set_value name="$psAnT" exact="$psT" />
+              <set_value name="$psAnWhy" exact="'help'" />
+              <set_value name="$psAnRule" exact="''" />
+              <set_value name="$psAnFrom" exact="@$psF" />
+              <set_value name="$psAnVictim" exact="null" />
+              <set_value name="$psAnSkips" exact="[]" />
+              <include_actions ref="Answer" />
+            </do_for_each>
+            <remove_value name="$psOh" />
+          </actions>
+        </library>
+
+        <!-- every message from an order script -->
+        <cue name="Board" instantiate="true" version="4">
+          <conditions>
+            <event_object_signalled object="player.entity" param="'ProtectSector.Board'" />
+            <check_value value="@event.param2.exists and @event.param3.$op != null" />
+          </conditions>
+          <actions>
+            <include_actions ref="Consts" />
+            <include_actions ref="BoardEnsure" />
+            <set_value name="$psF" exact="event.param2" />
+            <set_value name="$psP" exact="event.param3" />
+            <set_value name="$psOp" exact="$psP.$op" />
+            <debug_text text="'PS1|%s|%s|%s|%s|board|op=%s|state=%s|target=%s|why=%s|cands=%s'.[player.age, $psF.debugname, $psF.class, @$psF.sector.debugname, $psOp, @$psP.$state, @$psP.$target.debugname, @$psP.$why, @$psP.$cands.count]" chance="$traceChance" />
+            <do_if value="$psOp == 'unregister'">
+              <include_actions ref="Detach" />
+              <do_if value="$psB.$fleets.{$psF}?">
+                <remove_value name="$psB.$fleets.{$psF}" />
+              </do_if>
+            </do_if>
+            <do_elseif value="@$psF.defaultorder.id == 'ProtectSector'">
+              <include_actions ref="FleetEntry" />
+
+              <do_if value="$psOp == 'state' or $psOp == 'hb'">
+                <set_value name="$psT" exact="@$psP.$target" />
+                <!-- a fleet reporting the target a nearer one took from it never got the BreakOff: sent again, once, while the taker is still on it -->
+                <set_value name="$psRebreak" exact="(@$psP.$state == 'engaged' or $psOp == 'hb') and @$psT.exists and @$psFE.$brokeOff == $psT and player.age - @$psFE.$brokeOffAt le $resendTtl and $psB.$targets.{$psT}? and ($psB.$targets.{$psT}.$engaged.count gt 0 or $psB.$targets.{$psT}.$assigned.count gt 0)" />
+                <do_if value="$psRebreak">
+                  <set_value name="$psFE.$brokeOff" exact="null" />
+                  <signal_objects object="$psF" param="'ProtectSector.BreakOff'" param2="$psT" param3="'nearer'" />
+                  <debug_text text="'PS1|%s|%s|%s|%s|resend|kind=breakoff|target=%s|why=nearer|op=%s|age=%s'.[player.age, $psF.debugname, $psF.class, @$psF.sector.debugname, $psT.debugname, $psOp, player.age - $psFE.$brokeOffAt]" chance="$debugChance" />
+                </do_if>
+                <do_elseif value="(@$psP.$state == 'engaged' or $psOp == 'hb') and @$psT.exists and not $psT.iswreck">
+                  <include_actions ref="Detach" />
+                  <set_value name="$psVia" exact="if @$psP.$why == 'resp' then 'attack' else (if @$psP.$why == null or @$psP.$why == 'load' then null else 'scan')" />
+                  <include_actions ref="TargetEntry" />
+                  <!-- a follow-up pick never asks: on a target other fleets hold, the ask's verdict decides here -->
+                  <set_value name="$psTakeover" exact="false" />
+                  <set_value name="$psFuYield" exact="false" />
+                  <do_if value="$psOp == 'state' and @$psP.$why == 'follow' and ($psTE.$engaged.count gt 0 or $psTE.$assigned.count gt 0)">
+                    <set_value name="$psSrc" exact="'follow'" />
+                    <include_actions ref="Verdict" />
+                    <include_actions ref="CoordLine" />
+                    <set_value name="$psFuYield" exact="$psWhy == 'yield'" />
+                  </do_if>
+                  <do_if value="$psFuYield">
+                    <set_value name="$psFE.$state" exact="'idle'" />
+                    <set_value name="$psFE.$target" exact="null" />
+                    <set_value name="$psFE.$since" exact="player.age" />
+                    <set_value name="$psFE.$brokeOff" exact="$psT" />
+                    <set_value name="$psFE.$brokeOffAt" exact="player.age" />
+                    <signal_objects object="$psF" param="'ProtectSector.BreakOff'" param2="$psT" param3="'nearer'" />
+                  </do_if>
+                  <do_else>
+                    <do_if value="not $psTE.$engaged.indexof.{$psF}">
+                      <set_value name="$psDl" exact="$psTE.$engaged" />
+                      <append_to_list name="$psDl" exact="$psF" />
+                      <set_value name="$psTE.$engaged" exact="$psDl" />
+                    </do_if>
+                    <set_value name="$psTE.$busy" exact="true" />
+                    <do_if value="$psFE.$state != 'engaged' or $psFE.$target != $psT">
+                      <set_value name="$psFE.$since" exact="player.age" />
+                    </do_if>
+                    <set_value name="$psFE.$state" exact="'engaged'" />
+                    <set_value name="$psFE.$target" exact="$psT" />
+                    <do_if value="$psOp == 'state'">
+                      <set_value name="$psFE.$why" exact="@$psP.$why" />
+                    </do_if>
+                    <set_value name="$psFE.$assigned" exact="null" />
+                    <set_value name="$psFE.$vtarget" exact="@$psP.$vtarget" />
+                    <set_value name="$psFE.$hbAt" exact="player.age" />
+                    <do_if value="$psTakeover">
+                      <include_actions ref="Takeover" />
+                    </do_if>
+                  </do_else>
+                </do_elseif>
+                <!-- an engaged report on a target that died in the pick's tick is no idle report: the follow-up reports its next pick -->
+                <do_elseif value="$psOp == 'state' and @$psP.$state != 'engaged'">
+                  <!-- an idle report can land between an answer and the pick it leads to: a fresh assignment stays -->
+                  <set_value name="$psKeepAssigned" exact="@$psP.$state != 'away' and @$psFE.$assigned != null and player.age - $psFE.$assignedAt le $assignTtl" />
+                  <include_actions ref="Detach" />
+                  <set_value name="$psFE.$state" exact="if @$psP.$state == 'away' then 'away' else 'idle'" />
+                  <set_value name="$psFE.$target" exact="null" />
+                  <do_if value="not $psKeepAssigned">
+                    <set_value name="$psFE.$assigned" exact="null" />
+                  </do_if>
+                  <remove_value name="$psKeepAssigned" />
+                  <set_value name="$psFE.$since" exact="player.age" />
+                  <!-- a fleet that just went idle takes an open request in its sector -->
+                  <do_if value="$psFE.$state == 'idle' and $psPolicy">
+                    <set_value name="$psOffered" exact="false" />
+                    <do_for_each name="$psOk2" valuename="$psTE" in="$psB.$targets">
+                      <do_if value="not $psOffered and $psTE.$help != null and @$psOk2.exists and not $psOk2.iswreck and $psOk2.sector == $psF.sector">
+                        <set_value name="$psT" exact="$psOk2" />
+                        <set_value name="$psH" exact="$psF" />
+                        <set_value name="$psHE" exact="$psFE" />
+                        <set_value name="$psMulti" exact="true" />
+                        <include_actions ref="Eligible" />
+                        <do_if value="$psOk">
+                          <set_value name="$psHelpers" exact="[$psF]" />
+                          <set_value name="$psF" exact="null" />
+                          <include_actions ref="OfferHelp" />
+                          <set_value name="$psF" exact="event.param2" />
+                          <set_value name="$psOffered" exact="true" />
+                        </do_if>
+                      </do_if>
+                    </do_for_each>
+                  </do_if>
+                </do_elseif>
+              </do_if>
+
+              <do_elseif value="$psOp == 'decline'">
+                <set_value name="$psT" exact="@$psP.$target" />
+                <set_value name="$psFE.$assigned" exact="null" />
+                <do_if value="@$psT != null and $psB.$targets.{$psT}?">
+                  <set_value name="$psTE" exact="$psB.$targets.{$psT}" />
+                  <set_value name="$psTE.$declined.{$psF}" exact="player.age" />
+                  <do_if value="$psTE.$assigned.indexof.{$psF}">
+                    <set_value name="$psDl" exact="$psTE.$assigned" />
+                    <remove_from_list name="$psDl" exact="$psF" />
+                    <set_value name="$psTE.$assigned" exact="$psDl" />
+                  </do_if>
+                  <set_value name="$psTE.$busy" exact="$psTE.$engaged.count gt 0 or $psTE.$assigned.count gt 0" />
+                </do_if>
+              </do_elseif>
+
+              <do_elseif value="$psOp == 'ask'">
+                <!-- a fresh answer the ship never acted on (lost while it resumed) goes out again, once, in place of a verdict -->
+                <set_value name="$psResend" exact="null" />
+                <do_if value="@$psFE.$assigned.exists and player.age - @$psFE.$assignedAt le $assignTtl and not @$psFE.$resent and @$psFE.$answer != null">
+                  <do_if value="not $psFE.$assigned.iswreck and $psFE.$assigned.isoperational and $psFE.$assigned.sector == $psF.sector">
+                    <set_value name="$psResend" exact="$psFE.$assigned" />
+                    <set_value name="$psResendAge" exact="player.age - $psFE.$assignedAt" />
+                  </do_if>
+                </do_if>
+                <set_value name="$psKeepPledge" exact="true" />
+                <include_actions ref="Detach" />
+                <remove_value name="$psKeepPledge" />
+                <set_value name="$psFE.$state" exact="'idle'" />
+                <set_value name="$psFE.$target" exact="null" />
+                <set_value name="$psFE.$askedAt" exact="player.age" />
+                <set_value name="$psSkips" exact="[]" />
+                <set_value name="$psPick" exact="null" />
+                <set_value name="$psSrc" exact="'ask'" />
+                <set_value name="$psVia" exact="'scan'" />
+                <set_value name="$psCandList" exact="if $psResend != null then [] else (if @$psP.$cands != null then $psP.$cands else [])" />
+                <do_if value="$psResend != null">
+                  <set_value name="$psT" exact="$psResend" />
+                  <set_value name="$psVia" exact="if @$psFE.$answer.$why == 'resp' then 'attack' else 'scan'" />
+                  <include_actions ref="TargetEntry" />
+                  <set_value name="$psAnF" exact="$psF" />
+                  <set_value name="$psAnT" exact="$psResend" />
+                  <set_value name="$psAnWhy" exact="$psFE.$answer.$why" />
+                  <set_value name="$psAnRule" exact="@$psFE.$answer.$rule" />
+                  <set_value name="$psAnFrom" exact="@$psFE.$answer.$from" />
+                  <set_value name="$psAnVictim" exact="@$psFE.$answer.$victim" />
+                  <set_value name="$psAnSkips" exact="[]" />
+                  <include_actions ref="Answer" />
+                  <set_value name="$psFE.$resent" exact="true" />
+                  <set_value name="$psPick" exact="$psResend" />
+                  <debug_text text="'PS1|%s|%s|%s|%s|resend|kind=answer|target=%s|why=%s|rule=%s|from=%s|age=%s|cands=%s'.[player.age, $psF.debugname, $psF.class, @$psF.sector.debugname, $psResend.debugname, $psAnWhy, @$psAnRule, @$psAnFrom.debugname, $psResendAge, @$psP.$cands.count]" chance="$debugChance" />
+                </do_if>
+                <do_for_each name="$psT" in="$psCandList">
+                  <do_if value="$psPick == null">
+                    <do_if value="not @$psT.exists or $psT.iswreck or not $psT.isoperational or $psT.sector != $psF.sector">
+                      <append_to_list name="$psSkips" exact="[$psT, 'gone']" />
+                    </do_if>
+                    <do_else>
+                      <include_actions ref="TargetEntry" />
+                      <include_actions ref="Verdict" />
+                      <include_actions ref="CoordLine" />
+                      <do_if value="$psWhy == 'solo' or $psWhy == 'join' or $psWhy == 'help'">
+                        <set_value name="$psAnF" exact="$psF" />
+                        <set_value name="$psAnT" exact="$psT" />
+                        <set_value name="$psAnWhy" exact="$psWhy" />
+                        <set_value name="$psAnRule" exact="$psRule" />
+                        <set_value name="$psAnFrom" exact="null" />
+                        <set_value name="$psAnVictim" exact="null" />
+                        <set_value name="$psAnSkips" exact="$psSkips" />
+                        <include_actions ref="Answer" />
+                        <set_value name="$psPick" exact="$psT" />
+                        <do_if value="$psWhy == 'help'">
+                          <include_actions ref="OfferHelp" />
+                        </do_if>
+                        <do_if value="@$psTakeover">
+                          <include_actions ref="Takeover" />
+                        </do_if>
+                      </do_if>
+                      <do_elseif value="$psWhy == 'handoff'">
+                        <set_value name="$psAnF" exact="$psNearestIdle" />
+                        <set_value name="$psAnT" exact="$psT" />
+                        <set_value name="$psAnWhy" exact="'assign'" />
+                        <set_value name="$psAnRule" exact="'nearer'" />
+                        <set_value name="$psAnFrom" exact="$psF" />
+                        <set_value name="$psAnVictim" exact="null" />
+                        <set_value name="$psAnSkips" exact="[]" />
+                        <include_actions ref="Answer" />
+                        <append_to_list name="$psSkips" exact="[$psT, 'yield']" />
+                      </do_elseif>
+                      <do_elseif value="$psWhy == 'hold'">
+                        <do_if value="$psFE.$share and not $psTE.$pledged.indexof.{$psF}">
+                          <set_value name="$psDl" exact="$psTE.$pledged" />
+                          <append_to_list name="$psDl" exact="$psF" />
+                          <set_value name="$psTE.$pledged" exact="$psDl" />
+                        </do_if>
+                        <include_actions ref="Release" />
+                        <do_if value="$psReleased">
+                          <set_value name="$psPick" exact="$psT" />
+                        </do_if>
+                        <do_else>
+                          <include_actions ref="HoldNotify" />
+                          <append_to_list name="$psSkips" exact="[$psT, 'hold']" />
+                        </do_else>
+                      </do_elseif>
+                      <do_else>
+                        <append_to_list name="$psSkips" exact="[$psT, $psWhy]" />
+                      </do_else>
+                    </do_else>
+                  </do_if>
+                </do_for_each>
+                <do_if value="$psPick == null">
+                  <signal_objects object="$psF" param="'ProtectSector.Answer'" param2="null" param3="table[$why = 'none', $rule = '', $skips = $psSkips, $from = null, $victim = null]" />
+                </do_if>
+              </do_elseif>
+            </do_elseif>
+          </actions>
+        </cue>
+
+        <!-- the protect response: one evaluation per hit, the responders chosen by their own settings -->
+        <cue name="Attacked" instantiate="true" version="3">
+          <conditions>
+            <event_player_owned_attacked />
+            <check_value value="@player.entity.$ProtectSectorBoard.$fleets.keys.count gt 0" />
+            <check_value value="@event.param.exists and event.param.isclass.ship and not @event.param.isplayerowned and not event.param.iswreck" />
+            <check_value value="@event.param.pilot.race == race.drone" negate="true" />
+            <check_value value="@event.param.trueowner.hasrelation.enemy.{faction.player}" />
+            <check_value value="event.object.isclass.ship or event.object.isclass.station" />
+            <check_value value="@event.object.defaultorder.id != 'ProtectSector' and @event.object.toplevelcommander.defaultorder.id != 'ProtectSector'" />
+            <check_value value="@event.object.sector != null and @event.param.sector == event.object.sector" />
+            <check_value value="@player.entity.$ProtectSectorBoard.$targets.{event.param}.$busy != true" />
+            <check_value value="@player.entity.$ProtectSectorBoard.$targets.{event.param}.$respAt == null or player.age - player.entity.$ProtectSectorBoard.$targets.{event.param}.$respAt gt 30s" />
+          </conditions>
+          <actions>
+            <include_actions ref="Consts" />
+            <include_actions ref="BoardEnsure" />
+            <set_value name="$psT" exact="event.param" />
+            <set_value name="$psVictim" exact="event.object" />
+            <set_value name="$psVia" exact="'attack'" />
+            <include_actions ref="TargetEntry" />
+            <set_value name="$psTE.$respAt" exact="player.age" />
+            <set_value name="$psNonMil" exact="@$psVictim.primarypurpose != purpose.fight or $psVictim.isclass.station" />
+            <set_value name="$psResp" exact="[]" />
+            <set_value name="$psNearest" exact="null" />
+            <set_value name="$psNearestD" exact="null" />
+            <set_value name="$psF" exact="null" />
+            <set_value name="$psHere" exact="0" />
+            <set_value name="$psRej" exact="''" />
+            <set_value name="$psFar" exact="[]" />
+            <set_value name="$psFarNearest" exact="null" />
+            <set_value name="$psFarNearestD" exact="null" />
+            <set_value name="$psFarUsed" exact="false" />
+            <set_value name="$psPreempt" exact="$psPreemptOn" />
+            <set_value name="$psPreN" exact="0" />
+            <do_for_each name="$psH" valuename="$psHE" in="$psB.$fleets">
+              <do_if value="not $psHE.$protect">
+                <set_value name="$psNo" exact="'noprotect'" />
+              </do_if>
+              <do_elseif value="$psHE.$nonMil and not $psNonMil">
+                <set_value name="$psNo" exact="'nonmil'" />
+              </do_elseif>
+              <do_else>
+                <set_value name="$psMulti" exact="false" />
+                <include_actions ref="Eligible" />
+              </do_else>
+              <do_if value="$psNo == null">
+                <append_to_list name="$psResp" exact="$psH" />
+                <!-- a fleet taken off its own pick goes only when nearer than every idle one by the hand-off margin -->
+                <set_value name="$psHR" exact="if $psHE.$state == 'engaged' then $psHD + $handoffMargin else $psHD" />
+                <do_if value="$psNearest == null or $psHR lt $psNearestR">
+                  <set_value name="$psNearest" exact="$psH" />
+                  <set_value name="$psNearestD" exact="$psHD" />
+                  <set_value name="$psNearestR" exact="$psHR" />
+                </do_if>
+              </do_if>
+              <do_elseif value="($psNo == 'reach' or $psNo == 'speed') and $psHE.$state == 'idle'">
+                <!-- past reach or too slow only ranks a fleet: it goes when no other can -->
+                <append_to_list name="$psFar" exact="$psH" />
+                <do_if value="$psFarNearest == null or $psHD lt $psFarNearestD">
+                  <set_value name="$psFarNearest" exact="$psH" />
+                  <set_value name="$psFarNearestD" exact="$psHD" />
+                </do_if>
+              </do_elseif>
+              <!-- the fleets in the target's sector that stayed out, with the first rule each failed -->
+              <do_if value="@$psH.sector == $psT.sector">
+                <set_value name="$psHere" operation="add" />
+                <do_if value="$psNo != null">
+                  <set_value name="$psRej" exact="'%s%s%s:%s'.[$psRej, if $psRej == '' then '' else ',', @$psH.idcode, $psNo]" />
+                </do_if>
+              </do_if>
+            </do_for_each>
+            <set_value name="$psPreempt" exact="false" />
+            <do_if value="$psResp.count == 0 and $psFar.count gt 0">
+              <set_value name="$psResp" exact="$psFar" />
+              <set_value name="$psNearest" exact="$psFarNearest" />
+              <set_value name="$psNearestD" exact="$psFarNearestD" />
+              <set_value name="$psFarUsed" exact="true" />
+            </do_if>
+            <set_value name="$psSrc" exact="'resp'" />
+            <set_value name="$psWhy" exact="'none'" />
+            <set_value name="$psRule" exact="''" />
+            <do_if value="$psResp.count == 0">
+              <!-- nobody free now: the first fleet that goes idle takes it -->
+              <do_if value="$psPolicy and $psTE.$help == null">
+                <set_value name="$psTE.$help" exact="player.age" />
+              </do_if>
+              <debug_text text="'PS1|%s|coordinator|-|%s|coord|id=%s|tclass=%s|why=none|rule=noresp|victim=%s|src=resp|fleets=%s|rej=%s'.[player.age, @$psT.sector.debugname, $psT.debugname, $psT.class, $psVictim.debugname, $psHere, $psRej]" chance="$debugChance" />
+              <remove_value name="$psRej" />
+            </do_if>
+            <do_else>
+              <set_value name="$psF" exact="$psNearest" />
+              <set_value name="$psFE" exact="$psB.$fleets.{$psF}" />
+              <set_value name="$psDist" exact="$psNearestD" />
+              <set_value name="$psGo" exact="[]" />
+              <do_if value="not $psPolicy">
+                <set_value name="$psWhy" exact="'resp'" />
+                <set_value name="$psRule" exact="'off'" />
+                <do_if value="not $psFE.$share">
+                  <append_to_list name="$psGo" exact="$psF" />
+                </do_if>
+                <do_else>
+                  <do_for_each name="$psRp" in="$psResp">
+                    <do_if value="$psB.$fleets.{$psRp}.$share and ($psRp == $psF or $psB.$fleets.{$psRp}.$state == 'idle')">
+                      <append_to_list name="$psGo" exact="$psRp" />
+                    </do_if>
+                  </do_for_each>
+                </do_else>
+              </do_if>
+              <do_else>
+                <include_actions ref="Peers" />
+                <include_actions ref="GroupEval" />
+                <set_value name="$psPwF" exact="$psF" />
+                <set_value name="$psPwE" exact="$psFE" />
+                <include_actions ref="FleetPower" />
+                <set_value name="$psRatio" exact="if $psGroup gt 0 then $psPower / $psGroup else -1" />
+                <set_value name="$psRatioAll" exact="$psRatio" />
+                <do_if value="$psGroup le 0 or $psRatio ge $ksolo">
+                  <set_value name="$psWhy" exact="'resp'" />
+                  <append_to_list name="$psGo" exact="$psF" />
+                </do_if>
+                <do_else>
+                  <!-- the nearest sharing pair -->
+                  <set_value name="$psSecond" exact="null" />
+                  <set_value name="$psSecondD" exact="null" />
+                  <do_if value="$psFE.$share">
+                    <do_for_each name="$psRp" in="$psResp">
+                      <do_if value="$psRp != $psF and $psB.$fleets.{$psRp}.$share">
+                        <set_value name="$psRpD" exact="$psRp.distanceto.{$psT} + (if $psB.$fleets.{$psRp}.$state == 'engaged' then $handoffMargin else 0m)" />
+                        <do_if value="$psSecond == null or $psRpD lt $psSecondD">
+                          <set_value name="$psSecond" exact="$psRp" />
+                          <set_value name="$psSecondD" exact="$psRpD" />
+                        </do_if>
+                      </do_if>
+                    </do_for_each>
+                  </do_if>
+                  <set_value name="$psPower2" exact="0.0" />
+                  <do_if value="$psSecond != null">
+                    <set_value name="$psPwF" exact="$psSecond" />
+                    <set_value name="$psPwE" exact="$psB.$fleets.{$psSecond}" />
+                    <include_actions ref="FleetPower" />
+                    <set_value name="$psPower2" exact="$psPower" />
+                    <set_value name="$psPwF" exact="$psF" />
+                    <set_value name="$psPwE" exact="$psFE" />
+                    <include_actions ref="FleetPower" />
+                  </do_if>
+                  <set_value name="$psRatioAll" exact="($psPower + $psPower2) / $psGroup" />
+                  <do_if value="$psSecond != null and $psRatioAll ge $kmin">
+                    <set_value name="$psWhy" exact="'resp'" />
+                    <set_value name="$psRule" exact="'pair'" />
+                    <append_to_list name="$psGo" exact="$psF" />
+                    <append_to_list name="$psGo" exact="$psSecond" />
+                  </do_if>
+                  <do_elseif value="$psRatio ge $kmin">
+                    <set_value name="$psWhy" exact="'resp'" />
+                    <set_value name="$psRule" exact="'lone'" />
+                    <set_value name="$psRatioAll" exact="$psRatio" />
+                    <append_to_list name="$psGo" exact="$psF" />
+                  </do_elseif>
+                  <do_else>
+                    <set_value name="$psWhy" exact="'hold'" />
+                    <do_for_each name="$psRp" in="$psResp">
+                      <do_if value="$psB.$fleets.{$psRp}.$share and $psB.$fleets.{$psRp}.$state == 'idle' and not $psTE.$pledged.indexof.{$psRp}">
+                        <set_value name="$psDl" exact="$psTE.$pledged" />
+                        <append_to_list name="$psDl" exact="$psRp" />
+                        <set_value name="$psTE.$pledged" exact="$psDl" />
+                      </do_if>
+                    </do_for_each>
+                    <do_if value="$psTE.$help == null">
+                      <set_value name="$psTE.$help" exact="player.age" />
+                    </do_if>
+                    <set_value name="$psSkips" exact="[]" />
+                    <include_actions ref="Release" />
+                    <do_if value="not $psReleased">
+                      <include_actions ref="HoldNotify" />
+                    </do_if>
+                  </do_else>
+                </do_else>
+              </do_else>
+              <do_for_each name="$psRp" in="$psGo">
+                <set_value name="$psAnF" exact="$psRp" />
+                <set_value name="$psAnT" exact="$psT" />
+                <set_value name="$psAnWhy" exact="'resp'" />
+                <set_value name="$psAnRule" exact="$psRule" />
+                <set_value name="$psAnFrom" exact="null" />
+                <set_value name="$psAnVictim" exact="$psVictim" />
+                <set_value name="$psAnSkips" exact="[]" />
+                <set_value name="$psAnPreempt" exact="$psB.$fleets.{$psRp}.$state == 'engaged'" />
+                <do_if value="$psAnPreempt">
+                  <set_value name="$psPreN" operation="add" />
+                </do_if>
+                <include_actions ref="Answer" />
+              </do_for_each>
+              <set_value name="$psAnPreempt" exact="false" />
+              <include_actions ref="CoordLine" />
+            </do_else>
+          </actions>
+        </cue>
+
+        <!-- the board's own clock: prune, the group of every engaged target, help and break-off, pledges, open requests -->
+        <cue name="Tick" instantiate="true" checkinterval="30s">
+          <conditions>
+            <check_value value="@player.entity.$ProtectSectorBoard.$fleets.keys.count gt 0" />
+          </conditions>
+          <actions>
+            <include_actions ref="Consts" />
+            <include_actions ref="BoardEnsure" />
+            <include_actions ref="Prune" />
+            <set_value name="$psSrc" exact="'tick'" />
+            <set_value name="$psEngagedN" exact="0" />
+            <set_value name="$psHelpN" exact="0" />
+            <set_value name="$psPledgedN" exact="0" />
+            <set_value name="$psAssignedN" exact="0" />
+            <do_for_each name="$psT" valuename="$psTE" in="$psB.$targets">
+              <set_value name="$psPledgedN" operation="add" exact="$psTE.$pledged.count" />
+              <set_value name="$psAssignedN" operation="add" exact="$psTE.$assigned.count" />
+              <set_value name="$psF" exact="null" />
+              <do_if value="$psTE.$engaged.count gt 0">
+                <set_value name="$psEngagedN" operation="add" />
+                <do_if value="$psPolicy">
+                  <set_value name="$psF" exact="$psTE.$engaged.{1}" />
+                  <set_value name="$psFE" exact="$psB.$fleets.{$psF}" />
+                  <set_value name="$psDist" exact="$psF.distanceto.{$psT}" />
+                  <include_actions ref="GroupEval" />
+                  <set_value name="$psPwF" exact="$psF" />
+                  <set_value name="$psPwE" exact="$psFE" />
+                  <include_actions ref="FleetPower" />
+                  <include_actions ref="Peers" />
+                  <set_value name="$psRatio" exact="if $psGroup gt 0 then $psPower / $psGroup else -1" />
+                  <set_value name="$psRatioAll" exact="if $psGroup gt 0 then ($psPower + $psCommitted) / $psGroup else -1" />
+                  <set_value name="$psTE.$ratio" exact="$psRatioAll" />
+                  <do_if value="$psGroup gt 0 and $psRatioAll lt $kbreak">
+                    <do_if value="$psTE.$help == null">
+                      <set_value name="$psWhy" exact="'hbhelp'" />
+                      <set_value name="$psRule" exact="''" />
+                      <include_actions ref="Helpers" />
+                      <include_actions ref="OfferHelp" />
+                      <include_actions ref="CoordLine" />
+                    </do_if>
+                    <do_elseif value="player.age - $psTE.$help ge $helpWait">
+                      <set_value name="$psWhy" exact="'grow'" />
+                      <set_value name="$psRule" exact="''" />
+                      <include_actions ref="Helpers" />
+                      <include_actions ref="CoordLine" />
+                      <do_for_each name="$psBo" in="$psTE.$engaged.clone">
+                        <signal_objects object="$psBo" param="'ProtectSector.BreakOff'" param2="$psT" />
+                      </do_for_each>
+                      <set_value name="$psTE.$help" exact="null" />
+                    </do_elseif>
+                  </do_if>
+                  <do_elseif value="$psTE.$help != null and $psRatioAll ge $ksolo">
+                    <set_value name="$psTE.$help" exact="null" />
+                  </do_elseif>
+                </do_if>
+              </do_if>
+              <do_elseif value="$psTE.$pledged.count gt 0 and $psPolicy">
+                <set_value name="$psSkips" exact="[]" />
+                <include_actions ref="Release" />
+              </do_elseif>
+              <do_if value="$psTE.$help != null">
+                <set_value name="$psHelpN" operation="add" />
+                <do_if value="player.age - $psTE.$help gt $requestTtl or not $psPolicy">
+                  <set_value name="$psTE.$help" exact="null" />
+                </do_if>
+                <do_elseif value="not $psTE.$busy">
+                  <!-- a request nobody is on yet: offered again to whoever is free now -->
+                  <set_value name="$psF" exact="null" />
+                  <include_actions ref="Helpers" />
+                  <include_actions ref="OfferHelp" />
+                </do_elseif>
+              </do_if>
+            </do_for_each>
+            <set_value name="$psFIdle" exact="0" />
+            <set_value name="$psFEng" exact="0" />
+            <set_value name="$psFAway" exact="0" />
+            <do_for_each name="$psPk" valuename="$psPe" in="$psB.$fleets">
+              <do_if value="$psPe.$state == 'engaged'">
+                <set_value name="$psFEng" operation="add" />
+              </do_if>
+              <do_elseif value="$psPe.$state == 'away'">
+                <set_value name="$psFAway" operation="add" />
+              </do_elseif>
+              <do_else>
+                <set_value name="$psFIdle" operation="add" />
+              </do_else>
+            </do_for_each>
+            <debug_text text="'PS1|%s|coordinator|-|-|tick|fleets=%s|fidle=%s|feng=%s|faway=%s|targets=%s|engaged=%s|pledged=%s|assigned=%s|requests=%s|policy=%s'.[player.age, $psB.$fleets.keys.count, $psFIdle, $psFEng, $psFAway, $psB.$targets.keys.count, $psEngagedN, $psPledgedN, $psAssignedN, $psHelpN, if $psPolicy then 'on' else 'off']" chance="$debugChance" />
+          </actions>
+        </cue>
+
+      </cues>
+    </cue>
+  </cues>
+</mdscript>

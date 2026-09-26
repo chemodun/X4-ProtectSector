@@ -4,9 +4,11 @@
 -- its own and opened from the interaction menu of a ship on the order. Left: every
 -- fleet on the order by home sector with one counter of choice over the whole
 -- period, picked in the column header. Right: the
--- window's counters for the current row, its subordinates and the targets it tried
--- (each a scrolling table of seven rows) and a graph over the whole history depth,
--- with the window controls under them.
+-- window's counters for the current row, its subordinates and, with coordination off,
+-- the targets it tried (each a scrolling table of seven rows) and a graph over the whole history depth,
+-- with the window controls under them. A tab row on top switches to Coordination:
+-- the same tree with each fleet's state on the coordinator's board, and on the
+-- right the board entries of the current row with the targets they involve.
 --
 -- The menu asks md/protect_sector_history.xml for a snapshot (requestHistory) and
 -- reads it back from the player blackboard when HistoryReady arrives: the live
@@ -56,7 +58,21 @@ local config = {
   graphMaxPoints     = 200, -- the widget's limit per data record
   mapSelectRetry     = 0.25, -- seconds between tries to select the ship on the map
   mapSelectTries     = 8,
+  tabInputWidth      = 100, -- the tab-scroll input names either side of the tab icons
 }
+
+-- The tab row, modelled on Helper.createTopLevelTab.
+local TABS = {
+  { id = "stats", icon = "pi_statistics",  name = function() return ReadText(1001, 2500) end },
+  { id = "board", icon = "mapst_fs_fight", name = function() return ReadText(PAGE, 1360) end },
+}
+
+-- Board states other than idle (ReadText(1001, 12908)), and a label per engaged reason.
+local BOARD_STATE_TEXT  = { engaged = 1361, away = 1362, holding = 1363, assigned = 1364 }
+local BOARD_STATE_COLOR = { engaged = "text_positive", away = "text_inactive", holding = "text_warning" }
+local WHY_TEXT = { solo = 1390, join = 1391, help = 1392, resp = 1393, release = 1394, assign = 1395, follow = 1396, sub = 1397, load = 1398 }
+-- How a board target was first found; an entry older than the field has none.
+local VIA_TEXT = { scan = 1400, attack = 1401 }
 
 -- Graph series in legend order; each sums the listed bucket keys.
 local SERIES = {
@@ -179,6 +195,67 @@ local function parseBucket(raw)
   return bucket
 end
 
+local function parseKeys(list)
+  local keys = {}
+  for _, key in ipairs(list or {}) do
+    keys[#keys + 1] = stripDollar(key)
+  end
+  return keys
+end
+
+-- The coordinator's board as the history MD exports it; nil when there is none yet.
+-- holds[fleet key] lists the targets that fleet is pledged to.
+local function parseBoard(raw)
+  if type(raw) ~= "table" then
+    return nil
+  end
+  local board = {
+    policy = toBool(raw.policy),
+    ksolo = tonumber(raw.ksolo) or 0, kmin = tonumber(raw.kmin) or 0, kbreak = tonumber(raw.kbreak) or 0,
+    fleets = {}, fleetByKey = {}, targets = {}, targetByKey = {}, holds = {},
+  }
+  for _, entry in ipairs(raw.fleets or {}) do
+    local fleet = {
+      key      = stripDollar(entry.key),
+      name     = tostring(entry.name or ""),
+      idcode   = tostring(entry.idcode or ""),
+      state    = tostring(entry.state or "idle"),
+      target   = stripDollar(entry.target),
+      why      = tostring(entry.why or ""),
+      since    = tonumber(entry.since) or 0,
+      assigned = stripDollar(entry.assigned),
+      share    = toBool(entry.share),
+    }
+    board.fleets[#board.fleets + 1] = fleet
+    board.fleetByKey[fleet.key] = fleet
+  end
+  for _, entry in ipairs(raw.targets or {}) do
+    local target = {
+      key        = stripDollar(entry.key),
+      name       = tostring(entry.name or ""),
+      idcode     = tostring(entry.idcode or ""),
+      size       = tostring(entry.size or "-"),
+      sectorName = tostring(entry.sectorName or "-"),
+      sectorKey  = tostring(entry.sectorKey or "-"),
+      ship       = entry.ship,
+      ratio      = tonumber(entry.ratio) or -2,
+      foes       = tonumber(entry.foes) or 0,
+      engaged    = parseKeys(entry.engaged),
+      pledged    = parseKeys(entry.pledged),
+      assigned   = parseKeys(entry.assigned),
+      help       = tonumber(entry.help) or -1,
+      via        = tostring(entry.via or ""),
+    }
+    board.targets[#board.targets + 1] = target
+    board.targetByKey[target.key] = target
+    for _, key in ipairs(target.pledged) do
+      board.holds[key] = board.holds[key] or {}
+      table.insert(board.holds[key], target)
+    end
+  end
+  return board
+end
+
 local function parseView(raw)
   local view = {
     now    = tonumber(raw.now) or 0,
@@ -186,6 +263,7 @@ local function parseView(raw)
     depth  = tonumber(raw.depth) or 0,
     fleets = {},
     byKey  = {},
+    board  = parseBoard(raw.board),
   }
   for _, entry in ipairs(raw.fleets or {}) do
     local fleet = {
@@ -227,7 +305,7 @@ local function parseView(raw)
       fleet.targets[#fleet.targets + 1] = {
         name = tostring(target.name or ""), idcode = tostring(target.idcode or ""), size = tostring(target.size or "-"),
         attempts = tonumber(target.attempts) or 0, sight = tonumber(target.sight) or 0, outran = tonumber(target.outran) or 0,
-        firstAge = tonumber(target.firstAge) or view.now, exists = toBool(target.exists),
+        firstAge = tonumber(target.firstAge) or view.now, sectorName = tostring(target.sectorName or "-"),
       }
     end
     view.fleets[#view.fleets + 1] = fleet
@@ -355,7 +433,7 @@ local function mergedTargets(fleets)
       if merged == nil then
         merged = {
           name = target.name, idcode = target.idcode, size = target.size,
-          attempts = 0, sight = 0, outran = 0, firstAge = target.firstAge, exists = target.exists, tried = {},
+          attempts = 0, sight = 0, outran = 0, firstAge = target.firstAge, sectorName = target.sectorName, tried = {},
         }
         byCode[target.idcode] = merged
         list[#list + 1] = merged
@@ -365,7 +443,6 @@ local function mergedTargets(fleets)
       merged.sight    = merged.sight + target.sight
       merged.outran   = merged.outran + target.outran
       merged.firstAge = math.min(merged.firstAge, target.firstAge)
-      merged.exists   = merged.exists or target.exists
     end
   end
   for _, target in ipairs(list) do
@@ -400,6 +477,140 @@ local function subordinateRows(fleet, sum)
   return rows
 end
 
+-- *** coordination board ***
+
+-- An Assist fleet is not on the board; its commander's entry stands for it.
+local function boardEntryOf(board, fleet)
+  if board == nil or fleet == nil then
+    return nil
+  end
+  return board.fleetByKey[fleet.assist and fleet.cmdKey or fleet.key]
+end
+
+-- A fleet pledged to a target is idle on the board; it shows as holding.
+local function boardState(board, entry)
+  if entry.state == "engaged" or entry.state == "away" then
+    return entry.state
+  end
+  if board.holds[entry.key] then
+    return "holding"
+  end
+  if entry.assigned ~= "" then
+    return "assigned"
+  end
+  return "idle"
+end
+
+local function boardStateText(state)
+  local color = BOARD_STATE_COLOR[state] and Color[BOARD_STATE_COLOR[state]] or nil
+  if state == "idle" then
+    return ReadText(1001, 12908), color
+  end
+  return ReadText(PAGE, BOARD_STATE_TEXT[state]), color
+end
+
+local function whyText(why)
+  return WHY_TEXT[why] and ReadText(PAGE, WHY_TEXT[why]) or why
+end
+
+-- -2 never evaluated, -1 no foes near: both "-".
+local function ratioText(board, ratio)
+  if ratio < 0 then
+    return "-", nil
+  end
+  local colorId
+  if ratio >= board.ksolo then
+    colorId = "text_positive"
+  elseif ratio < board.kbreak then
+    colorId = "text_negative"
+  elseif ratio < board.kmin then
+    colorId = "text_warning"
+  end
+  return string.format("%.2f", ratio), colorId
+end
+
+-- The ratio number alone in its colour, for use inside a longer text.
+local function ratioValue(board, ratio)
+  local text, colorId = ratioText(board, ratio)
+  return colorId and (ColorText[colorId] .. text .. "\27X") or text
+end
+
+local function boardTargetLabel(target)
+  return target.name .. " (" .. target.idcode .. ", " .. target.size .. ")"
+end
+
+local function viaText(via)
+  return VIA_TEXT[via] and ReadText(PAGE, VIA_TEXT[via]) or "-"
+end
+
+-- The Found by column: its widest text plus the cell's text offsets.
+local function viaColumnWidth()
+  local fontSize = Helper.scaleFont(Helper.standardFont, Helper.standardFontSize)
+  local width = C.GetTextWidth(ReadText(PAGE, 1399), Helper.standardFontBold, fontSize)
+  for _, id in pairs(VIA_TEXT) do
+    width = math.max(width, C.GetTextWidth(ReadText(PAGE, id), Helper.standardFont, fontSize))
+  end
+  return math.ceil(width + 2 * Helper.scaleX(Helper.standardTextOffsetx))
+end
+
+local function boardFleetNames(board, keys, skip)
+  local names = {}
+  for _, key in ipairs(keys) do
+    if key ~= skip then
+      local fleet = menu.view.byKey[key] or board.fleetByKey[key]
+      if not fleet then
+        names[#names + 1] = key
+      elseif (not fleet.assist) and (fleet.fleetName or "") ~= "" then
+        names[#names + 1] = fleet.fleetName
+      else
+        names[#names + 1] = shipLabel(fleet.name, fleet.idcode)
+      end
+    end
+  end
+  return (#names > 0) and table.concat(names, ", ") or "-"
+end
+
+-- Board entries of the scope's fleets, once per commander.
+local function scopeEntries(board, fleets)
+  local entries, seen = {}, {}
+  for _, fleet in ipairs(fleets) do
+    local entry = boardEntryOf(board, fleet)
+    if entry and not seen[entry.key] then
+      seen[entry.key] = true
+      entries[#entries + 1] = entry
+    end
+  end
+  return entries
+end
+
+-- Targets in the sector or involving a scope fleet (All: every target); open
+-- requests first, then the most fleets on it.
+---@return table[]
+local function scopeTargets(board, entries, sectorKey)
+  local inScope = {}
+  for _, entry in ipairs(entries) do
+    inScope[entry.key] = true
+  end
+  local list = {}
+  for _, target in ipairs(board.targets) do
+    local hit = (sectorKey == nil) or (target.sectorKey == sectorKey)
+    for _, keys in ipairs({ target.engaged, target.pledged, target.assigned }) do
+      for _, key in ipairs(keys) do
+        hit = hit or inScope[key] == true
+      end
+    end
+    if hit then
+      list[#list + 1] = target
+    end
+  end
+  table.sort(list, function(a, b)
+    if (a.help >= 0) ~= (b.help >= 0) then return a.help >= 0 end
+    if #a.engaged ~= #b.engaged then return #a.engaged > #b.engaged end
+    return a.name < b.name
+  end)
+  return list
+end
+
 -- *** state ***
 
 local function resetState()
@@ -411,6 +622,8 @@ local function resetState()
   menu.columnStat = "kills"
   menu.targetRow = nil
   menu.crosshairSeries = nil
+  menu.tab = "stats"
+  menu.boardTargetRow = nil
 end
 
 -- The current row's fleets, falling back to all when its row is gone.
@@ -516,8 +729,32 @@ function menu.onShowMenu(state)
 
   menu.view = nil
   menu.groups = nil
+  Helper.setTabScrollCallback(menu, menu.onTabScroll)
   requestHistory()
   menu.createFrame()
+end
+
+function menu.selectTab(id)
+  if menu.tab == id then
+    return
+  end
+  menu.tab = id
+  traceLog("tab: %s.", id)
+  menu.refreshInfoFrame()
+end
+
+-- The tab-scroll inputs step through the tabs, no wrap at either end.
+function menu.onTabScroll(direction)
+  local current = 1
+  for i, tab in ipairs(TABS) do
+    if tab.id == menu.tab then
+      current = i
+    end
+  end
+  local target = TABS[current + ((direction == "right") and 1 or -1)]
+  if target then
+    menu.selectTab(target.id)
+  end
 end
 
 function menu.viewCreated(_layer, ...)
@@ -590,9 +827,18 @@ function menu.onColChanged(_row, col, uitable)
   end
 end
 
+local function canShowShip(ship)
+  return ship ~= nil and C.IsComponentOperational(ConvertIDTo64Bit(ship)) and C.IsStoryFeatureUnlocked("x4ep1_map")
+end
+
 local function canShowOnMap(fleet)
-  return fleet ~= nil and fleet.ship ~= nil and fleet.state == "active"
-      and C.IsComponentOperational(ConvertIDTo64Bit(fleet.ship)) and C.IsStoryFeatureUnlocked("x4ep1_map")
+  return fleet ~= nil and fleet.state == "active" and canShowShip(fleet.ship)
+end
+
+-- The board target of the current Targets row on the Coordination tab.
+local function currentBoardTarget()
+  local board = menu.view and menu.view.board
+  return board and menu.boardTargetRow and board.targetByKey[menu.boardTargetRow]
 end
 
 -- The map centres on its parameter 4 but its own selection of it does not show;
@@ -609,11 +855,11 @@ local function selectOnMap(id64, tries)
   end
 end
 
--- No noreturn, so Back returns here.
-function menu.buttonShowOnMap(fleet)
+-- A fleet or a board target. No noreturn, so Back returns here.
+function menu.buttonShowOnMap(subject)
   ---@diagnostic disable-next-line: param-type-mismatch
-  local id64 = ConvertIDTo64Bit(fleet.ship)
-  traceLog("showOnMap: %s.", fleet.idcode)
+  local id64 = ConvertIDTo64Bit(subject.ship)
+  traceLog("showOnMap: %s.", subject.idcode)
   Helper.closeMenuAndOpenNewMenu(menu, "MapMenu", { 0, 0, true, id64 })
   menu.cleanup()
   Helper.addDelayedOneTimeCallbackOnUpdate(function() selectOnMap(id64, config.mapSelectTries) end, false, getElapsedTime() + config.mapSelectRetry)
@@ -626,6 +872,10 @@ function menu.onRowChanged(row, rowdata, uitable, _modified, _input, source)
   local kind = rowdata[1]
   if kind == "target" then
     menu.targetRow = rowdata[2]
+    return
+  end
+  if kind == "btarget" then
+    menu.boardTargetRow = rowdata[2]
     return
   end
   if kind ~= "all" and kind ~= "sector" and kind ~= "fleet" then
@@ -641,10 +891,10 @@ function menu.onRowChanged(row, rowdata, uitable, _modified, _input, source)
   menu.refreshQueued = true
 end
 
--- A double-click (or Enter) on a fleet row opens the map on its ship, as the
--- Show on Map button does; on a Targets tried row it narrows the left list to
--- where the target was tried: All fleets -> the sector with the most attempts
--- on it, a sector -> the fleet with the most.
+-- A double-click (or Enter) on a fleet row or a Coordination target row opens
+-- the map on its ship, as the Show on Map buttons do; on a Targets tried row it
+-- narrows the left list to where the target was tried: All fleets -> the sector
+-- with the most attempts on it, a sector -> the fleet with the most.
 function menu.onSelectElement(uitable, _modified, _row, isdblclick, input)
   local rowdata = Helper.getCurrentRowData(menu, uitable)
   if type(rowdata) ~= "table" or not (isdblclick or input ~= "mouse") then
@@ -654,6 +904,13 @@ function menu.onSelectElement(uitable, _modified, _row, isdblclick, input)
     local fleet = menu.view and menu.view.byKey[rowdata[2]]
     if canShowOnMap(fleet) then
       return menu.buttonShowOnMap(fleet)
+    end
+    return
+  end
+  if rowdata[1] == "btarget" then
+    local target = menu.view and menu.view.board and menu.view.board.targetByKey[rowdata[2]]
+    if target and canShowShip(target.ship) then
+      return menu.buttonShowOnMap(target)
     end
     return
   end
@@ -706,11 +963,63 @@ function menu.createFrame()
   local rightX      = Helper.frameBorder + leftWidth + Helper.borderSize
   local rightWidth  = usableWidth - leftWidth - Helper.borderSize
 
+  menu.panelTop = menu.createTabRow() + Helper.borderSize
   menu.createLeftPanel(Helper.frameBorder, leftWidth)
-  menu.createRightPanel(rightX, rightWidth)
+  if menu.tab == "board" then
+    menu.createBoardPanel(rightX, rightWidth)
+  else
+    menu.createRightPanel(rightX, rightWidth)
+  end
 
   menu.infoFrame:display()
   menu.lastRefreshTime = getElapsedTime()
+end
+
+-- Centred tab icons with the tab-scroll input names either side (off on a mouse
+-- cursor) and the current tab's name under them; returns the y under the bar.
+function menu.createTabRow()
+  local iconSize  = Helper.scaleX(Helper.sidebarWidth)
+  local inputSize = Helper.scaleX(config.tabInputWidth)
+  local cols      = #TABS + 2
+  local width     = #TABS * iconSize + 2 * inputSize + (#TABS + 1) * Helper.borderSize
+  local bgColor   = Color["toplevel_background_default"]
+
+  local ftable = menu.infoFrame:addTable(cols, {
+    tabOrder = 20, x = Helper.viewWidth / 2 - width / 2, y = Helper.frameBorder,
+    scaling = false, reserveScrollBar = false, skipTabChange = true,
+  })
+  ftable:setColWidth(1, inputSize)
+  for i = 1, #TABS do
+    ftable:setColWidth(i + 1, iconSize)
+  end
+  ftable:setColWidth(cols, inputSize)
+  ftable:setDefaultBackgroundColSpan(1, cols)
+
+  local showInputs = GetControllerInfo() ~= "mouseCursor"
+  local inputY = (Helper.sidebarWidth - Helper.titleHeight) / 2
+  local row = ftable:addRow(true, { fixed = true, borderBelow = false, bgColor = bgColor })
+  if showInputs then
+    row[1]:createText(ffi.string(C.GetMappedInputName("INPUT_ACTION_WIDGET_TABSCROLL_LEFT")), { scaling = true, fontsize = Helper.titleFontSize, y = inputY, halign = "right" })
+  end
+  local currentName = ""
+  for i, tab in ipairs(TABS) do
+    local current = (tab.id == menu.tab)
+    row[i + 1]:createButton({ height = iconSize, bgColor = Color["toplevel_button_background"], borderColor = Color["button_border_hidden"], mouseOverText = tab.name() })
+        :setIcon(tab.icon, { color = current and Color["icon_normal"] or Color["icon_inactive"] })
+    if current then
+      currentName = tostring(tab.name())
+    else
+      row[i + 1].handlers.onClick = function() return menu.selectTab(tab.id) end
+    end
+  end
+  if showInputs then
+    row[cols]:createText(ffi.string(C.GetMappedInputName("INPUT_ACTION_WIDGET_TABSCROLL_RIGHT")), { scaling = true, fontsize = Helper.titleFontSize, y = inputY })
+  end
+
+  row = ftable:addRow(false, { fixed = true, borderBelow = false, bgColor = bgColor, scaling = true })
+  row[1]:setColSpan(cols):createText(currentName, { halign = "center", x = 0, font = Helper.standardFontOutlined })
+
+  return ftable.properties.y + ftable:getFullHeight()
 end
 
 local function noticeRow(ftable, cols, textId)
@@ -755,10 +1064,35 @@ local function columnValue(sum)
   return tostring(COLUMN_STATS[1].value(sum))
 end
 
+-- The Coordination column: a sector or All counts its commanders on the board.
+local function boardCountText(board, fleets)
+  local entries = scopeEntries(board, fleets)
+  if #entries == 0 then
+    return "-"
+  end
+  local engaged = 0
+  for _, entry in ipairs(entries) do
+    if entry.state == "engaged" then
+      engaged = engaged + 1
+    end
+  end
+  return pageText(1365, engaged, #entries)
+end
+
+-- Blank for an Assist fleet and a fleet not on the board.
+local function boardFleetText(board, fleet)
+  local entry = (not fleet.assist) and boardEntryOf(board, fleet) or nil
+  if entry == nil then
+    return "", nil
+  end
+  return boardStateText(boardState(board, entry))
+end
+
 function menu.createLeftPanel(x, width)
+  local onBoard = (menu.tab == "board")
   local leftTable = menu.infoFrame:addTable(2, {
-    tabOrder = 1, width = width, x = x, y = Helper.frameBorder, borderEnabled = true,
-    maxVisibleHeight = panelHeight(Helper.frameBorder),
+    tabOrder = 1, width = width, x = x, y = menu.panelTop, borderEnabled = true,
+    maxVisibleHeight = panelHeight(menu.panelTop),
     backgroundID = "solid", backgroundColor = Color["frame_background_semitransparent"],
     -- The selection highlight is drawn only on the focused table: take the focus
     -- after a jump from Targets tried.
@@ -768,14 +1102,18 @@ function menu.createLeftPanel(x, width)
 
   -- The header picks the counter the column shows; its row data is ignored by
   -- onRowChanged, the widget only needs a selectable row.
-  local options = {}
-  for i, stat in ipairs(COLUMN_STATS) do
-    options[i] = { id = stat.id, icon = "", text = ReadText(PAGE, stat.textId), displayremoveoption = false }
-  end
-  local row = leftTable:addRow(true, { fixed = true, bgColor = Color["row_title_background"] })
+  local row = leftTable:addRow(not onBoard, { fixed = true, bgColor = Color["row_title_background"] })
   row[1]:createText(ReadText(PAGE, 1300), Helper.titleTextProperties)
-  row[2]:createDropDown(options, { startOption = menu.columnStat, height = Helper.standardButtonHeight })
-  row[2].handlers.onDropDownConfirmed = menu.selectColumnStat
+  if onBoard then
+    row[2]:createText(ReadText(1001, 12), Helper.titleTextProperties)
+  else
+    local options = {}
+    for i, stat in ipairs(COLUMN_STATS) do
+      options[i] = { id = stat.id, icon = "", text = ReadText(PAGE, stat.textId), displayremoveoption = false }
+    end
+    row[2]:createDropDown(options, { startOption = menu.columnStat, height = Helper.standardButtonHeight })
+    row[2].handlers.onDropDownConfirmed = menu.selectColumnStat
+  end
 
   if menu.view == nil then
     return noticeRow(leftTable, 2, 1302)
@@ -788,31 +1126,43 @@ function menu.createLeftPanel(x, width)
   local from, to = 0, menu.view.now + 1
   local selection = menu.selection
   local selectedRow, scrollRow
+  local board = menu.view.board
+  local function groupValue(fleets)
+    if onBoard then
+      return (board ~= nil) and boardCountText(board, fleets) or "-"
+    end
+    return columnValue(aggregate(fleets, from, to))
+  end
 
   -- The rows carry their identity as row data; the current row is the selection.
-  local all = aggregate(menu.view.fleets, from, to)
   row = leftTable:addRow({ "all" }, {})
   row[1]:createText(ReadText(PAGE, 1301), { halign = "left", font = Helper.standardFontBold })
-  row[2]:createText(columnValue(all), { halign = "right" })
+  row[2]:createText(groupValue(menu.view.fleets), { halign = "right" })
   if selection.kind == "all" then
     selectedRow = row.index
   end
 
   for _, sector in ipairs(menu.groups or {}) do
-    local sectorSum = aggregate(sector.fleets, from, to)
     row = leftTable:addRow({ "sector", sector.key }, { bgColor = Color["row_title_background"] })
     row[1]:createText(sector.name, { halign = "left", font = Helper.standardFontBold })
-    row[2]:createText(columnValue(sectorSum), { halign = "right" })
+    row[2]:createText(groupValue(sector.fleets), { halign = "right" })
     local sectorRow = row.index
     if selection.kind == "sector" and selection.key == sector.key then
       selectedRow, scrollRow = sectorRow, sectorRow
     end
     for _, fleet in ipairs(sector.fleets) do
-      local fleetSum = aggregate({ fleet }, from, to)
       local color = (fleet.state ~= "active") and Color["text_inactive"] or nil
+      local value, valueColor
+      if not onBoard then
+        value = columnValue(aggregate({ fleet }, from, to))
+      elseif board ~= nil then
+        value, valueColor = boardFleetText(board, fleet)
+      else
+        value = ""
+      end
       row = leftTable:addRow({ "fleet", fleet.key }, {})
       row[1]:createText("  " .. fleetLabel(fleet), { halign = "left", color = color })
-      row[2]:createText(columnValue(fleetSum), { halign = "right", color = color })
+      row[2]:createText(value, { halign = "right", color = color or valueColor })
       if selection.kind == "fleet" and selection.key == fleet.key then
         selectedRow, scrollRow = row.index, sectorRow
       end
@@ -863,15 +1213,22 @@ local function rowsHeight(ftable, n)
 end
 
 -- A section as its own table under the counters: a fixed title row, then its rows
--- scroll. Position and visible height are set once every section exists.
-local function createSectionTable(x, width, tabOrder, title, selectable)
-  local ftable = menu.infoFrame:addTable(2, {
+-- scroll. Position and visible height are set once every section exists. A side
+-- title adds a third column of sideWidth pixels.
+local function createSectionTable(x, width, tabOrder, title, selectable, sideTitle, sideWidth)
+  local ftable = menu.infoFrame:addTable(sideTitle and 3 or 2, {
     tabOrder = tabOrder, width = width, x = x, y = 0, borderEnabled = true, highlightMode = (not selectable) and "off" or nil,
     backgroundID = "solid", backgroundColor = Color["frame_background_semitransparent"],
   })
   ftable:setColWidth(1, Helper.round(width * config.labelColShare), false)
+  if sideTitle then
+    ftable:setColWidth(3, sideWidth, false)
+  end
   local row = ftable:addRow(false, { fixed = true, bgColor = Color["row_title_background"] })
   row[1]:setColSpan(2):createText(title, { halign = "left", font = Helper.standardFontBold })
+  if sideTitle then
+    row[3]:createText(sideTitle, { halign = "left", font = Helper.standardFontBold })
+  end
   return ftable
 end
 
@@ -899,13 +1256,8 @@ local function addTargetRows(ftable, targets)
     else
       reason = pageText(1342, target.attempts, since)
     end
-    local color
-    if not target.exists then
-      color = Color["text_inactive"]
-    elseif target.uncatchable then
-      color = Color["text_warning"]
-    end
-    local label = target.name .. " (" .. target.idcode .. ", " .. target.size .. ")"
+    local color = target.uncatchable and Color["text_warning"] or nil
+    local label = target.name .. " (" .. target.idcode .. ", " .. target.size .. "), " .. target.sectorName
     if target.uncatchable then
       label = ReadText(PAGE, 1344) .. ": " .. label
     end
@@ -1021,7 +1373,7 @@ end
 function menu.createRightPanel(x, width)
   local bottom         = Helper.viewHeight - Helper.frameBorder
   local controlsHeight = Helper.scaleY(Helper.standardButtonHeight) + Helper.borderSize
-  local y              = Helper.frameBorder
+  local y              = menu.panelTop
 
   local rightTable = menu.infoFrame:addTable(2, {
     tabOrder = 2, width = width, x = x, y = y, borderEnabled = true,
@@ -1093,11 +1445,11 @@ function menu.createRightPanel(x, width)
 
   local sections = {}
   if #subs > 0 then
-    sections[#sections + 1] = createSectionTable(x, width, 5, ReadText(1001, 1503))
+    sections[#sections + 1] = createSectionTable(x, width, 5, ReadText(1001, 1503) .. " (" .. #subs .. ")")
     addSubordinateRows(sections[#sections], subs)
   end
   if #targets > 0 then
-    sections[#sections + 1] = createSectionTable(x, width, 6, ReadText(PAGE, 1340), true)
+    sections[#sections + 1] = createSectionTable(x, width, 6, ReadText(PAGE, 1340) .. " (" .. #targets .. ")", true)
     addTargetRows(sections[#sections], targets)
   end
 
@@ -1137,8 +1489,172 @@ function menu.createRightPanel(x, width)
   menu.createControls(x, width, bottom, fleet)
 end
 
+-- The fleet's board entry, the entry of its target and its holds; returns the
+-- targets it involves, its own first.
+---@return table[]
+local function addBoardFleetRows(ftable, board, fleet)
+  if fleet.assist then
+    local row = ftable:addRow(false, {})
+    row[1]:setColSpan(2):createText(pageText(1384, shipLabel(fleet.cmdName, fleet.cmdIdcode)), { halign = "left", wordwrap = true, color = Color["text_inactive"] })
+  end
+  local entry = boardEntryOf(board, fleet)
+  if entry == nil then
+    noticeRow(ftable, 2, 1385)
+    return {}
+  end
+  local stateText, stateColor = boardStateText(boardState(board, entry))
+  statRow(ftable, ReadText(1001, 12), stateText, stateColor)
+  if entry.state == "engaged" then
+    statRow(ftable, ReadText(PAGE, 1375), whyText(entry.why))
+  end
+  statRow(ftable, ReadText(PAGE, 1376), formatDuration(entry.since))
+  statRow(ftable, ReadText(PAGE, 1388), ReadText(1001, entry.share and 2617 or 2618))
+
+  local targets = {}
+  local targetKey = (entry.target ~= "") and entry.target or entry.assigned
+  local target = (targetKey ~= "") and board.targetByKey[targetKey] or nil
+  if target then
+    targets[1] = target
+    statRow(ftable, ReadText(PAGE, 1374), boardTargetLabel(target))
+    statRow(ftable, ReadText(PAGE, 1378), ratioValue(board, target.ratio))
+    statRow(ftable, ReadText(PAGE, 1379), boardFleetNames(board, target.engaged, entry.key))
+    statRow(ftable, ReadText(PAGE, 1380), boardFleetNames(board, target.pledged, entry.key))
+    statRow(ftable, ReadText(PAGE, 1381), (target.help >= 0) and pageText(1382, formatDuration(target.help)) or "-")
+  end
+  for _, held in ipairs(board.holds[entry.key] or {}) do
+    if held ~= target then
+      targets[#targets + 1] = held
+    end
+  end
+  return targets
+end
+
+-- Coordination tab, right side: the scope's board summary or the fleet's entry,
+-- then the targets it involves as a selectable section.
+function menu.createBoardPanel(x, width)
+  local bottom         = Helper.viewHeight - Helper.frameBorder
+  local controlsHeight = Helper.scaleY(Helper.standardButtonHeight) + Helper.borderSize
+  local usableBottom   = bottom - controlsHeight
+  local y              = menu.panelTop
+
+  local infoTable = menu.infoFrame:addTable(2, {
+    tabOrder = 2, width = width, x = x, y = y, borderEnabled = true,
+    maxVisibleHeight = usableBottom - y, highlightMode = "off",
+    backgroundID = "solid", backgroundColor = Color["frame_background_semitransparent"],
+  })
+  infoTable:setColWidth(1, Helper.round(width * config.labelColShare), false)
+
+  local board = menu.view and menu.view.board
+  if menu.view == nil or #menu.view.fleets == 0 or board == nil then
+    local row = infoTable:addRow(false, { fixed = true, bgColor = Color["row_title_background"] })
+    row[1]:setColSpan(2):createText(ReadText(PAGE, 1360), Helper.titleTextProperties)
+    noticeRow(infoTable, 2, (menu.view == nil) and 1302 or ((#menu.view.fleets == 0) and 1303 or 1386))
+    menu.boardTargetRow = nil
+    return menu.createControls(x, width, bottom, nil)
+  end
+
+  local fleets, title, fleet = scopeFleets()
+  local row = infoTable:addRow(false, { fixed = true, bgColor = Color["row_title_background"] })
+  row[1]:setColSpan(2):createText(title, Helper.titleTextProperties)
+
+  local targets = {}
+  if fleet == nil then
+    local entries = scopeEntries(board, fleets)
+    local counts = { engaged = 0, idle = 0, away = 0, holding = 0, assigned = 0 }
+    for _, entry in ipairs(entries) do
+      local state = boardState(board, entry)
+      counts[state] = counts[state] + 1
+    end
+    targets = scopeTargets(board, entries, (menu.selection.kind == "sector") and menu.selection.key or nil)
+    local requests = 0
+    for _, target in ipairs(targets) do
+      if target.help >= 0 then
+        requests = requests + 1
+      end
+    end
+    statRow(infoTable, ReadText(PAGE, 1360), ReadText(1001, board.policy and 12642 or 12641))
+    statRow(infoTable, ReadText(PAGE, 1366), counts.engaged)
+    statRow(infoTable, ReadText(PAGE, 1367), counts.idle + counts.assigned)
+    statRow(infoTable, ReadText(PAGE, 1368), counts.away)
+    statRow(infoTable, ReadText(PAGE, 1369), counts.holding)
+    statRow(infoTable, ReadText(PAGE, 1370), #targets)
+    statRow(infoTable, ReadText(PAGE, 1371), requests)
+  else
+    targets = addBoardFleetRows(infoTable, board, fleet)
+  end
+
+  y = y + infoTable:getVisibleHeight() + Helper.borderSize
+  if usableBottom - y < 2 * Helper.scaleY(Helper.standardTextHeight) then
+    targets = {}
+  end
+  -- The current Targets row survives a refresh while its target is still listed.
+  local current = nil
+  for _, target in ipairs(targets) do
+    if target.key == menu.boardTargetRow then
+      current = target.key
+    end
+  end
+  menu.boardTargetRow = current or (targets[1] and targets[1].key)
+
+  if #targets > 0 then
+    local section = createSectionTable(x, width, 5, ReadText(PAGE, 1370), true, ReadText(PAGE, 1399), viaColumnWidth())
+    for _, target in ipairs(targets) do
+      local value = pageText(1372, ratioValue(board, target.ratio), #target.engaged, #target.pledged)
+      if target.help >= 0 then
+        value = value .. ", " .. pageText(1373, formatDuration(target.help))
+      end
+      local label = boardTargetLabel(target)
+      if menu.selection.kind == "all" then
+        label = label .. ", " .. target.sectorName
+      end
+      row = statRow(section, label, value, nil, { "btarget", target.key })
+      row[3]:createText(viaText(target.via), { halign = "left" })
+      if target.key == menu.boardTargetRow then
+        section:setSelectedRow(row.index)
+      end
+      -- All or a sector: the fleets on it by name, under its row
+      if fleet == nil then
+        local engagedRow = section:addRow(false, {})
+        engagedRow[1]:createText(ReadText(PAGE, 1366), { halign = "left", x = Helper.standardIndentStep })
+        engagedRow[2]:setColSpan(2):createText(boardFleetNames(board, target.engaged), { halign = "left", wordwrap = true })
+      end
+    end
+    section.properties.y = y
+    section.properties.maxVisibleHeight = usableBottom - y
+  end
+
+  menu.createControls(x, width, bottom, fleet)
+end
+
+function menu.buttonShowTarget()
+  local target = currentBoardTarget()
+  if target and canShowShip(target.ship) then
+    return menu.buttonShowOnMap(target)
+  end
+end
+
+-- Coordination tab: Refresh, Show on Map for the fleet and for the current Targets row.
+local function createBoardControls(x, width, bottom, fleet)
+  local buttonHeight = Helper.scaleY(Helper.standardButtonHeight)
+  local target = currentBoardTarget()
+  local controls = menu.infoFrame:addTable(3, {
+    tabOrder = 3, width = width, x = x, y = bottom - buttonHeight, reserveScrollBar = false,
+    backgroundID = "solid", backgroundColor = Color["frame_background_semitransparent"],
+  })
+  local row = controls:addRow(true, { fixed = true })
+  row[1]:createButton({ active = not menu.pending }):setText(ReadText(1001, 6401), { halign = "center" })
+  row[1].handlers.onClick = function() return menu.buttonRefresh() end
+  row[2]:createButton({ active = canShowOnMap(fleet) }):setText(ReadText(1001, 3408), { halign = "center" })
+  row[2].handlers.onClick = function() return menu.buttonShowOnMap(fleet) end
+  row[3]:createButton({ active = (target ~= nil) and canShowShip(target.ship) }):setText(ReadText(PAGE, 1387), { halign = "center" })
+  row[3].handlers.onClick = function() return menu.buttonShowTarget() end
+end
+
 -- Width, older, newer, Now, Refresh, Show on Map in one row under the right panel.
 function menu.createControls(x, width, bottom, fleet)
+  if menu.tab == "board" then
+    return createBoardControls(x, width, bottom, fleet)
+  end
   local buttonHeight = Helper.scaleY(Helper.standardButtonHeight)
   local hasData = (menu.view ~= nil) and (#menu.view.fleets > 0)
   local canWindow = hasData and historyOn()

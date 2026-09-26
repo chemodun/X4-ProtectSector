@@ -144,13 +144,13 @@ If enabled, the ship will pursue the target, which is trying to flee after is be
 `Disabled` by default.
 If enabled, the subordinates will be more aggressive in attacking the targets. It will force them to attack more and more.
 
-### Share target with other
+### Share target with other fleets
 
 `Enabled` by default.
 
-If you have more than one ship or squad with the same order, you can disable this option to prevent them from attacking the same target.
+With it on, this fleet may attack a target together with other fleets running the order in the sector, and they may join it: the coordinator (see `Fleet coordination` below) can send it to a fight another fleet started, call other fleets to its own, or release it together with others against a group none of them could take alone.
 
-While `Fleet coordination` is on in the `Extension options` (see below), this parameter is ignored on every running order: the fleets of a sector share their targets and decide together who attacks what.
+With it off, the fleet fights alone and its target is left to it: no other fleet is sent to its target while it is on it, and it is never sent to a target another fleet is already on. This holds whether `Fleet coordination` is on or off.
 
 ### Attack distance: percentage of radar range
 
@@ -231,14 +231,17 @@ Two sliders for the `Protect Sector overview` screen, opened from the right-clic
 
 `Enabled` by default.
 
-With the option on, the fleets running `Protect Sector` in the same sector pick their targets together. Before a fleet leader attacks a group of enemies, it weighs its own firepower and that of the fleets already fighting there against the group's:
+Every fleet running `Protect Sector` reports to one coordinator: what it is doing, and every target it would like to attack. With the option on, the coordinator decides for the fleets of a sector together. Before a fleet leader attacks a group of enemies, the coordinator weighs the fleet's firepower and that of the fleets already fighting there against the group's:
 
 - a target that fleets nearer to it already handle with enough force is left to them; a fleet farther away than the leader does not count, so the leader attacks a close target itself rather than wait for it;
-- a target too far away, or too fast for the leader to catch, is skipped at once instead of being chased across the sector;
-- a group too strong for one fleet is taken on together: the leader calls the idle fleets nearby, or holds off with a logbook entry and a notification when no help is near;
-- a fleet whose fight turns against it calls for help once and breaks off if none comes.
+- a target too far away, or too fast for the leader to catch, is left to the fleet already on it instead of being chased across the sector; a target no fleet is on is still taken;
+- a target a nearer idle fleet can take is handed to that fleet;
+- a fleet that does not share its target keeps it only while no other fleet is much nearer: the nearer fleet takes it over and the farther one is released;
+- a group too strong for one fleet is taken on together: the leader goes and the idle fleets nearby are called in, or, when none can help, the fleets hold off and pledge their strength to the group; they are released together once enough of them have gathered, with one logbook entry and one notification per group per hour;
+- a fight that turns against the fleets on it calls for help once and, if none comes within a minute, they break off together;
+- when one of your ships or stations is attacked, the coordinator sends the nearest fleet that is strong enough, or two together, instead of waking every idle fleet in the sector; distance and speed only choose between the fleets, so a far or slower fleet still goes when no other can.
 
-While the option is on, every running order behaves as if `Share target with other` were enabled; the order parameter itself is not changed. Turning the option off restores the previous behaviour at once, on every running order, without a restart.
+With the option off, every fleet takes its own targets as before, and every idle fleet in the sector responds to an attack on your ships. `Share target with other fleets` keeps its meaning in both cases. The option applies at once, on every running order, without a restart.
 
 ### Debug Level
 

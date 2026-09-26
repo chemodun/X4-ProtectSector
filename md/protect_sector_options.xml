@@ -23,14 +23,15 @@
         </library>
 
         <!-- hull keys: $hull_<class>_<state>_<sensitivity>, read by lib.protect.sector CheckAndSignalForDamage -->
-        <!-- $historyDepth in hours, 0 = no history; $overviewRefresh in seconds, 0 = no auto-refresh; $coordination: the order reads it at every use, on it overrides the share-targets order parameter -->
-        <library name="Defaults" purpose="include_actions" version="4">
+        <!-- $historyDepth in hours, 0 = no history; $overviewRefresh in seconds, 0 = no auto-refresh; $coordination: read by the coordinator MD at every decision, on it coordinates the fleets of a sector, off each fleet takes its own targets -->
+        <library name="Defaults" purpose="include_actions" version="5">
           <actions>
             <set_value name="$cfg" exact="table[
               $debugLevel = 'none',
               $historyDepth = 24,
               $overviewRefresh = 30,
               $coordination = true,
+              $respPriority = true,
               $hull_ship_s_idle_1 = 80, $hull_ship_s_idle_2 = 90, $hull_ship_s_idle_3 = 100,
               $hull_ship_s_attack_1 = 70, $hull_ship_s_attack_2 = 80, $hull_ship_s_attack_3 = 90,
               $hull_ship_m_idle_1 = 60, $hull_ship_m_idle_2 = 75, $hull_ship_m_idle_3 = 90,
@@ -51,7 +52,8 @@
             </do_if>
             <do_else>
               <do_for_each name="$key" in="$cfg">
-                <do_if value="@player.entity.$ProtectSectorConfig.{$key} == null">
+                <!-- not == null: a false or 0 value compares equal to null -->
+                <do_if value="not player.entity.$ProtectSectorConfig.{$key}?">
                   <set_value name="player.entity.$ProtectSectorConfig.{$key}" exact="$cfg.{$key}" />
                 </do_if>
               </do_for_each>
@@ -111,7 +113,7 @@
           </actions>
         </cue>
 
-        <cue name="Options_Menu" instantiate="true" version="5">
+        <cue name="Options_Menu" instantiate="true" version="6">
           <conditions>
             <event_cue_signalled />
           </conditions>
@@ -199,6 +201,23 @@
                   $halign = 'left',
                   $wordwrap = true,
                   $text = {1972092401, 90202},
+                ]" />
+              <run_actions ref="md.Options_Helper.Add_Checkbox">
+                <param name="id" value="'respPriority'" />
+                <param name="col" value="1" />
+                <param name="textColSpan" value="11" />
+                <param name="text" value="{1972092401, 90203}" />
+                <param name="data" value="$cfg" />
+                <param name="handle" value="Handle_Checkbox_Changed" />
+              </run_actions>
+              <signal_cue_instantly cue="md.Simple_Menu_API.Add_Row" param="table[$selectable = false]" />
+              <signal_cue_instantly cue="md.Simple_Menu_API.Make_Text"
+                param="table[
+                  $col = 1,
+                  $colSpan = 12,
+                  $halign = 'left',
+                  $wordwrap = true,
+                  $text = {1972092401, 90204},
                 ]" />
 
               <run_actions ref="md.Options_Helper.Add_Title_Row">
