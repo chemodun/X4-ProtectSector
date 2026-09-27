@@ -128,6 +128,29 @@
           </actions>
         </library>
 
+        <!-- $psF a commander that cannot fire, $psNdWhy 'noweapons' or 'noammo', $psNdBy the path, $psT the target or null: marked at once, a refusal mark stays as it is -->
+        <library name="MarkNoDps" purpose="include_actions">
+          <actions>
+            <do_if value="not $psB.$marked.{$psF}? or $noDpsWhys.indexof.{@$psB.$marked.{$psF}.$why}">
+              <set_value name="$psMkNew" exact="not $psB.$marked.{$psF}?" />
+              <do_if value="$psMkNew or $psB.$marked.{$psF}.$why != $psNdWhy">
+                <set_value name="$psB.$marked.{$psF}" exact="table[$at = player.age, $refusals = 0, $why = $psNdWhy]" />
+              </do_if>
+              <include_actions ref="Detach" />
+              <do_if value="$psMkNew">
+                <set_value name="$psMkText" exact="{1972092401, 1053}.[{1972092401, 1011}.[$psF.name, $psF.idcode], if $psNdWhy == 'noammo' then {1045, 151} else {1045, 150}]" />
+                <write_to_logbook category="general" title="{1972092401, 1000}" text="$psMkText" interaction="showonmap" object="$psF" />
+                <show_notification text="'%s\n%s'.[{1972092401, 1000}, $psMkText]" priority="1" />
+                <debug_text text="'PS1|%s|%s|%s|%s|mark|refusals=0|why=%s|target=%s|by=%s'.[player.age, $psF.debugname, $psF.class, @$psF.sector.debugname, $psNdWhy, @$psT.debugname, $psNdBy]" chance="$debugChance" />
+                <remove_value name="$psMkText" />
+              </do_if>
+              <remove_value name="$psMkNew" />
+            </do_if>
+            <remove_value name="$psNdWhy" />
+            <remove_value name="$psNdBy" />
+          </actions>
+        </library>
+
         <!-- drops fleets that left the order and targets that are gone or idle on the board for a minute -->
         <library name="Prune" purpose="include_actions">
           <actions>
@@ -645,7 +668,7 @@
         </library>
 
         <!-- every message from an order script -->
-        <cue name="Board" instantiate="true" version="7">
+        <cue name="Board" instantiate="true" version="8">
           <conditions>
             <event_object_signalled object="player.entity" param="'ProtectSector.Board'" />
             <check_value value="@event.param2.exists and @event.param3.$op != null" />
@@ -780,21 +803,10 @@
                   </do_if>
                   <set_value name="$psTE.$busy" exact="$psTE.$engaged.count gt 0 or $psTE.$assigned.count gt 0" />
                 </do_if>
-                <!-- it cannot fire: marked at once, a refusal mark stays as it is -->
                 <do_if value="$noDpsWhys.indexof.{@$psP.$why}">
-                  <do_if value="not $psB.$marked.{$psF}? or $noDpsWhys.indexof.{@$psB.$marked.{$psF}.$why}">
-                    <set_value name="$psMkNew" exact="not $psB.$marked.{$psF}?" />
-                    <set_value name="$psB.$marked.{$psF}" exact="table[$at = player.age, $refusals = 0, $why = $psP.$why]" />
-                    <include_actions ref="Detach" />
-                    <do_if value="$psMkNew">
-                      <set_value name="$psMkText" exact="{1972092401, 1053}.[{1972092401, 1011}.[$psF.name, $psF.idcode], if $psP.$why == 'noammo' then {1045, 151} else {1045, 150}]" />
-                      <write_to_logbook category="general" title="{1972092401, 1000}" text="$psMkText" interaction="showonmap" object="$psF" />
-                      <show_notification text="'%s\n%s'.[{1972092401, 1000}, $psMkText]" priority="1" />
-                      <debug_text text="'PS1|%s|%s|%s|%s|mark|refusals=0|why=%s|target=%s'.[player.age, $psF.debugname, $psF.class, @$psF.sector.debugname, $psP.$why, @$psT.debugname]" chance="$debugChance" />
-                      <remove_value name="$psMkText" />
-                    </do_if>
-                    <remove_value name="$psMkNew" />
-                  </do_if>
+                  <set_value name="$psNdWhy" exact="$psP.$why" />
+                  <set_value name="$psNdBy" exact="'decline'" />
+                  <include_actions ref="MarkNoDps" />
                 </do_if>
                 <!-- a refusal: a reason of the fleet's own; the fifth in one order run marks the fleet -->
                 <do_elseif value="$refusalWhys.indexof.{@$psP.$why}">
@@ -1132,7 +1144,7 @@
         </cue>
 
         <!-- the board's own clock: prune, the group of every engaged target, help and break-off, pledges, open requests -->
-        <cue name="Tick" instantiate="true" checkinterval="30s" version="2">
+        <cue name="Tick" instantiate="true" checkinterval="30s" version="3">
           <conditions>
             <check_value value="@player.entity.$ProtectSectorBoard.$fleets.keys.count gt 0" />
           </conditions>
@@ -1140,6 +1152,29 @@
             <include_actions ref="Consts" />
             <include_actions ref="BoardEnsure" />
             <include_actions ref="Prune" />
+            <!-- a commander that lost its weapons or ammo while idle or approaching never declines: marked here -->
+            <do_for_each name="$psF" valuename="$psFE" in="$psB.$fleets">
+              <do_if value="$psF.exists and $psF.isoperational and not $psF.iswreck and not $psF.dps.all and (not $psB.$marked.{$psF}? or $noDpsWhys.indexof.{@$psB.$marked.{$psF}.$why})">
+                <set_value name="$psNdWhy" exact="'noweapons'" />
+                <do_for_each name="$psNdWeapon" in="$psF.weapons.operational.list">
+                  <do_if value="$psNdWeapon.isinactiveweapongroup and $psNdWeapon.ammo.macro and not $psF.ammostorage.{$psNdWeapon.ammo.macro}.count">
+                    <set_value name="$psNdWhy" exact="'noammo'" />
+                    <break />
+                  </do_if>
+                </do_for_each>
+                <do_if value="not $psB.$marked.{$psF}? or $psB.$marked.{$psF}.$why != $psNdWhy">
+                  <set_value name="$psFE.$assigned" exact="null" />
+                  <set_value name="$psT" exact="@$psFE.$target" />
+                  <set_value name="$psNdBy" exact="'tick'" />
+                  <include_actions ref="MarkNoDps" />
+                </do_if>
+                <remove_value name="$psNdWhy" />
+              </do_if>
+            </do_for_each>
+            <remove_value name="$psNdWeapon" />
+            <remove_value name="$psF" />
+            <remove_value name="$psFE" />
+            <remove_value name="$psT" />
             <set_value name="$psSrc" exact="'tick'" />
             <set_value name="$psEngagedN" exact="0" />
             <set_value name="$psHelpN" exact="0" />

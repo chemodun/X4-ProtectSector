@@ -721,15 +721,23 @@ local function scopeEntries(board, fleets)
   return entries
 end
 
--- The marked ones, the most refusals first.
-local function problemEntries(entries)
+-- The marked ones, the most refusals first, then unmarked fleets that cannot fire now
+-- (live = true: no Unmark, the row goes once they can), so every red fleet is listed.
+local function problemEntries(board, fleets)
   local problems = {}
-  for _, entry in ipairs(entries) do
+  for _, entry in ipairs(scopeEntries(board, fleets)) do
     if isProblemFleet(entry) then
       problems[#problems + 1] = entry
     end
   end
   table.sort(problems, function(a, b) return a.refusals > b.refusals end)
+  for _, fleet in ipairs(fleets) do
+    local entry = boardEntryOf(board, fleet)
+    local listed = entry ~= nil and entry.marked and not fleet.assist
+    if NO_DPS_TEXT[fleet.noDps] and not listed then
+      problems[#problems + 1] = { key = fleet.key, refusals = 0, refusalWhy = fleet.noDps, live = true }
+    end
+  end
   return problems
 end
 
@@ -1841,14 +1849,16 @@ local function addUnmarkButton(cell, key)
   cell.handlers.onClick = function() return menu.unmarkFleet(key) end
 end
 
--- Marked fleets with their reason and an Unmark button; the caller places it.
+-- Problematic fleets with their reason, an Unmark button on a marked one; the caller places it.
 local function createProblemSection(x, width, tabOrder, board, problems)
   local section, rows = createSectionTable(x, width, tabOrder, pageText(1402, #problems), true, "", unmarkColumnWidth())
   for _, entry in ipairs(problems) do
     local row = rows:addRow({ "unmark", entry.key }, bandProps())
     row[1]:createText(boardFleetLabel(board, entry.key), { halign = "left", color = Color["text_negative"] })
     row[2]:createText(markText(entry), { halign = "left", wordwrap = true })
-    addUnmarkButton(row[3], entry.key)
+    if not entry.live then
+      addUnmarkButton(row[3], entry.key)
+    end
   end
   return section
 end
@@ -1923,7 +1933,7 @@ function menu.createRightPanel(x, width)
   statRow(stats, ReadText(PAGE, 1332), shown(c.sc .. " (" .. c.se .. ")"))
 
   local subs = (fleet ~= nil) and subordinateRows(fleet, sum) or {}
-  local problems = (fleet == nil) and problemEntries(scopeEntries(menu.view.board, fleets)) or {}
+  local problems = (fleet == nil) and problemEntries(menu.view.board, fleets) or {}
   local targets = mergedTargets(fleets)
   local points = historyOn() and graphPoints(fleets, to, windowWidth) or {}
   local usableBottom = bottom - controlsHeight
@@ -2182,7 +2192,7 @@ function menu.createBoardPanel(x, width)
   local problems = {}
   if fleet == nil then
     local entries = scopeEntries(board, fleets)
-    problems = problemEntries(entries)
+    problems = problemEntries(board, fleets)
     local counts = { engaged = 0, idle = 0, away = 0, holding = 0, assigned = 0 }
     for _, entry in ipairs(entries) do
       local state = boardState(board, entry)

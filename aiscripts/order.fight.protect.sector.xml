@@ -598,9 +598,9 @@
           <remove_value name="$psWeapon" />
         </do_if>
       </actions>
-      <!-- no attack on $psNoDpsTarget ($psNoDpsAt 'pick' or 'attack'): a decline to the coordinator, which marks the fleet at once -->
+      <!-- no attack on $psNoDpsTarget ($psNoDpsAt 'pick', 'approach' or 'attack'): a decline to the coordinator, which marks the fleet at once -->
       <actions name="PsNoDpsBlock">
-        <set_value name="$tel" exact="'nodps|why=%s|at=%s|target=%s|dur=%s'.[$psNoDps, $psNoDpsAt, @$psNoDpsTarget.debugname, if $psNoDpsAt == 'attack' then player.age - @$attackStartedAt else 0]" />
+        <set_value name="$tel" exact="'nodps|why=%s|at=%s|target=%s|dur=%s'.[$psNoDps, $psNoDpsAt, @$psNoDpsTarget.debugname, if $psNoDpsAt == 'attack' then player.age - @$attackStartedAt else (if $psNoDpsAt == 'approach' then player.age - @$approachStartedAt else 0)]" />
         <include_interrupt_actions ref="Telemetry" />
         <set_value name="$psOp" exact="'decline'" />
         <set_value name="$psOpTarget" exact="@$psNoDpsTarget" />
@@ -3290,6 +3290,28 @@
         </do_else>
         <set_value name="$approachWasCut" exact="$approachCut?" />
         <remove_value name="$approachCut" />
+
+        <!-- weapons or ammunition gone while closing in: no flight to a target it cannot shoot -->
+        <include_interrupt_actions ref="PsNoDpsCheck" />
+        <do_if value="$psNoDps != null">
+          <do_if value="@$psEngaged != null">
+            <set_value name="$psField" exact="'$noDps'" />
+            <include_interrupt_actions ref="PsEngageClose" />
+            <remove_value name="$psField" />
+          </do_if>
+          <do_else>
+            <include_interrupt_actions ref="PsStats" />
+            <set_value name="this.$protectSectorStats.$noDps" operation="add" />
+          </do_else>
+          <set_value name="$psNoDpsAt" exact="'approach'" />
+          <set_value name="$psNoDpsTarget" exact="$target" />
+          <include_interrupt_actions ref="PsNoDpsBlock" />
+          <set_value name="$targetPreviousDistanceTo" exact="null" />
+          <set_value name="$targetDistanceToIsNotDecreasing" exact="0" />
+          <set_value name="$approachingIterationsCount" exact="0" />
+          <resume label="goingIdle" />
+        </do_if>
+        <remove_value name="$psNoDps" />
 
         <do_if value="$targetDistanceTo gt $targetOptimalDistanceForAttack">
 
