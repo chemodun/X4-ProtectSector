@@ -44,6 +44,65 @@
           </actions>
         </library>
 
+        <!-- the coordinator's settings, set on the overview's Coordination tab: key = [default, min, max]; units as the coordinator's Consts reads them (km, s, min, % or a ratio) -->
+        <library name="Coord_Spec" purpose="include_actions">
+          <actions>
+            <set_value name="$coordSpec" exact="table[
+              $coordKsolo = [1.5, 1.0, 3.0], $coordKmin = [0.7, 0.3, 1.5], $coordKbreak = [0.4, 0.1, 1.0],
+              $coordRadius = [10, 2, 30], $coordReach = [100, 20, 300], $coordSpeedShare = [90, 50, 150], $coordHandoff = [5, 1, 20],
+              $coordHelpWait = [60, 15, 300], $coordRequestTtl = [10, 2, 60], $coordRespCooldown = [30, 5, 120], $coordDeclineTtl = [5, 1, 30],
+              $coordRefusedSkip = [30, 10, 300], $coordHoldNotify = [60, 10, 240], $coordBoardKeep = [60, 15, 300],
+              $coordAssignTtl = [20, 5, 60], $coordResendTtl = [10, 5, 60], $coordGroupCache = [5, 1, 30], $coordPowerCache = [10, 1, 60],
+            ]" />
+          </actions>
+        </library>
+
+        <!-- a missing or non-numeric coordinator setting gets its default, a number out of range is clamped, the strengths keep kbreak <= kmin <= ksolo; publishes the spec for the menu and the coordinator -->
+        <library name="Coord_Validate" purpose="include_actions">
+          <actions>
+            <include_actions ref="Coord_Spec" />
+            <set_value name="player.entity.$ProtectSectorCoordSpec" exact="$coordSpec" />
+            <do_if value="@player.entity.$ProtectSectorConfig != null">
+              <set_value name="$psCv" exact="player.entity.$ProtectSectorConfig" />
+              <set_value name="$psCfix" exact="''" />
+              <do_if value="not (typeof @$psCv.$respPriority).isnumeric">
+                <set_value name="$psCfix" exact="'%s $respPriority=%s'.[$psCfix, @$psCv.$respPriority]" />
+                <set_value name="$psCv.$respPriority" exact="true" />
+              </do_if>
+              <do_for_each name="$psCk" valuename="$psCs" in="$coordSpec">
+                <set_value name="$psCx" exact="@$psCv.{$psCk}" />
+                <do_if value="not (typeof $psCx).isnumeric">
+                  <set_value name="$psCfix" exact="'%s %s=%s'.[$psCfix, $psCk, $psCx]" />
+                  <set_value name="$psCv.{$psCk}" exact="$psCs.{1}" />
+                </do_if>
+                <do_elseif value="$psCx lt $psCs.{2} or $psCx gt $psCs.{3}">
+                  <set_value name="$psCfix" exact="'%s %s=%s'.[$psCfix, $psCk, $psCx]" />
+                  <set_value name="$psCv.{$psCk}" exact="if $psCx lt $psCs.{2} then $psCs.{2} else $psCs.{3}" />
+                </do_elseif>
+              </do_for_each>
+              <do_if value="$psCv.$coordKmin gt $psCv.$coordKsolo">
+                <set_value name="$psCfix" exact="'%s $coordKmin=%s'.[$psCfix, $psCv.$coordKmin]" />
+                <set_value name="$psCv.$coordKmin" exact="$psCv.$coordKsolo" />
+              </do_if>
+              <do_if value="$psCv.$coordKbreak gt $psCv.$coordKmin">
+                <set_value name="$psCfix" exact="'%s $coordKbreak=%s'.[$psCfix, $psCv.$coordKbreak]" />
+                <set_value name="$psCv.$coordKbreak" exact="$psCv.$coordKmin" />
+              </do_if>
+              <do_if value="$psCfix != ''">
+                <include_actions ref="ReadDebugChances" />
+                <debug_text text="'ProtectSector: Options: coordinator settings reset or clamped, were:%s'.[$psCfix]" chance="$debugChance" />
+                <include_actions ref="ClearDebugChances" />
+              </do_if>
+              <remove_value name="$psCv" />
+              <remove_value name="$psCfix" />
+              <remove_value name="$psCk" />
+              <remove_value name="$psCs" />
+              <remove_value name="$psCx" />
+            </do_if>
+            <remove_value name="$coordSpec" />
+          </actions>
+        </library>
+
         <library name="Ensure_Config" purpose="include_actions">
           <actions>
             <include_actions ref="Defaults" />
@@ -59,6 +118,7 @@
               </do_for_each>
             </do_else>
             <remove_value name="$cfg" />
+            <include_actions ref="Coord_Validate" />
 
             <!-- one-time move from the pre-1.19 storage, which is then dropped -->
             <set_value name="$oldConfig" exact="@global.$chemODun.$protectSector" />
@@ -92,6 +152,16 @@
           </actions>
         </library>
 
+        <!-- every load: the config exists and every coordinator setting holds a valid value -->
+        <cue name="Validate_On_Load" instantiate="true">
+          <conditions>
+            <event_game_loaded />
+          </conditions>
+          <actions>
+            <include_actions ref="Ensure_Config" />
+          </actions>
+        </cue>
+
         <cue name="Register_Menu" instantiate="true">
           <conditions>
             <event_cue_signalled cue="md.Simple_Menu_API.Reloaded" />
@@ -116,7 +186,7 @@
           </actions>
         </cue>
 
-        <cue name="Options_Menu" instantiate="true" version="6">
+        <cue name="Options_Menu" instantiate="true" version="7">
           <conditions>
             <event_cue_signalled />
           </conditions>
@@ -205,23 +275,6 @@
                   $wordwrap = true,
                   $text = {1972092401, 90202},
                 ]" />
-              <run_actions ref="md.Options_Helper.Add_Checkbox">
-                <param name="id" value="'respPriority'" />
-                <param name="col" value="1" />
-                <param name="textColSpan" value="11" />
-                <param name="text" value="{1972092401, 90203}" />
-                <param name="data" value="$cfg" />
-                <param name="handle" value="Handle_Checkbox_Changed" />
-              </run_actions>
-              <signal_cue_instantly cue="md.Simple_Menu_API.Add_Row" param="table[$selectable = false]" />
-              <signal_cue_instantly cue="md.Simple_Menu_API.Make_Text"
-                param="table[
-                  $col = 1,
-                  $colSpan = 12,
-                  $halign = 'left',
-                  $wordwrap = true,
-                  $text = {1972092401, 90204},
-                ]" />
 
               <run_actions ref="md.Options_Helper.Add_Title_Row">
                 <param name="title" value="{1972092401, 90900}" />
@@ -301,6 +354,57 @@
             <include_actions ref="ReadDebugChances" />
             <debug_text text="'ProtectSector: Options: %s set to %s'.[event.param.$echo.$valueId, @event.param.$option.$value]" chance="$debugChance" />
             <include_actions ref="ClearDebugChances" />
+          </actions>
+        </cue>
+
+        <!-- a coordinator setting from the overview's Coordination tab, param3 table[$key, $value]; a number is clamped to its range -->
+        <cue name="Coordinator_Setting" instantiate="true">
+          <conditions>
+            <event_ui_triggered screen="'ProtectSector'" control="'setOption'" />
+          </conditions>
+          <actions>
+            <set_value name="$psId" exact="'$%s'.[@event.param3.$key]" />
+            <set_value name="$psValue" exact="@event.param3.$value" />
+            <include_actions ref="Coord_Spec" />
+            <do_if value="@player.entity.$ProtectSectorConfig == null">
+              <debug_text text="'ProtectSector: Options: %s not set, no config yet'.[$psId]" />
+            </do_if>
+            <do_elseif value="$psId == '$respPriority'">
+              <set_value name="player.entity.$ProtectSectorConfig.$respPriority" exact="$psValue == 1" />
+            </do_elseif>
+            <do_elseif value="$coordSpec.{$psId}? and (typeof $psValue).isnumeric">
+              <set_value name="$psRange" exact="$coordSpec.{$psId}" />
+              <set_value name="player.entity.$ProtectSectorConfig.{$psId}" exact="if $psValue lt $psRange.{2} then $psRange.{2} else if $psValue gt $psRange.{3} then $psRange.{3} else $psValue" />
+            </do_elseif>
+            <include_actions ref="ReadDebugChances" />
+            <debug_text text="'ProtectSector: Options: %s set to %s (sent %s)'.[$psId, @player.entity.$ProtectSectorConfig.{$psId}, $psValue]" chance="$debugChance" />
+            <include_actions ref="ClearDebugChances" />
+            <remove_value name="$psId" />
+            <remove_value name="$psValue" />
+            <remove_value name="$psRange" />
+            <remove_value name="$coordSpec" />
+          </actions>
+        </cue>
+
+        <!-- Restore Defaults on the Coordination tab: every coordinator setting and the response option -->
+        <cue name="Coordinator_Reset" instantiate="true">
+          <conditions>
+            <event_ui_triggered screen="'ProtectSector'" control="'resetCoordinator'" />
+          </conditions>
+          <actions>
+            <do_if value="@player.entity.$ProtectSectorConfig != null">
+              <include_actions ref="Coord_Spec" />
+              <do_for_each name="$psCk" valuename="$psCs" in="$coordSpec">
+                <set_value name="player.entity.$ProtectSectorConfig.{$psCk}" exact="$psCs.{1}" />
+              </do_for_each>
+              <set_value name="player.entity.$ProtectSectorConfig.$respPriority" exact="true" />
+              <include_actions ref="ReadDebugChances" />
+              <debug_text text="'ProtectSector: Options: coordinator settings restored to defaults'" chance="$debugChance" />
+              <include_actions ref="ClearDebugChances" />
+              <remove_value name="$coordSpec" />
+              <remove_value name="$psCk" />
+              <remove_value name="$psCs" />
+            </do_if>
           </actions>
         </cue>
 

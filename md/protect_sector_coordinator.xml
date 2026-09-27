@@ -14,21 +14,36 @@
 
         <library name="Consts" purpose="include_actions">
           <actions>
-            <set_value name="$ksolo" exact="1.5" />
-            <set_value name="$kmin" exact="0.7" />
-            <set_value name="$kbreak" exact="0.4" />
-            <set_value name="$radius" exact="10km" />
-            <set_value name="$reach" exact="100km" />
-            <set_value name="$speedFactor" exact="0.9" />
-            <set_value name="$handoffMargin" exact="5km" />
-            <set_value name="$groupCache" exact="5s" />
-            <set_value name="$powerCache" exact="10s" />
-            <set_value name="$assignTtl" exact="20s" />
-            <set_value name="$resendTtl" exact="10s" />
-            <set_value name="$helpWait" exact="60s" />
-            <set_value name="$requestTtl" exact="10min" />
-            <set_value name="$respCooldown" exact="30s" />
-            <set_value name="$declineTtl" exact="5min" />
+            <!-- the Coordination tab's settings, checked on every load by md.ProtectSector_Options.Coord_Validate; a value still missing takes its default -->
+            <do_if value="@player.entity.$ProtectSectorCoordSpec == null">
+              <include_actions ref="md.ProtectSector_Options.Coord_Spec" />
+              <set_value name="player.entity.$ProtectSectorCoordSpec" exact="$coordSpec" />
+              <remove_value name="$coordSpec" />
+            </do_if>
+            <set_value name="$psC" exact="table[]" />
+            <do_for_each name="$psCk" valuename="$psCs" in="player.entity.$ProtectSectorCoordSpec">
+              <set_value name="$psC.{$psCk}" exact="if (typeof @player.entity.$ProtectSectorConfig.{$psCk}).isnumeric then player.entity.$ProtectSectorConfig.{$psCk} else $psCs.{1}" />
+            </do_for_each>
+            <set_value name="$ksolo" exact="$psC.$coordKsolo" />
+            <set_value name="$kmin" exact="if $psC.$coordKmin gt $ksolo then $ksolo else $psC.$coordKmin" />
+            <set_value name="$kbreak" exact="if $psC.$coordKbreak gt $kmin then $kmin else $psC.$coordKbreak" />
+            <set_value name="$radius" exact="$psC.$coordRadius * 1km" />
+            <set_value name="$reach" exact="$psC.$coordReach * 1km" />
+            <set_value name="$speedFactor" exact="$psC.$coordSpeedShare / 100.0" />
+            <set_value name="$handoffMargin" exact="$psC.$coordHandoff * 1km" />
+            <set_value name="$groupCache" exact="$psC.$coordGroupCache * 1s" />
+            <set_value name="$powerCache" exact="$psC.$coordPowerCache * 1s" />
+            <set_value name="$assignTtl" exact="$psC.$coordAssignTtl * 1s" />
+            <set_value name="$resendTtl" exact="$psC.$coordResendTtl * 1s" />
+            <set_value name="$helpWait" exact="$psC.$coordHelpWait * 1s" />
+            <set_value name="$requestTtl" exact="$psC.$coordRequestTtl * 1min" />
+            <set_value name="$respCooldown" exact="$psC.$coordRespCooldown * 1s" />
+            <set_value name="$declineTtl" exact="$psC.$coordDeclineTtl * 1min" />
+            <set_value name="$holdNotify" exact="$psC.$coordHoldNotify * 1min" />
+            <set_value name="$boardKeep" exact="$psC.$coordBoardKeep * 1s" />
+            <remove_value name="$psC" />
+            <remove_value name="$psCk" />
+            <remove_value name="$psCs" />
             <set_value name="$psV900" exact="player.gameversion ge 900" />
             <set_value name="$psPolicy" exact="@player.entity.$ProtectSectorConfig.$coordination == true" />
             <set_value name="$psPreemptOn" exact="@player.entity.$ProtectSectorConfig.$respPriority == true" />
@@ -120,7 +135,7 @@
             </do_for_each>
             <set_value name="$psDrop" exact="[]" />
             <do_for_each name="$psPk" valuename="$psPe" in="$psB.$targets">
-              <do_if value="not @$psPk.exists or $psPk.iswreck or ($psPe.$engaged.count == 0 and $psPe.$pledged.count == 0 and $psPe.$assigned.count == 0 and $psPe.$help == null and player.age - $psPe.$seen gt 60s)">
+              <do_if value="not @$psPk.exists or $psPk.iswreck or ($psPe.$engaged.count == 0 and $psPe.$pledged.count == 0 and $psPe.$assigned.count == 0 and $psPe.$help == null and player.age - $psPe.$seen gt $boardKeep)">
                 <append_to_list name="$psDrop" exact="$psPk" />
               </do_if>
               <do_else>
@@ -428,10 +443,10 @@
           </actions>
         </library>
 
-        <!-- one logbook entry and one notification per target per hour, on the fleet $psF -->
+        <!-- one logbook entry and one notification per target per $holdNotify, on the fleet $psF -->
         <library name="HoldNotify" purpose="include_actions">
           <actions>
-            <do_if value="@$psTE.$holdNotified == null or player.age - $psTE.$holdNotified ge 1h">
+            <do_if value="@$psTE.$holdNotified == null or player.age - $psTE.$holdNotified ge $holdNotify">
               <set_value name="$psTE.$holdNotified" exact="player.age" />
               <set_value name="$psHnUnit" exact="{1972092401, 1011}.[$psF.name, $psF.idcode]" />
               <set_value name="$psHnEnemy" exact="{1972092401, 1013}.[if $psT.isclass.station then {1972092401, 1002} else {1972092401, 1001}, $psT.name, $psT.idcode]" />
@@ -848,7 +863,7 @@
             <check_value value="@event.object.defaultorder.id != 'ProtectSector' and @event.object.toplevelcommander.defaultorder.id != 'ProtectSector'" />
             <check_value value="@event.object.sector != null and @event.param.sector == event.object.sector" />
             <check_value value="@player.entity.$ProtectSectorBoard.$targets.{event.param}.$busy != true" />
-            <check_value value="@player.entity.$ProtectSectorBoard.$targets.{event.param}.$respAt == null or player.age - player.entity.$ProtectSectorBoard.$targets.{event.param}.$respAt gt 30s" />
+            <check_value value="@player.entity.$ProtectSectorBoard.$targets.{event.param}.$respAt == null or player.age - player.entity.$ProtectSectorBoard.$targets.{event.param}.$respAt gt (if (typeof @player.entity.$ProtectSectorConfig.$coordRespCooldown).isnumeric then player.entity.$ProtectSectorConfig.$coordRespCooldown else 30) * 1s" />
           </conditions>
           <actions>
             <include_actions ref="Consts" />

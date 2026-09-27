@@ -243,6 +243,20 @@ Every fleet running `Protect Sector` reports to one coordinator: what it is doin
 
 With the option off, every fleet takes its own targets as before, and every idle fleet in the sector responds to an attack on your ships. `Share target with other fleets` keeps its meaning in both cases. The option applies at once, on every running order, without a restart.
 
+The coordinator's own settings are on the `Protect Sector overview` screen, `Coordination` tab, at the top of the right side while `All fleets` is selected. Each applies at once; its mouse-over text explains it.
+
+- `Attack responses before a fleet's own targets` - on by default: an attack on one of your ships or stations may take the nearest fleet off a target it picked itself, never off another attack response or a call for help. An idle fleet goes instead unless the busy one is more than 5 km nearer. Applies with coordination on or off.
+- `Strength to attack alone` - default `1.5`: the multiple of a hostile group's strength a fleet needs to take it alone. Coordination on only.
+- `Strength to attack with help` - default `0.7`: from this multiple a fleet goes in and calls for help; below it, it holds off. Coordination on only.
+- `Strength to break off` - default `0.4`: fleets whose fight falls below this multiple call for help, and break off a minute later if still below. Coordination on only.
+- `Hostile group radius` - default `10 km`: the enemies of the target's faction within this distance count as its group.
+- `Max. distance to a target another fleet has` - default `100 km`: a fleet farther away leaves such a target to the fleet on it.
+- `Min. speed against a target another fleet has` - default `90 %` of the target's speed: past the group radius, a slower fleet leaves such a target to the fleet on it.
+- `Handoff margin` - default `5 km`: how much nearer a fleet must be to take a target over from another, or for a target to go to an idle fleet instead of the one asking.
+- `Timers` - how long the coordinator waits for help before a break-off (`60 s`), keeps a call for help open (`10 min`), ignores further attacks by an attacker it already sent a fleet to (`30 s`), does not offer a declined target again (`5 min`), keeps a refused target out of a fleet's search (`30 s`), between two holding notifications for a target (`60 min`), keeps an unattended target on its board (`60 s`), holds a target for a fleet awaiting its confirmation (`20 s`), resends a break-off (`10 s`), and reuses a measured group or fleet strength (`5 s`, `10 s`).
+
+The three strengths keep their order: `break off` is never above `with help`, which is never above `alone`. `Restore Defaults` under the list puts every one of them back. Each load checks them and puts a missing or invalid value back to its default.
+
 ### Debug Level
 
 Sets how much the order writes to the game's debug log:

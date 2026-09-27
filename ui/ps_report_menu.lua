@@ -45,6 +45,7 @@ local menu = {
   lastRefreshTime = 0.0,
   lastRequestTime = 0.0,
   updateInterval  = 0.1,
+  coordPending    = {}, -- slider values not sent yet, by config key
 }
 
 local config = {
@@ -62,6 +63,7 @@ local config = {
   tabInputWidth      = 100, -- the tab-scroll input names either side of the tab icons
   settingsGridFleets = 12, -- a sector of up to this many fleets shows one column per fleet
   gridLabelShare     = 0.3,
+  coordShare         = 0.6, -- Coordination tab, All: the settings' share of the right side
 }
 
 -- The tab row, modelled on Helper.createTopLevelTab.
@@ -80,6 +82,38 @@ local VIA_TEXT = { scan = 1400, attack = 1401 }
 -- Decline reasons that count as a refusal (the coordinator skips busy, pending and followup).
 local REFUSAL_TEXT = { skip = 1404, fog = 1405, stopped = 1406, relation = 1407, drone = 1408 }
 local PROBLEM_REFUSALS = 5
+
+-- The coordinator's settings, on the Coordination tab with All selected; default, min
+-- and max come from the spec protect_sector_options.xml publishes. The mouse-over
+-- text is textId + 1; titleId starts a sub-section.
+local COORD_SLIDERS = {
+  { key = "coordKsolo",        textId = 1422, step = 0.05 },
+  { key = "coordKmin",         textId = 1424, step = 0.05 },
+  { key = "coordKbreak",       textId = 1426, step = 0.05 },
+  { key = "coordRadius",       textId = 1428, step = 1,  unit = "km" },
+  { key = "coordReach",        textId = 1430, step = 10, unit = "km" },
+  { key = "coordSpeedShare",   textId = 1432, step = 5,  unit = "%" },
+  { key = "coordHandoff",      textId = 1435, step = 1,  unit = "km" },
+  { key = "coordHelpWait",     textId = 1437, step = 15, unit = "s", titleId = 1434 },
+  { key = "coordRequestTtl",   textId = 1439, step = 1,  unit = "min" },
+  { key = "coordRespCooldown", textId = 1441, step = 5,  unit = "s" },
+  { key = "coordDeclineTtl",   textId = 1443, step = 1,  unit = "min" },
+  { key = "coordRefusedSkip",  textId = 1445, step = 10, unit = "s" },
+  { key = "coordHoldNotify",   textId = 1447, step = 10, unit = "min" },
+  { key = "coordBoardKeep",    textId = 1449, step = 15, unit = "s" },
+  { key = "coordAssignTtl",    textId = 1451, step = 5,  unit = "s" },
+  { key = "coordResendTtl",    textId = 1453, step = 5,  unit = "s" },
+  { key = "coordGroupCache",   textId = 1455, step = 1,  unit = "s" },
+  { key = "coordPowerCache",   textId = 1457, step = 1,  unit = "s" },
+}
+-- Unit texts: page 1001 ids, or the text itself.
+local COORD_UNITS = { km = 108, s = 100, min = 103, ["%"] = "%" }
+local COORD_BY_KEY = {}
+for _, option in ipairs(COORD_SLIDERS) do
+  COORD_BY_KEY[option.key] = option
+end
+-- Each ratio stays between its neighbours: break <= min <= solo.
+local K_ORDER = { "coordKbreak", "coordKmin", "coordKsolo" }
 
 -- Settings tab rows in display order, labelled with the order's own short texts where
 -- it has one; a sub-option is not compared while its parent is off.
@@ -129,6 +163,8 @@ local X_STEPS = { 0.25, 0.5, 1, 2, 3, 4, 6, 8, 12 }
 
 local ps = {
   playerId        = nil,
+  cfg             = {}, -- $ProtectSectorConfig as read at open, plus this menu's own changes
+  spec            = {}, -- $ProtectSectorCoordSpec: coordinator setting key -> { default, min, max }
   debugLevel      = "none",
   refreshInterval = 0.0,
   isV9            = false, -- 9.00 has table row groups, 8.00 has not
@@ -153,6 +189,9 @@ local function readConfig()
   if type(cfg) ~= "table" then
     cfg = {}
   end
+  ps.cfg = cfg
+  local spec = GetNPCBlackboard(ps.playerId, "$ProtectSectorCoordSpec")
+  ps.spec = (type(spec) == "table") and spec or {}
   ps.debugLevel = (cfg.debugLevel ~= nil) and tostring(cfg.debugLevel) or "none"
   ps.refreshInterval = tonumber(cfg.overviewRefresh) or DEFAULT_REFRESH
 end
@@ -916,6 +955,29 @@ local function requestHistory(auto)
   AddUITriggeredEvent("ProtectSector", "requestHistory")
 end
 
+-- To protect_sector_options.xml, and into the local copy: the blackboard is read only at open.
+local function sendCoordOption(key, value)
+  ps.cfg[key] = value
+  debugLog("setting %s to %s.", key, tostring(value))
+  AddUITriggeredEvent("ProtectSector", "setOption", { key = key, value = value })
+end
+
+-- A slider's value is sent once it is let go; a ratio rebuilds the section for its
+-- neighbours' bounds.
+local function commitCoordPending()
+  local pending = menu.coordPending
+  menu.coordPending = {}
+  for key, value in pairs(pending) do
+    sendCoordOption(key, value)
+    for _, kKey in ipairs(K_ORDER) do
+      if kKey == key then
+        menu.coordFocus = true
+        menu.refreshQueued = true
+      end
+    end
+  end
+end
+
 -- *** registration ***
 
 local function init()
@@ -925,6 +987,9 @@ local function init()
 end
 
 function menu.cleanup()
+  commitCoordPending()
+  menu.sliderActive = nil
+  menu.coordFocus = nil
   menu.open = false
   menu.infoFrame = nil
   menu.view = nil
@@ -1141,6 +1206,10 @@ function menu.onRowChanged(row, rowdata, uitable, _modified, _input, source)
     menu.boardTargetRow = rowdata[2]
     return
   end
+  if kind == "coordopt" then
+    menu.coordRow = rowdata[2]
+    return
+  end
   if kind ~= "all" and kind ~= "sector" and kind ~= "fleet" then
     return
   end
@@ -1210,6 +1279,7 @@ end
 
 function menu.createFrame()
   Helper.clearDataForRefresh(menu, config.infoLayer)
+  menu.sliderActive = nil
 
   menu.infoFrame = Helper.createFrameHandle(menu, {
     layer           = config.infoLayer,
@@ -1880,13 +1950,134 @@ local function addBoardFleetRows(ftable, board, fleet)
   return targets
 end
 
--- Coordination tab, right side: the scope's board summary or the fleet's entry,
--- then the targets it involves as a selectable section.
+-- { default, min, max }, nil when the MD has not published this key.
+local function coordSpec(key)
+  local spec = ps.spec[key]
+  return (type(spec) == "table" and tonumber(spec[1]) and tonumber(spec[2]) and tonumber(spec[3])) and spec or nil
+end
+
+local function coordValue(option)
+  local spec = coordSpec(option.key)
+  return tonumber(ps.cfg[option.key]) or (spec and tonumber(spec[1])) or 0
+end
+
+-- A ratio's selectable range lies between its neighbours in K_ORDER.
+local function coordBounds(option, spec)
+  local lo, hi = tonumber(spec[2]) or 0, tonumber(spec[3]) or 0
+  for i, key in ipairs(K_ORDER) do
+    if key == option.key then
+      if K_ORDER[i - 1] then
+        lo = math.max(lo, coordValue(COORD_BY_KEY[K_ORDER[i - 1]]))
+      end
+      if K_ORDER[i + 1] then
+        hi = math.min(hi, coordValue(COORD_BY_KEY[K_ORDER[i + 1]]))
+      end
+    end
+  end
+  return lo, hi
+end
+
+function menu.coordSliderChanged(key, value)
+  menu.coordPending[key] = Helper.round(value, 2)
+end
+
+-- The MD sets the same defaults from its spec; the local copy follows at once.
+function menu.coordRestoreDefaults()
+  menu.coordPending = {}
+  for _, option in ipairs(COORD_SLIDERS) do
+    local spec = coordSpec(option.key)
+    if spec then
+      ps.cfg[option.key] = tonumber(spec[1])
+    end
+  end
+  ps.cfg.respPriority = 1
+  debugLog("restoring the coordinator defaults.")
+  AddUITriggeredEvent("ProtectSector", "resetCoordinator")
+  menu.coordFocus = true
+  menu.refreshQueued = true
+end
+
+local function coordSuffix(option)
+  local unit = COORD_UNITS[option.unit]
+  if unit == nil then
+    return ""
+  end
+  return " " .. ((type(unit) == "number") and ReadText(1001, unit) or unit)
+end
+
+-- Coordination tab with All selected: the coordinator's settings on top, scrolling
+-- within maxHeight; returns the y under them.
+function menu.createCoordSettings(x, width, y, maxHeight)
+  local ftable = menu.infoFrame:addTable(2, {
+    tabOrder = 6, width = width, x = x, y = y, borderEnabled = true, maxVisibleHeight = maxHeight,
+    backgroundID = "solid", backgroundColor = Color["frame_background_semitransparent"],
+    -- after a ratio change the rebuild keeps the focus here
+    defaultInteractiveObject = (menu.coordFocus == true),
+  })
+  menu.coordFocus = nil
+  ftable:setColWidth(1, Helper.round(width * config.labelColShare), false)
+  titleRow(ftable, 2, ReadText(PAGE, 1421))
+  local rows = rowBlock(ftable)
+  local selectedRow
+
+  local mouseOver = ReadText(PAGE, 90204)
+  local row = rows:addRow({ "coordopt", "respPriority" }, bandProps())
+  row[1]:createText(ReadText(PAGE, 90203), { halign = "left", wordwrap = true, mouseOverText = mouseOver })
+  row[2]:createCheckBox((ps.cfg.respPriority == nil) or toBool(ps.cfg.respPriority), { width = Helper.standardTextHeight, height = Helper.standardTextHeight, mouseOverText = mouseOver })
+  row[2].handlers.onClick = function(_, checked) return sendCoordOption("respPriority", checked and 1 or 0) end
+  if menu.coordRow == "respPriority" then
+    selectedRow = row.index
+  end
+
+  for _, option in ipairs(COORD_SLIDERS) do
+    local spec = coordSpec(option.key)
+    if option.titleId then
+      row = rows:addRow(false, { bgColor = Color["row_title_background"] })
+      row[1]:setColSpan(2):createText(ReadText(PAGE, option.titleId), { halign = "left", font = Helper.standardFontBold })
+    end
+    if spec then
+      local lo, hi = coordBounds(option, spec)
+      mouseOver = ReadText(PAGE, option.textId + 1)
+      row = rows:addRow({ "coordopt", option.key }, bandProps())
+      row[1]:createText(ReadText(PAGE, option.textId), { halign = "left", wordwrap = true, mouseOverText = mouseOver })
+      row[2]:createSliderCell({
+        height = Helper.standardTextHeight, min = tonumber(spec[2]), max = tonumber(spec[3]), minSelect = lo, maxSelect = hi,
+        start = math.min(math.max(coordValue(option), lo), hi), step = option.step, suffix = coordSuffix(option), hideMaxValue = true,
+        mouseOverText = mouseOver,
+      })
+      row[2].handlers.onSliderCellChanged = function(_, value) return menu.coordSliderChanged(option.key, value) end
+      row[2].handlers.onSliderCellActivated = function() menu.sliderActive = true end
+      row[2].handlers.onSliderCellDeactivated = function() menu.sliderActive = nil end
+      if menu.coordRow == option.key then
+        selectedRow = row.index
+      end
+    end
+  end
+
+  row = rows:addRow({ "coordopt", "reset" }, bandProps())
+  row[2]:createButton({}):setText(ReadText(1001, 2647), { halign = "center" })
+  row[2].handlers.onClick = function() return menu.coordRestoreDefaults() end
+  if menu.coordRow == "reset" then
+    selectedRow = row.index
+  end
+
+  if selectedRow ~= nil then
+    ftable:setSelectedRow(selectedRow)
+  end
+  return y + ftable:getVisibleHeight() + Helper.borderSize
+end
+
+-- Coordination tab, right side: with All selected the coordinator's settings, then
+-- the scope's board summary or the fleet's entry, then the targets it involves as a
+-- selectable section.
 function menu.createBoardPanel(x, width)
   local bottom         = Helper.viewHeight - Helper.frameBorder
   local controlsHeight = Helper.scaleY(Helper.standardButtonHeight) + Helper.borderSize
   local usableBottom   = bottom - controlsHeight
   local y              = menu.panelTop
+  if menu.selection.kind == "all" then
+    y = menu.createCoordSettings(x, width, y, math.floor((usableBottom - y) * config.coordShare))
+  end
 
   local infoTable = menu.infoFrame:addTable(2, {
     tabOrder = 2, width = width, x = x, y = y, borderEnabled = true,
@@ -2228,6 +2419,14 @@ end
 -- *** standard menu callbacks ***
 
 function menu.onUpdate()
+  -- A rebuild would drop a slider being dragged.
+  if menu.sliderActive then
+    if menu.infoFrame then
+      menu.infoFrame:update()
+    end
+    return
+  end
+  commitCoordPending()
   -- Drained here, not where it was raised: onRowChanged runs inside the engine's own
   -- frame setup and HistoryReady inside an event.
   if menu.refreshQueued then
