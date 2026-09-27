@@ -276,8 +276,8 @@
                   this.assignedcontrolled.sector.knownname,
                   this.assignedcontrolled.fleet.name
                 ]" /> -->
-            <find_ship name="$ships" space="this.assignedcontrolled.sector" class="$classesForAttack" recursive="true" multiple="true" isinliveview="true"
-              ishostileto="this.owner" checkoperational="true" docked="false"
+            <find_ship name="$ships" space="$homeSector" class="$classesForAttack" recursive="true" multiple="true" isinliveview="true"
+              ishostileto="this.owner" maybeattackedby="this.assignedcontrolled" checkoperational="true" docked="false"
               sortbyvalue="(if @player.entity.$ProtectSectorBoard.$targets.{loop.element}.$busy == true then 1000km else 0km) +
                 (if @loop.element.relationto.{this.owner} le $relationsThresholdInternal then 0km else 1000km) + loop.element.distanceto.{this.assignedcontrolled}"
               sortdescending="false">
@@ -295,7 +295,7 @@
                   this.assignedcontrolled.sector.knownname,
                   this.assignedcontrolled.fleet.name
                 ]" /> -->
-            <find_ship name="$ships" space="this.assignedcontrolled.sector" class="$classesForAttack" recursive="true" multiple="true" isinliveview="true"
+            <find_ship name="$ships" space="$homeSector" class="$classesForAttack" recursive="true" multiple="true" isinliveview="true"
               checkoperational="true" docked="false"
               sortbyvalue="(if @player.entity.$ProtectSectorBoard.$targets.{loop.element}.$busy == true then 1000km else 0km) +
                 (if @loop.element.relationto.{this.owner} le $relationsThresholdInternal then 0km else 1000km) + loop.element.distanceto.{this.assignedcontrolled}"
@@ -316,8 +316,8 @@
                   this.assignedcontrolled.sector.knownname,
                   this.assignedcontrolled.fleet.name
                 ]" /> -->
-            <find_ship name="$ships" space="this.assignedcontrolled.sector" class="$classesForAttack" recursive="true" multiple="true" ishostileto="this.owner"
-              checkoperational="true" docked="false"
+            <find_ship name="$ships" space="$homeSector" class="$classesForAttack" recursive="true" multiple="true" ishostileto="this.owner"
+              maybeattackedby="this.assignedcontrolled" checkoperational="true" docked="false"
               sortbyvalue="(if @player.entity.$ProtectSectorBoard.$targets.{loop.element}.$busy == true then 1000km else 0km) +
                 (if @loop.element.relationto.{this.owner} le $relationsThresholdInternal then 0km else 1000km) + loop.element.distanceto.{this.assignedcontrolled}"
               sortdescending="false">
@@ -335,7 +335,7 @@
                   this.assignedcontrolled.sector.knownname,
                   this.assignedcontrolled.fleet.name
                 ]" /> -->
-            <find_ship name="$ships" space="this.assignedcontrolled.sector" class="$classesForAttack" recursive="true" multiple="true" checkoperational="true"
+            <find_ship name="$ships" space="$homeSector" class="$classesForAttack" recursive="true" multiple="true" checkoperational="true"
               docked="false"
               sortbyvalue="(if @player.entity.$ProtectSectorBoard.$targets.{loop.element}.$busy == true then 1000km else 0km) +
                 (if @loop.element.relationto.{this.owner} le $relationsThresholdInternal then 0km else 1000km) + loop.element.distanceto.{this.assignedcontrolled}"
@@ -407,8 +407,8 @@
         <do_if value="$attackVisibleOnly">
           <do_if value="$relationsThreshold ge 25">
             <do_if value="$macrosToSkip.count == 1">
-              <find_object name="$stations" space="this.assignedcontrolled.sector" class="[class.station, class.buildstorage]" recursive="true" multiple="true"
-                ishostileto="this.owner" known="true"
+              <find_object name="$stations" space="$homeSector" class="[class.station, class.buildstorage]" recursive="true" multiple="true"
+                ishostileto="this.owner" maybeattackedby="this.assignedcontrolled" known="true"
                 sortbyvalue="(if @player.entity.$ProtectSectorBoard.$targets.{loop.element}.$busy == true then 1000km else 0km) +
                   (if @loop.element.relationto.{this.owner} le $relationsThresholdInternal then 0km else 1000km) + loop.element.distanceto.{this.assignedcontrolled}"
                 sortdescending="false">
@@ -418,8 +418,8 @@
               </find_object>
             </do_if>
             <do_else>
-              <find_object name="$stations" space="this.assignedcontrolled.sector" class="[class.station, class.buildstorage]" recursive="true" multiple="true"
-                ishostileto="this.owner" known="true"
+              <find_object name="$stations" space="$homeSector" class="[class.station, class.buildstorage]" recursive="true" multiple="true"
+                ishostileto="this.owner" maybeattackedby="this.assignedcontrolled" known="true"
                 sortbyvalue="(if @player.entity.$ProtectSectorBoard.$targets.{loop.element}.$busy == true then 1000km else 0km) +
                   (if @loop.element.relationto.{this.owner} le $relationsThresholdInternal then 0km else 1000km) +
                   (if $macrosToSkip.indexof.{@loop.element.macro} == 0 then 0km else 1000km) + loop.element.distanceto.{this.assignedcontrolled}"
@@ -431,7 +431,7 @@
           </do_if>
           <do_else>
             <do_if value="$macrosToSkip.count == 1">
-              <find_object name="$stations" space="this.assignedcontrolled.sector" class="[class.station, class.buildstorage]" recursive="true" multiple="true"
+              <find_object name="$stations" space="$homeSector" class="[class.station, class.buildstorage]" recursive="true" multiple="true"
                 known="true"
                 sortbyvalue="(if @player.entity.$ProtectSectorBoard.$targets.{loop.element}.$busy == true then 1000km else 0km) +
                   (if @loop.element.relationto.{this.owner} le $relationsThresholdInternal then 0km else 1000km) + loop.element.distanceto.{this.assignedcontrolled}"
@@ -443,7 +443,7 @@
               </find_object>
             </do_if>
             <do_else>
-              <find_object name="$stations" space="this.assignedcontrolled.sector" class="[class.station, class.buildstorage]" recursive="true" multiple="true"
+              <find_object name="$stations" space="$homeSector" class="[class.station, class.buildstorage]" recursive="true" multiple="true"
                 known="true"
                 sortbyvalue="(if @player.entity.$ProtectSectorBoard.$targets.{loop.element}.$busy == true then 1000km else 0km) +
                   (if @loop.element.relationto.{this.owner} le $relationsThresholdInternal then 0km else 1000km) +
@@ -459,8 +459,8 @@
         <do_else>
           <do_if value="$relationsThreshold ge 25">
             <do_if value="$macrosToSkip.count == 1">
-              <find_object name="$stations" space="this.assignedcontrolled.sector" class="[class.station, class.buildstorage]" recursive="true" multiple="true"
-                ishostileto="this.owner"
+              <find_object name="$stations" space="$homeSector" class="[class.station, class.buildstorage]" recursive="true" multiple="true"
+                ishostileto="this.owner" maybeattackedby="this.assignedcontrolled"
                 sortbyvalue="(if @player.entity.$ProtectSectorBoard.$targets.{loop.element}.$busy == true then 1000km else 0km) +
                   (if @loop.element.relationto.{this.owner} le $relationsThresholdInternal then 0km else 1000km) + loop.element.distanceto.{this.assignedcontrolled}"
                 sortdescending="false">
@@ -470,8 +470,8 @@
               </find_object>
             </do_if>
             <do_else>
-              <find_object name="$stations" space="this.assignedcontrolled.sector" class="[class.station, class.buildstorage]" recursive="true" multiple="true"
-                ishostileto="this.owner"
+              <find_object name="$stations" space="$homeSector" class="[class.station, class.buildstorage]" recursive="true" multiple="true"
+                ishostileto="this.owner" maybeattackedby="this.assignedcontrolled"
                 sortbyvalue="(if @player.entity.$ProtectSectorBoard.$targets.{loop.element}.$busy == true then 1000km else 0km) +
                   (if @loop.element.relationto.{this.owner} le $relationsThresholdInternal then 0km else 1000km) +
                   (if $macrosToSkip.indexof.{@loop.element.macro} == 0 then 0km else 1000km) + loop.element.distanceto.{this.assignedcontrolled}"
@@ -483,7 +483,7 @@
           </do_if>
           <do_else>
             <do_if value="$macrosToSkip.count == 1">
-              <find_object name="$stations" space="this.assignedcontrolled.sector" class="[class.station, class.buildstorage]" recursive="true" multiple="true"
+              <find_object name="$stations" space="$homeSector" class="[class.station, class.buildstorage]" recursive="true" multiple="true"
                 sortbyvalue="(if @player.entity.$ProtectSectorBoard.$targets.{loop.element}.$busy == true then 1000km else 0km) +
                   (if @loop.element.relationto.{this.owner} le $relationsThresholdInternal then 0km else 1000km) + loop.element.distanceto.{this.assignedcontrolled}"
                 sortdescending="false">
@@ -494,7 +494,7 @@
               </find_object>
             </do_if>
             <do_else>
-              <find_object name="$stations" space="this.assignedcontrolled.sector" class="[class.station, class.buildstorage]" recursive="true" multiple="true"
+              <find_object name="$stations" space="$homeSector" class="[class.station, class.buildstorage]" recursive="true" multiple="true"
                 sortbyvalue="(if @player.entity.$ProtectSectorBoard.$targets.{loop.element}.$busy == true then 1000km else 0km) +
                   (if @loop.element.relationto.{this.owner} le $relationsThresholdInternal then 0km else 1000km) +
                   (if $macrosToSkip.indexof.{@loop.element.macro} == 0 then 0km else 1000km) + loop.element.distanceto.{this.assignedcontrolled}"
@@ -568,7 +568,7 @@
       <!-- productivity counters live on the pilot (an AI script cannot write a ship variable): they survive an order restart and a reload; the history sampler (md/protect_sector_history.xml) replaces $protectSectorStats with a fresh table of the same shape every 15 min, $protectSectorTargets stays; $attackOpenAt / $idleOpenAt are the open stamps the sampler moves to its tick -->
       <actions name="PsStats">
         <do_if value="not this.$protectSectorStats?">
-          <set_value name="this.$protectSectorStats" exact="table[$since = player.age, $assisted = (@this.assignedcontrolled.order.id == 'Assist'), $attacks = 0, $responses = 0, $lost = 0, $attackTime = 0s, $killsSelf = 0, $killsSubs = 0, $killsOther = 0, $killsBy = table[], $fogBreaks = 0, $hardBreaks = 0, $rangeBreaks = 0, $bailouts = 0, $idleTime = 0s, $scans = 0, $scansEmpty = 0, $outsideEnds = 0, $stationHandoffs = 0, $noDps = 0, $hullMin = this.assignedcontrolled.hullpercentage]" />
+          <set_value name="this.$protectSectorStats" exact="table[$since = player.age, $assisted = (@this.assignedcontrolled.order.id == 'Assist'), $attacks = 0, $responses = 0, $lost = 0, $attackTime = 0s, $killsSelf = 0, $killsSubs = 0, $killsOther = 0, $killsBy = table[], $fogBreaks = 0, $hardBreaks = 0, $rangeBreaks = 0, $bailouts = 0, $idleTime = 0s, $scans = 0, $scansEmpty = 0, $outsideEnds = 0, $stationHandoffs = 0, $noDps = 0, $fireAuth = 0, $hullMin = this.assignedcontrolled.hullpercentage]" />
         </do_if>
         <!-- tables from before these counters lack them -->
         <do_if value="not this.$protectSectorStats.$responses?">
@@ -579,6 +579,9 @@
         </do_if>
         <do_if value="not this.$protectSectorStats.$noDps?">
           <set_value name="this.$protectSectorStats.$noDps" exact="0" />
+        </do_if>
+        <do_if value="not this.$protectSectorStats.$fireAuth?">
+          <set_value name="this.$protectSectorStats.$fireAuth" exact="0" />
         </do_if>
         <do_if value="not this.$protectSectorTargets?">
           <set_value name="this.$protectSectorTargets" exact="table[]" />
@@ -610,6 +613,13 @@
         <remove_value name="$psNoDps" />
         <remove_value name="$psNoDpsAt" />
         <remove_value name="$psNoDpsTarget" />
+      </actions>
+      <!-- $psFaNo: the fire authorisation override forbids attacking $psFaT and vanilla's attack would not lift it (hostile-only: never; threshold: its relation boost only reaches kill) -->
+      <actions name="PsFireAuthCheck">
+        <set_value name="$psFaNo" exact="false" />
+        <do_if value="@$psFaT.exists and not this.assignedcontrolled.mayattack.{$psFaT}">
+          <set_value name="$psFaNo" exact="$attackHostileOnly or this.assignedcontrolled.hasrelation.kill.{$psFaT}" />
+        </do_if>
       </actions>
       <actions name="PsHull">
         <include_interrupt_actions ref="PsStats" />
@@ -813,6 +823,7 @@
             $cands = @$psCands,
             $classes = @$classesForAttack,
             $rel = @$relationsThresholdInternal,
+            $hostile = @$attackHostileOnly == true,
             $share = @$shareTargetsBetweenFleets == true,
             $home = @$homeSector,
             $visibleOnly = @$attackVisibleOnly == true,
@@ -1133,6 +1144,9 @@
           </do_elseif>
           <do_elseif value="$psAnswer.relationto.{this.owner} gt $relationsThresholdInternal">
             <set_value name="$psAnswerNo" exact="'relation'" />
+          </do_elseif>
+          <do_elseif value="not this.assignedcontrolled.mayattack.{$psAnswer} and ($attackHostileOnly or this.assignedcontrolled.hasrelation.kill.{$psAnswer})">
+            <set_value name="$psAnswerNo" exact="'fireauth'" />
           </do_elseif>
           <do_elseif value="(@$target != null or @$isAttackingTarget) and not $psAnswerPre">
             <set_value name="$psAnswerNo" exact="'busy'" />
@@ -2526,6 +2540,8 @@
 
         <set_value name="$indexShips" exact="1" />
         <set_value name="$psCands" exact="[]" />
+        <set_value name="$faSkipped" exact="0" />
+        <set_value name="$homeSkipped" exact="0" />
         <do_while value="$indexShips le $ships.count and $target == null">
 
           <set_value name="$ship" exact="$ships.{$indexShips}" />
@@ -2548,7 +2564,11 @@
                   player.age
                 ]"
               chance="$traceChance" />
-            <do_if value="$relation le $relationsThresholdInternal">
+            <!-- the list can be older than this check: a pick loop waits per candidate, an answer waits before it -->
+            <do_if value="$ship.sector != $homeSector">
+              <set_value name="$homeSkipped" operation="add" />
+            </do_if>
+            <do_elseif value="$relation le $relationsThresholdInternal">
               <set_value name="$target" exact="$ship" />
               <set_value name="$targetClassIsAllowed" exact="true" />
               <do_while
@@ -2590,11 +2610,11 @@
               <do_if value="$target != null and $attackShipsOutOfStationsDistance gt 0km">
                 <do_if value="$attackVisibleOnly">
                   <do_if value="$relationsThreshold ge 25">
-                    <find_object name="$stations" space="this.assignedcontrolled.sector" class="[class.station]" recursive="true"
+                    <find_object name="$stations" space="$homeSector" class="[class.station]" recursive="true"
                       multiple="true" sortbydistanceto="this.assignedcontrolled" ishostileto="this.owner" known="true" />
                   </do_if>
                   <do_else>
-                    <find_object name="$stations" space="this.assignedcontrolled.sector" class="[class.station]" recursive="true"
+                    <find_object name="$stations" space="$homeSector" class="[class.station]" recursive="true"
                       multiple="true" sortbydistanceto="this.assignedcontrolled" known="true">
                       <match_relation_to object="this.assignedcontrolled" relation="neutral" comparison="le" />
                     </find_object>
@@ -2602,11 +2622,11 @@
                 </do_if>
                 <do_else>
                   <do_if value="$relationsThreshold ge 25">
-                    <find_object name="$stations" space="this.assignedcontrolled.sector" class="[class.station]" recursive="true"
+                    <find_object name="$stations" space="$homeSector" class="[class.station]" recursive="true"
                       multiple="true" sortbydistanceto="this.assignedcontrolled" ishostileto="this.owner" />
                   </do_if>
                   <do_else>
-                    <find_object name="$stations" space="this.assignedcontrolled.sector" class="[class.station]" recursive="true"
+                    <find_object name="$stations" space="$homeSector" class="[class.station]" recursive="true"
                       multiple="true" sortbydistanceto="this.assignedcontrolled">
                       <match_relation_to object="this.assignedcontrolled" relation="neutral" comparison="le" />
                     </find_object>
@@ -2658,6 +2678,17 @@
                   </do_if>
                 </do_for_each>
               </do_if>
+              <!-- the commander climb can reach a ship this one may not fire at -->
+              <do_if value="$target != null">
+                <set_value name="$psFaT" exact="$target" />
+                <include_interrupt_actions ref="PsFireAuthCheck" />
+                <do_if value="$psFaNo">
+                  <set_value name="$faSkipped" operation="add" />
+                  <set_value name="$target" exact="null" />
+                </do_if>
+                <remove_value name="$psFaT" />
+                <remove_value name="$psFaNo" />
+              </do_if>
               <!-- a commander's own candidate goes to the coordinator: the scan collects up to 5 and asks once after the loop, the answer wakes the ship through the response path; a follow-up pick continues the engagement its subordinates are in, an answered target is taken as it is -->
               <do_if value="$target != null and @this.assignedcontrolled.order.id == 'ProtectSector' and @$scanSrc != 'followup' and @$targetOnResponse == null">
                 <do_if value="not $psCands.indexof.{$target}">
@@ -2668,7 +2699,7 @@
                   <break />
                 </do_if>
               </do_if>
-            </do_if>
+            </do_elseif>
           </do_if>
           <set_value name="$indexShips" exact="$indexShips + 1" />
           <wait min="5ms" max="15ms" profile="flat" />
@@ -2686,10 +2717,10 @@
         <do_if value="$target == null and @$targetOnResponse != null">
           <set_value name="$psOp" exact="'decline'" />
           <set_value name="$psOpTarget" exact="$targetOnResponse" />
-          <set_value name="$psOpWhy" exact="'scan'" />
+          <set_value name="$psOpWhy" exact="if $faSkipped gt 0 then 'fireauth' else (if $homeSkipped gt 0 then 'sector' else 'scan')" />
           <include_interrupt_actions ref="PsBoardSend" />
         </do_if>
-        <set_value name="$tel" exact="'scan|src=%s|n=%s|checked=%s|top=%s|dist=%s|rel=%s|picked=%s|asked=%s|fogskip=%s|hardskip=%s|vskip=%s|cskip=%s|dskip=%s|sskip=%s'.[if @$targetOnResponse then 'response' else (if @$scanSrc != null then $scanSrc else 'scan'), $ships.count, $indexShips - 1, @$ships.{1}.debugname, @$ships.{1}.distanceto.{this.assignedcontrolled}, @$ships.{1}.relationto.{this.owner}, @$target.debugname, $psCands.count, @$fogSkipped, @$hardSkipped, @$targetSkipped, @$coordSkipped, @$coordDistSkipped, @$coordSpeedSkipped]" />
+        <set_value name="$tel" exact="'scan|src=%s|n=%s|checked=%s|top=%s|dist=%s|rel=%s|picked=%s|asked=%s|fogskip=%s|hardskip=%s|vskip=%s|cskip=%s|dskip=%s|sskip=%s|faskip=%s|homeskip=%s'.[if @$targetOnResponse then 'response' else (if @$scanSrc != null then $scanSrc else 'scan'), $ships.count, $indexShips - 1, @$ships.{1}.debugname, @$ships.{1}.distanceto.{this.assignedcontrolled}, @$ships.{1}.relationto.{this.owner}, @$target.debugname, $psCands.count, @$fogSkipped, @$hardSkipped, @$targetSkipped, @$coordSkipped, @$coordDistSkipped, @$coordSpeedSkipped, $faSkipped, $homeSkipped]" />
         <include_interrupt_actions ref="Telemetry" />
         <clear_list list="$ships" />
         <remove_value name="$psCands" />
@@ -3668,6 +3699,23 @@
             <resume label="goingIdle" />
           </do_if>
           <remove_value name="$psNoDps" />
+          <!-- vanilla refused the attack for the fire authorisation override: hostile-only it disengages at once, a threshold attack aborts after its relation boost; skipped like a quick return -->
+          <do_if value="@$target.exists and not $target.iswreck and not this.assignedcontrolled.mayattack.{$target} and ($attackHostileOnly or (player.age - $attackStartedAt lt 3s and $target.canbeattacked and not @$target.dock and not @$target.zone.isclass.highway))">
+            <set_value name="$tel" exact="'fareturn|id=%s|dur=%s|mode=%s|rel=%s|kill=%s|purpose=%s'.[$target.debugname, player.age - $attackStartedAt, if $attackHostileOnly then 'hostile' else 'threshold', $target.relationto.{this.owner}, this.assignedcontrolled.hasrelation.kill.{$target}, @$target.primarypurpose]" />
+            <include_interrupt_actions ref="Telemetry" />
+            <do_if value="not $targetSkip?">
+              <set_value name="$targetSkip" exact="table[]" />
+            </do_if>
+            <set_value name="$targetSkip.{$target}" exact="player.age + 120s" />
+            <set_value name="$quickReturnTarget" exact="null" />
+            <set_value name="$quickReturns" exact="0" />
+            <set_value name="$psField" exact="'$fireAuth'" />
+            <include_interrupt_actions ref="PsEngageClose" />
+            <remove_value name="$psField" />
+            <include_interrupt_actions ref="SubordinatesResetOrders" />
+            <set_value name="$searchReason" exact="'fireauth'" />
+            <resume label="targetSearching" />
+          </do_if>
           <!-- vanilla leaves some targets at once (beyond pursuedistance, steering early-outs): the third quick return in a row skips the target -->
           <do_if value="player.age - $attackStartedAt lt 3s and @$target.canbeattacked">
             <do_if value="@$quickReturnTarget == $target">
@@ -3685,7 +3733,7 @@
           <set_value name="$attackRetReason" exact="if $quickReturns ge 3 then 'quick' else 'normal'" />
           <include_interrupt_actions ref="PsSubsSnapshot" />
           <include_interrupt_actions ref="PsTargetWhere" />
-          <set_value name="$tel" exact="'attackret|id=%s|dur=%s|dist=%s|alive=%s|reason=%s|qr=%s|cansee=%s|tlive=%s%s%s'.[@$target.debugname, player.age - $attackStartedAt, $targetDistanceTo, @$target.exists and not @$target.iswreck, $attackRetReason, $quickReturns, @this.assignedcontrolled.cansee.{$target}, @$target.isinliveview, $psWhere, $psSubTel]" />
+          <set_value name="$tel" exact="'attackret|id=%s|dur=%s|dist=%s|alive=%s|reason=%s|qr=%s|cansee=%s|tlive=%s|may=%s%s%s'.[@$target.debugname, player.age - $attackStartedAt, $targetDistanceTo, @$target.exists and not @$target.iswreck, $attackRetReason, $quickReturns, @this.assignedcontrolled.cansee.{$target}, @$target.isinliveview, @this.assignedcontrolled.mayattack.{$target}, $psWhere, $psSubTel]" />
           <include_interrupt_actions ref="Telemetry" />
           <do_if value="$attackRetReason == 'quick'">
             <do_if value="not $targetSkip?">

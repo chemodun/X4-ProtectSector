@@ -87,6 +87,7 @@
       <t id="1333"> - including reactions to attacks</t>
       <t id="1334">Ships lost</t>
       <t id="1335">Could not attack: no weapons or ammunition</t>
+      <t id="1336">Could not attack: {1001,7756}</t>
       <t id="1340">Targets tried</t>
       <t id="1341">%s attempts over %s, too fast</t>
       <t id="1342">%s attempts over %s, stays out of sight</t>

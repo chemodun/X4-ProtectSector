@@ -3,7 +3,7 @@
 
   <!-- The board every Protect Sector commander reports to and the only place a coordination decision is taken (claude/protectsector/13-central-coordinator-build.md).
        player.entity.$ProtectSectorBoard = table[$fleets = table[{commander} = entry], $targets = table[{target} = entry], $marked = table[{commander} = mark]].
-       Ship to MD: signal 'ProtectSector.Board' on player.entity, param2 the commander, param3 table[$op, $state, $target, $vtarget, $why, $cands, $classes, $rel, $share, $home, $visibleOnly, $protect, $nonMil].
+       Ship to MD: signal 'ProtectSector.Board' on player.entity, param2 the commander, param3 table[$op, $state, $target, $vtarget, $why, $cands, $classes, $rel, $hostile, $share, $home, $visibleOnly, $protect, $nonMil].
        MD to ship: 'ProtectSector.Answer' (param2 target or null, param3 table[$why, $rule, $skips, $from, $victim]) and 'ProtectSector.BreakOff' (param2 target). -->
   <cues>
     <cue name="Coordinator" instantiate="false">
@@ -81,6 +81,7 @@
             <do_if value="@$psP.$classes != null">
               <set_value name="$psFE.$classes" exact="$psP.$classes" />
               <set_value name="$psFE.$rel" exact="$psP.$rel" />
+              <set_value name="$psFE.$hostile" exact="@$psP.$hostile == true" />
               <set_value name="$psFE.$share" exact="@$psP.$share == true" />
               <set_value name="$psFE.$home" exact="@$psP.$home" />
               <set_value name="$psFE.$visibleOnly" exact="@$psP.$visibleOnly == true" />
@@ -308,6 +309,10 @@
             </do_elseif>
             <do_elseif value="$psT.relationto.{faction.player} gt $psHE.$rel">
               <set_value name="$psNo" exact="'rel'" />
+            </do_elseif>
+            <!-- the fire authorisation override, as the ship's own check (PsFireAuthCheck) -->
+            <do_elseif value="not $psH.mayattack.{$psT} and (@$psHE.$hostile or $psH.hasrelation.kill.{$psT})">
+              <set_value name="$psNo" exact="'fireauth'" />
             </do_elseif>
             <do_elseif value="$psHE.$visibleOnly and not $psT.isinliveview">
               <set_value name="$psNo" exact="'vis'" />
@@ -945,7 +950,7 @@
         </cue>
 
         <!-- the protect response: one evaluation per hit, the responders chosen by their own settings -->
-        <cue name="Attacked" instantiate="true" version="4">
+        <cue name="Attacked" instantiate="true" version="5">
           <conditions>
             <event_player_owned_attacked />
             <check_value value="@player.entity.$ProtectSectorBoard.$fleets.keys.count gt 0" />
@@ -966,6 +971,7 @@
             <set_value name="$psVia" exact="'attack'" />
             <include_actions ref="TargetEntry" />
             <set_value name="$psTE.$respAt" exact="player.age" />
+            <debug_text text="'PS1|%s|%s|%s|%s|attacked|t=%s|trel=%s|tpurpose=%s|mayP=%s|mayV=%s'.[player.age, $psVictim.debugname, $psVictim.class, @$psVictim.sector.debugname, $psT.debugname, $psT.relationto.{faction.player}, @$psT.primarypurpose, faction.player.mayattack.{$psT}, @$psVictim.mayattack.{$psT}]" chance="$debugChance" />
             <set_value name="$psNonMil" exact="@$psVictim.primarypurpose != purpose.fight or $psVictim.isclass.station" />
             <set_value name="$psResp" exact="[]" />
             <set_value name="$psNearest" exact="null" />

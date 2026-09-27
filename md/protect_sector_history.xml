@@ -47,7 +47,7 @@
             <set_value name="$pshAttackTime" exact="$psS.$attackTime + (if @$psS.$attackOpenAt != null then player.age - $psS.$attackOpenAt else 0s)" />
             <set_value name="$pshIdleTime" exact="$psS.$idleTime + (if @$psS.$idleOpenAt != null then player.age - $psS.$idleOpenAt else 0s)" />
             <set_value name="$psKv" exact="''" />
-            <do_for_each name="$pshPair" in="[['a', $psS.$attacks], ['rp', @$psS.$responses], ['l', @$psS.$lost], ['t', ($pshAttackTime / 1s)i], ['ks', $psS.$killsSelf], ['kb', $psS.$killsSubs], ['ko', $psS.$killsOther], ['f', $psS.$fogBreaks], ['h', $psS.$hardBreaks], ['r', $psS.$rangeBreaks], ['b', $psS.$bailouts], ['i', ($pshIdleTime / 1s)i], ['e', $psS.$outsideEnds], ['s', $psS.$stationHandoffs], ['sc', $psS.$scans], ['se', $psS.$scansEmpty], ['nd', @$psS.$noDps]]">
+            <do_for_each name="$pshPair" in="[['a', $psS.$attacks], ['rp', @$psS.$responses], ['l', @$psS.$lost], ['t', ($pshAttackTime / 1s)i], ['ks', $psS.$killsSelf], ['kb', $psS.$killsSubs], ['ko', $psS.$killsOther], ['f', $psS.$fogBreaks], ['h', $psS.$hardBreaks], ['r', $psS.$rangeBreaks], ['b', $psS.$bailouts], ['i', ($pshIdleTime / 1s)i], ['e', $psS.$outsideEnds], ['s', $psS.$stationHandoffs], ['sc', $psS.$scans], ['se', $psS.$scansEmpty], ['nd', @$psS.$noDps], ['fa', @$psS.$fireAuth]]">
               <do_if value="$pshPair.{2} gt 0">
                 <set_value name="$psKv" exact="'%s%s=%s;'.[$psKv, $pshPair.{1}, $pshPair.{2}]" />
               </do_if>
@@ -105,7 +105,7 @@
         </library>
 
         <!-- every 15 min: one bucket per live fleet, the pilot table restarted, old buckets and orphaned records pruned -->
-        <cue name="Tick" instantiate="true" checkinterval="60s" version="2">
+        <cue name="Tick" instantiate="true" checkinterval="60s" version="3">
           <conditions>
             <check_value value="@player.entity.$ProtectSectorConfig.$historyDepth gt 0 and player.age ge History.$lastAt + 900s" />
           </conditions>
@@ -137,7 +137,7 @@
                 </do_for_each>
               </do_if>
               <!-- same shape as PsStats in the order script; an open attack or idle restarts at the tick -->
-              <set_value name="$psF.$ship.pilot.$protectSectorStats" exact="table[$since = player.age, $assisted = @$psS.$assisted, $attacks = 0, $responses = 0, $lost = 0, $attackTime = 0s, $killsSelf = 0, $killsSubs = 0, $killsOther = 0, $killsBy = table[], $fogBreaks = 0, $hardBreaks = 0, $rangeBreaks = 0, $bailouts = 0, $idleTime = 0s, $scans = 0, $scansEmpty = 0, $outsideEnds = 0, $stationHandoffs = 0, $noDps = 0, $hullMin = $psF.$ship.hullpercentage]" />
+              <set_value name="$psF.$ship.pilot.$protectSectorStats" exact="table[$since = player.age, $assisted = @$psS.$assisted, $attacks = 0, $responses = 0, $lost = 0, $attackTime = 0s, $killsSelf = 0, $killsSubs = 0, $killsOther = 0, $killsBy = table[], $fogBreaks = 0, $hardBreaks = 0, $rangeBreaks = 0, $bailouts = 0, $idleTime = 0s, $scans = 0, $scansEmpty = 0, $outsideEnds = 0, $stationHandoffs = 0, $noDps = 0, $fireAuth = 0, $hullMin = $psF.$ship.hullpercentage]" />
               <do_if value="@$psS.$attackOpenAt != null">
                 <set_value name="$psF.$ship.pilot.$protectSectorStats.$attackOpenAt" exact="player.age" />
               </do_if>
@@ -184,7 +184,7 @@
         </cue>
 
         <!-- the menu's snapshot: every live fleet with its current partial bucket, subordinates, targets and its history when there is one; then the records of fleets that are gone -->
-        <cue name="Request" instantiate="true" version="8">
+        <cue name="Request" instantiate="true" version="9">
           <conditions>
             <event_ui_triggered screen="'ProtectSector'" control="'requestHistory'" />
           </conditions>

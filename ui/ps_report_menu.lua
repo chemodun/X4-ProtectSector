@@ -36,7 +36,7 @@ local WIDTHS = { 900, 1800, 3600, 7200, 14400, 28800, 43200, 86400 }
 local DEFAULT_WIDTH_INDEX = 3
 
 -- Bucket counter keys as the sampler writes them.
-local COUNTER_KEYS = { "a", "rp", "l", "t", "ks", "kb", "ko", "f", "h", "r", "b", "i", "e", "s", "sc", "se", "nd" }
+local COUNTER_KEYS = { "a", "rp", "l", "t", "ks", "kb", "ko", "f", "h", "r", "b", "i", "e", "s", "sc", "se", "nd", "fa" }
 local UNCATCHABLE_BREAKS = 3
 local DEFAULT_REFRESH = 30 -- seconds, when the Options key is missing
 
@@ -1454,6 +1454,7 @@ local COLUMN_STATS = {
   { id = "sight",     textId = 1325, value = function(sum) return sum.c.f + sum.c.h end },
   { id = "range",     textId = 1326, value = function(sum) return sum.c.r end },
   { id = "nodps",     textId = 1335, value = function(sum) return sum.c.nd end },
+  { id = "fireauth",  textId = 1336, value = function(sum) return sum.c.fa end },
   { id = "fast",      textId = 1327, value = function(sum) return sum.c.b end },
   { id = "idle",      textId = 1328, value = function(sum) return idleShare(sum) .. " %" end },
   { id = "ends",      textId = 1329, value = function(sum) return sum.c.e end },
@@ -1924,6 +1925,7 @@ function menu.createRightPanel(x, width)
   statRow(stats, ReadText(PAGE, 1325), shown(c.f + c.h))
   statRow(stats, ReadText(PAGE, 1326), shown(c.r))
   statRow(stats, ReadText(PAGE, 1335), shown(c.nd))
+  statRow(stats, ReadText(PAGE, 1336), shown(c.fa))
   statRow(stats, ReadText(PAGE, 1327), shown(c.b))
   statRow(stats, ReadText(PAGE, 1328), shown(idleShare(sum) .. " %"))
   statRow(stats, ReadText(PAGE, 1329), shown(c.e))
