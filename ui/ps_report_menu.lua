@@ -131,6 +131,7 @@ local ps = {
   playerId        = nil,
   debugLevel      = "none",
   refreshInterval = 0.0,
+  isV9            = false, -- 9.00 has table row groups, 8.00 has not
 }
 
 -- *** debug helpers ***
@@ -610,14 +611,17 @@ local function viaText(via)
   return VIA_TEXT[via] and ReadText(PAGE, VIA_TEXT[via]) or "-"
 end
 
--- The Found by column: its widest text plus the cell's text offsets.
+-- The Found by column: its widest text plus the cell's text offsets; on 9.00 the row
+-- group takes its inset from the last column.
 local function viaColumnWidth()
+  local header = Helper.headerRowCenteredProperties
   local fontSize = Helper.scaleFont(Helper.standardFont, Helper.standardFontSize)
-  local width = C.GetTextWidth(ReadText(PAGE, 1399), Helper.standardFontBold, fontSize)
+  local width = C.GetTextWidth(ReadText(PAGE, 1399), header.font, Helper.scaleFont(header.font, header.fontsize))
   for _, id in pairs(VIA_TEXT) do
     width = math.max(width, C.GetTextWidth(ReadText(PAGE, id), Helper.standardFont, fontSize))
   end
-  return math.ceil(width + 2 * Helper.scaleX(Helper.standardTextOffsetx))
+  local inset = ps.isV9 and Helper.standardContainerOffset or 0
+  return math.ceil(width + 2 * Helper.scaleX(Helper.standardTextOffsetx) + inset)
 end
 
 -- The fleet name when it has one, else the commander's ship label.
@@ -1283,8 +1287,42 @@ function menu.createTabRow()
   return ftable.properties.y + ftable:getFullHeight()
 end
 
+local function bandProps(fixed)
+  return { fixed = fixed, bgColor = Color["row_background_unselectable"] }
+end
+
+-- A section title in vanilla's header style; 9.00 adds its header row padding.
+local function titleRow(ftable, cols, text, rowdata)
+  local properties = { fixed = true }
+  for key, value in pairs(Helper.headerRowProperties or {}) do
+    properties[key] = value
+  end
+  local row = ftable:addRow(rowdata or false, properties)
+  row[1]:setColSpan(cols):createText(text, Helper.headerRowCenteredProperties)
+  return row
+end
+
+-- The rows that follow go into a row group on 9.00, drawn as an inset container.
+local function rowGroup(ftable)
+  return ps.isV9 and ftable:addRowGroup({}) or ftable
+end
+
+-- A row group; on 8.00 the table itself after a half-height gap, fixed when the row
+-- above it is.
+local function rowBlock(ftable)
+  if ps.isV9 then
+    return ftable:addRowGroup({})
+  end
+  local last = ftable.rows[#ftable.rows]
+  if last ~= nil then
+    local row = ftable:addRow(false, { fixed = last.properties.fixed })
+    row[1]:setColSpan(ftable.numcolumns):createText(" ", { fontsize = 1, minRowHeight = Helper.standardTextHeight / 2 })
+  end
+  return ftable
+end
+
 local function noticeRow(ftable, cols, textId)
-  local row = ftable:addRow(false, {})
+  local row = ftable:addRow(false, bandProps())
   row[1]:setColSpan(cols):createText(ReadText(PAGE, textId), { halign = "center", wordwrap = true, color = Color["text_inactive"] })
 end
 
@@ -1389,12 +1427,11 @@ function menu.createLeftPanel(x, width)
 
   -- The header picks the counter the column shows; its row data is ignored by
   -- onRowChanged, the widget only needs a selectable row.
-  local row = leftTable:addRow(not (onBoard or onSettings), { fixed = true, bgColor = Color["row_title_background"] })
-  row[1]:createText(ReadText(PAGE, 1300), Helper.titleTextProperties)
+  local row = titleRow(leftTable, 1, ReadText(PAGE, 1300), not (onBoard or onSettings))
   if onBoard then
-    row[2]:createText(ReadText(1001, 12), Helper.titleTextProperties)
+    row[2]:createText(ReadText(1001, 12), Helper.headerRowCenteredProperties)
   elseif onSettings then
-    row[2]:createText(ReadText(PAGE, 1415), Helper.titleTextProperties)
+    row[2]:createText(ReadText(PAGE, 1415), Helper.headerRowCenteredProperties)
   else
     local options = {}
     for i, stat in ipairs(COLUMN_STATS) do
@@ -1405,10 +1442,10 @@ function menu.createLeftPanel(x, width)
   end
 
   if menu.view == nil then
-    return noticeRow(leftTable, 2, 1302)
+    return noticeRow(rowBlock(leftTable), 2, 1302)
   end
   if #menu.view.fleets == 0 then
-    return noticeRow(leftTable, 2, 1303)
+    return noticeRow(rowBlock(leftTable), 2, 1303)
   end
 
   -- The list covers the whole period held, not the window.
@@ -1426,7 +1463,7 @@ function menu.createLeftPanel(x, width)
   end
 
   -- The rows carry their identity as row data; the current row is the selection.
-  row = leftTable:addRow({ "all" }, {})
+  row = rowBlock(leftTable):addRow({ "all" }, bandProps())
   row[1]:createText(ReadText(PAGE, 1301), { halign = "left", font = Helper.standardFontBold })
   local value, valueColor = groupValue(menu.view.fleets, menu.groups or {})
   row[2]:createText(value, { halign = "right", color = valueColor })
@@ -1443,6 +1480,7 @@ function menu.createLeftPanel(x, width)
     if selection.kind == "sector" and selection.key == sector.key then
       selectedRow, scrollRow = sectorRow, sectorRow
     end
+    local fleetRows = rowGroup(leftTable)
     for _, fleet in ipairs(sector.fleets) do
       local color = (fleet.state ~= "active") and Color["text_inactive"] or nil
       valueColor = nil
@@ -1455,7 +1493,7 @@ function menu.createLeftPanel(x, width)
       else
         value = ""
       end
-      row = leftTable:addRow({ "fleet", fleet.key }, {})
+      row = fleetRows:addRow({ "fleet", fleet.key }, bandProps())
       row[1]:createText("  " .. fleetLabel(fleet), { halign = "left", color = color })
       row[2]:createText(value, { halign = "right", color = color or valueColor })
       if selection.kind == "fleet" and selection.key == fleet.key then
@@ -1478,7 +1516,7 @@ function menu.createLeftPanel(x, width)
 end
 
 local function statRow(ftable, label, value, color, rowdata)
-  local row = ftable:addRow(rowdata or true, {})
+  local row = ftable:addRow(rowdata or true, bandProps())
   row[1]:createText(label, { halign = "left", color = color })
   row[2]:createText(tostring(value), { halign = "left", color = color })
   return row
@@ -1494,7 +1532,8 @@ local function windowLabel(width)
   return pageText(1306, widthLabel(width), formatDuration(menu.toOffset))
 end
 
--- Height of the first n rows, summed the way the helper sums a whole table.
+-- Height of the first n rows, summed the way the helper sums a whole table, with the
+-- container padding of each 9.00 row group that starts in them.
 local function rowsHeight(ftable, n)
   local height = 0
   for i = 1, math.min(n, #ftable.rows) do
@@ -1504,12 +1543,18 @@ local function rowsHeight(ftable, n)
       height = height + Helper.borderSize
     end
   end
+  for _, group in ipairs(ftable.rowgroups or {}) do
+    if group.firstrow > 0 and group.firstrow <= n then
+      height = height + 2 * Helper.standardContainerOffset
+    end
+  end
   return height
 end
 
--- A section as its own table under the counters: a fixed title row, then its rows
+-- A section as its own table under the counters: fixed title rows, then its rows
 -- scroll. Position and visible height are set once every section exists. A side
--- title adds a third column of sideWidth pixels.
+-- title adds a third column of sideWidth pixels. Returns the table and the block
+-- its rows go into.
 local function createSectionTable(x, width, tabOrder, title, selectable, sideTitle, sideWidth)
   local ftable = menu.infoFrame:addTable(sideTitle and 3 or 2, {
     tabOrder = tabOrder, width = width, x = x, y = 0, borderEnabled = true, highlightMode = (not selectable) and "off" or nil,
@@ -1519,12 +1564,20 @@ local function createSectionTable(x, width, tabOrder, title, selectable, sideTit
   if sideTitle then
     ftable:setColWidth(3, sideWidth, false)
   end
-  local row = ftable:addRow(false, { fixed = true, bgColor = Color["row_title_background"] })
-  row[1]:setColSpan(2):createText(title, { halign = "left", font = Helper.standardFontBold })
+  local row = titleRow(ftable, 2, title)
   if sideTitle then
-    row[3]:createText(sideTitle, { halign = "left", font = Helper.standardFontBold })
+    row[3]:createText(sideTitle, Helper.headerRowCenteredProperties)
   end
-  return ftable
+  return ftable, rowBlock(ftable)
+end
+
+-- Rows above the first one that scrolls.
+local function fixedRows(ftable)
+  local n = 0
+  while ftable.rows[n + 1] ~= nil and ftable.rows[n + 1].properties.fixed do
+    n = n + 1
+  end
+  return n
 end
 
 local function addSubordinateRows(ftable, subs)
@@ -1538,7 +1591,7 @@ local function addSubordinateRows(ftable, subs)
   end
 end
 
-local function addTargetRows(ftable, targets)
+local function addTargetRows(ftable, rows, targets)
   menu.targetsByCode = {}
   for _, target in ipairs(targets) do
     menu.targetsByCode[target.idcode] = target
@@ -1556,7 +1609,7 @@ local function addTargetRows(ftable, targets)
     if target.uncatchable then
       label = ReadText(PAGE, 1344) .. ": " .. label
     end
-    local row = statRow(ftable, label, reason, color, { "target", target.idcode })
+    local row = statRow(rows, label, reason, color, { "target", target.idcode })
     if target.idcode == menu.targetRow then
       ftable:setSelectedRow(row.index)
     end
@@ -1678,9 +1731,8 @@ function menu.createRightPanel(x, width)
   rightTable:setColWidth(1, Helper.round(width * config.labelColShare), false)
 
   if menu.view == nil or #menu.view.fleets == 0 then
-    local row = rightTable:addRow(false, { fixed = true, bgColor = Color["row_title_background"] })
-    row[1]:setColSpan(2):createText(ReadText(PAGE, 1300), Helper.titleTextProperties)
-    noticeRow(rightTable, 2, (menu.view == nil) and 1302 or 1303)
+    titleRow(rightTable, 2, ReadText(PAGE, 1300))
+    noticeRow(rowBlock(rightTable), 2, (menu.view == nil) and 1302 or 1303)
     return menu.createControls(x, width, bottom, nil)
   end
 
@@ -1688,18 +1740,19 @@ function menu.createRightPanel(x, width)
   local from, to, windowWidth = windowRange()
   local sum = aggregate(fleets, from, to)
 
-  local row = rightTable:addRow(false, { fixed = true, bgColor = Color["row_title_background"] })
-  row[1]:setColSpan(2):createText(title, Helper.titleTextProperties)
+  titleRow(rightTable, 2, title)
+  local about = rowBlock(rightTable)
+  local row
   if fleet ~= nil then
     local state = stateLabel(fleet)
-    local about = fleet.size .. ", " .. fleet.sectorName
+    local text = fleet.size .. ", " .. fleet.sectorName
     if state ~= "" then
-      about = about .. ", " .. state
+      text = text .. ", " .. state
     end
-    row = rightTable:addRow(false, { fixed = true })
-    row[1]:setColSpan(2):createText(about, { halign = "left", color = (state ~= "") and Color["text_warning"] or nil })
+    row = about:addRow(false, bandProps(true))
+    row[1]:setColSpan(2):createText(text, { halign = "left", color = (state ~= "") and Color["text_warning"] or nil })
   end
-  row = rightTable:addRow(false, { fixed = true })
+  row = about:addRow(false, bandProps(true))
   row[1]:setColSpan(2):createText(ReadText(PAGE, 1304) .. ": " .. windowLabel(windowWidth), { halign = "left", color = Color["text_inactive"] })
 
   -- An empty window keeps every row with "-" values, and the sections and graph.
@@ -1708,25 +1761,26 @@ function menu.createRightPanel(x, width)
     return empty and "-" or value
   end
   local c = sum.c
+  local stats = rowBlock(rightTable)
   if fleet == nil then
-    statRow(rightTable, ReadText(PAGE, 1313), sum.fleets .. " / " .. #fleets)
+    statRow(stats, ReadText(PAGE, 1313), sum.fleets .. " / " .. #fleets)
   end
-  statRow(rightTable, ReadText(PAGE, 1314), shown(formatDuration(sum.coveredMax)))
-  statRow(rightTable, ReadText(PAGE, 1320), shown(c.ks))
-  statRow(rightTable, ReadText(PAGE, 1321), shown(c.kb))
-  statRow(rightTable, ReadText(PAGE, 1322), shown(c.ko))
-  statRow(rightTable, ReadText(PAGE, 1323), shown(c.a))
-  statRow(rightTable, ReadText(PAGE, 1333), shown(c.rp))
-  statRow(rightTable, ReadText(PAGE, 1324), shown(formatDuration(c.t)))
-  statRow(rightTable, ReadText(PAGE, 1325), shown(c.f + c.h))
-  statRow(rightTable, ReadText(PAGE, 1326), shown(c.r))
-  statRow(rightTable, ReadText(PAGE, 1327), shown(c.b))
-  statRow(rightTable, ReadText(PAGE, 1328), shown(idleShare(sum) .. " %"))
-  statRow(rightTable, ReadText(PAGE, 1329), shown(c.e))
-  statRow(rightTable, ReadText(PAGE, 1330), shown(c.s))
-  statRow(rightTable, ReadText(PAGE, 1331), shown(math.floor(sum.hullMin) .. " %"))
-  statRow(rightTable, ReadText(PAGE, 1334), shown(c.l))
-  statRow(rightTable, ReadText(PAGE, 1332), shown(c.sc .. " (" .. c.se .. ")"))
+  statRow(stats, ReadText(PAGE, 1314), shown(formatDuration(sum.coveredMax)))
+  statRow(stats, ReadText(PAGE, 1320), shown(c.ks))
+  statRow(stats, ReadText(PAGE, 1321), shown(c.kb))
+  statRow(stats, ReadText(PAGE, 1322), shown(c.ko))
+  statRow(stats, ReadText(PAGE, 1323), shown(c.a))
+  statRow(stats, ReadText(PAGE, 1333), shown(c.rp))
+  statRow(stats, ReadText(PAGE, 1324), shown(formatDuration(c.t)))
+  statRow(stats, ReadText(PAGE, 1325), shown(c.f + c.h))
+  statRow(stats, ReadText(PAGE, 1326), shown(c.r))
+  statRow(stats, ReadText(PAGE, 1327), shown(c.b))
+  statRow(stats, ReadText(PAGE, 1328), shown(idleShare(sum) .. " %"))
+  statRow(stats, ReadText(PAGE, 1329), shown(c.e))
+  statRow(stats, ReadText(PAGE, 1330), shown(c.s))
+  statRow(stats, ReadText(PAGE, 1331), shown(math.floor(sum.hullMin) .. " %"))
+  statRow(stats, ReadText(PAGE, 1334), shown(c.l))
+  statRow(stats, ReadText(PAGE, 1332), shown(c.sc .. " (" .. c.se .. ")"))
 
   local subs = (fleet ~= nil) and subordinateRows(fleet, sum) or {}
   local targets = mergedTargets(fleets)
@@ -1740,18 +1794,20 @@ function menu.createRightPanel(x, width)
 
   local sections = {}
   if #subs > 0 then
-    sections[#sections + 1] = createSectionTable(x, width, 5, ReadText(1001, 1503) .. " (" .. #subs .. ")")
-    addSubordinateRows(sections[#sections], subs)
+    local ftable, rows = createSectionTable(x, width, 5, ReadText(1001, 1503) .. " (" .. #subs .. ")")
+    addSubordinateRows(rows, subs)
+    sections[#sections + 1] = ftable
   end
   if #targets > 0 then
-    sections[#sections + 1] = createSectionTable(x, width, 6, ReadText(PAGE, 1340) .. " (" .. #targets .. ")", true)
-    addTargetRows(sections[#sections], targets)
+    local ftable, rows = createSectionTable(x, width, 6, ReadText(PAGE, 1340) .. " (" .. #targets .. ")", true)
+    addTargetRows(ftable, rows, targets)
+    sections[#sections + 1] = ftable
   end
 
   -- Sections under the counters, the graph under them: sectionRows rows each, fewer
   -- when the graph would fall under its minimum height, no graph when it still would.
   local function sectionHeight(ftable, rows)
-    return math.min(ftable:getFullHeight(), rowsHeight(ftable, rows + 1))
+    return math.min(ftable:getFullHeight(), rowsHeight(ftable, fixedRows(ftable) + rows))
   end
   local function sectionsHeight(rows)
     local height = 0
@@ -1774,7 +1830,7 @@ function menu.createRightPanel(x, width)
   end
   for _, ftable in ipairs(sections) do
     ftable.properties.y = y
-    ftable.properties.maxVisibleHeight = math.max(rowsHeight(ftable, 1), math.min(sectionHeight(ftable, rows), usableBottom - y))
+    ftable.properties.maxVisibleHeight = math.max(rowsHeight(ftable, fixedRows(ftable)), math.min(sectionHeight(ftable, rows), usableBottom - y))
     y = y + ftable:getVisibleHeight() + Helper.borderSize
   end
   if graphHeight > 0 then
@@ -1789,7 +1845,7 @@ end
 ---@return table[]
 local function addBoardFleetRows(ftable, board, fleet)
   if fleet.assist then
-    local row = ftable:addRow(false, {})
+    local row = ftable:addRow(false, bandProps())
     row[1]:setColSpan(2):createText(pageText(1384, shipLabel(fleet.cmdName, fleet.cmdIdcode)), { halign = "left", wordwrap = true, color = Color["text_inactive"] })
   end
   local entry = boardEntryOf(board, fleet)
@@ -1841,16 +1897,15 @@ function menu.createBoardPanel(x, width)
 
   local board = menu.view and menu.view.board
   if menu.view == nil or #menu.view.fleets == 0 or board == nil then
-    local row = infoTable:addRow(false, { fixed = true, bgColor = Color["row_title_background"] })
-    row[1]:setColSpan(2):createText(ReadText(PAGE, 1360), Helper.titleTextProperties)
-    noticeRow(infoTable, 2, (menu.view == nil) and 1302 or ((#menu.view.fleets == 0) and 1303 or 1386))
+    titleRow(infoTable, 2, ReadText(PAGE, 1360))
+    noticeRow(rowBlock(infoTable), 2, (menu.view == nil) and 1302 or ((#menu.view.fleets == 0) and 1303 or 1386))
     menu.boardTargetRow = nil
     return menu.createControls(x, width, bottom, nil)
   end
 
   local fleets, title, fleet = scopeFleets()
-  local row = infoTable:addRow(false, { fixed = true, bgColor = Color["row_title_background"] })
-  row[1]:setColSpan(2):createText(title, Helper.titleTextProperties)
+  titleRow(infoTable, 2, title)
+  local info = rowBlock(infoTable)
 
   local targets = {}
   local problems = {}
@@ -1874,23 +1929,23 @@ function menu.createBoardPanel(x, width)
         requests = requests + 1
       end
     end
-    statRow(infoTable, ReadText(PAGE, 1360), ReadText(1001, board.policy and 12642 or 12641))
-    statRow(infoTable, ReadText(PAGE, 1366), counts.engaged)
-    statRow(infoTable, ReadText(PAGE, 1367), counts.idle + counts.assigned)
-    statRow(infoTable, ReadText(PAGE, 1368), counts.away)
-    statRow(infoTable, ReadText(PAGE, 1369), counts.holding)
-    statRow(infoTable, ReadText(PAGE, 1370), #targets)
-    statRow(infoTable, ReadText(PAGE, 1371), requests)
+    statRow(info, ReadText(PAGE, 1360), ReadText(1001, board.policy and 12642 or 12641))
+    statRow(info, ReadText(PAGE, 1366), counts.engaged)
+    statRow(info, ReadText(PAGE, 1367), counts.idle + counts.assigned)
+    statRow(info, ReadText(PAGE, 1368), counts.away)
+    statRow(info, ReadText(PAGE, 1369), counts.holding)
+    statRow(info, ReadText(PAGE, 1370), #targets)
+    statRow(info, ReadText(PAGE, 1371), requests)
   else
-    targets = addBoardFleetRows(infoTable, board, fleet)
+    targets = addBoardFleetRows(info, board, fleet)
   end
 
   y = y + infoTable:getVisibleHeight() + Helper.borderSize
   -- All or a sector: fleets that keep refusing work, above the targets
   if #problems > 0 and usableBottom - y >= 2 * Helper.scaleY(Helper.standardTextHeight) then
-    local section = createSectionTable(x, width, 4, pageText(1402, #problems), false)
+    local section, problemRows = createSectionTable(x, width, 4, pageText(1402, #problems), false)
     for _, entry in ipairs(problems) do
-      local problemRow = section:addRow(false, {})
+      local problemRow = problemRows:addRow(false, bandProps())
       problemRow[1]:createText(boardFleetLabel(board, entry.key), { halign = "left", color = Color["text_negative"] })
       problemRow[2]:createText(pageText(1403, entry.refusals, refusalText(entry.refusalWhy)), { halign = "left", wordwrap = true })
     end
@@ -1911,7 +1966,7 @@ function menu.createBoardPanel(x, width)
   menu.boardTargetRow = current or (targets[1] and targets[1].key)
 
   if #targets > 0 then
-    local section = createSectionTable(x, width, 5, ReadText(PAGE, 1370), true, ReadText(PAGE, 1399), viaColumnWidth())
+    local section, targetRows = createSectionTable(x, width, 5, ReadText(PAGE, 1370), true, ReadText(PAGE, 1399), viaColumnWidth())
     for _, target in ipairs(targets) do
       local value = pageText(1372, ratioValue(board, target.ratio), #target.engaged, #target.pledged)
       if target.help >= 0 then
@@ -1921,14 +1976,14 @@ function menu.createBoardPanel(x, width)
       if menu.selection.kind == "all" then
         label = label .. ", " .. target.sectorName
       end
-      row = statRow(section, label, value, nil, { "btarget", target.key })
+      local row = statRow(targetRows, label, value, nil, { "btarget", target.key })
       row[3]:createText(viaText(target.via), { halign = "left" })
       if target.key == menu.boardTargetRow then
         section:setSelectedRow(row.index)
       end
       -- All or a sector: the fleets on it by name, under its row
       if fleet == nil then
-        local engagedRow = section:addRow(false, {})
+        local engagedRow = targetRows:addRow(false, bandProps())
         engagedRow[1]:createText(ReadText(PAGE, 1366), { halign = "left", x = Helper.standardIndentStep })
         engagedRow[2]:setColSpan(2):createText(boardFleetNames(board, target.engaged), { halign = "left", wordwrap = true })
       end
@@ -1942,7 +1997,7 @@ end
 
 -- Selectable, so a long list scrolls; the table draws no highlight.
 local function settingRow(ftable, option, text, color)
-  local row = ftable:addRow(true, {})
+  local row = ftable:addRow(true, bandProps())
   row[1]:createText(option.label, { halign = "left", wordwrap = true, x = option.sub and Helper.standardIndentStep or nil })
   row[2]:createText(text, { halign = "left", color = color })
   return row
@@ -1951,7 +2006,7 @@ end
 -- A differing value in warning colour with the sector's common value (or its split) after it.
 local function addSettingsFleetRows(ftable, fleet, sector)
   if fleet.assist then
-    local row = ftable:addRow(false, {})
+    local row = ftable:addRow(false, bandProps())
     row[1]:setColSpan(2):createText(pageText(1419, shipLabel(fleet.cmdName, fleet.cmdIdcode)), { halign = "left", wordwrap = true, color = Color["text_inactive"] })
     return
   end
@@ -1995,7 +2050,7 @@ local function addSettingsSectorRows(ftable, sector)
               names[#names + 1] = shortFleetLabel(fleet)
             end
           end
-          local row = ftable:addRow(true, {})
+          local row = ftable:addRow(true, bandProps())
           row[1]:createText(value, { halign = "left", x = indent, color = Color["text_warning"] })
           row[2]:createText(table.concat(names, ", "), { halign = "left", wordwrap = true })
         end
@@ -2010,9 +2065,10 @@ local function addSettingsGridRows(ftable, info)
   for i, fleet in ipairs(info.fleets) do
     row[i + 1]:createText(shortFleetLabel(fleet), { halign = "center", wordwrap = true, font = Helper.standardFontBold })
   end
+  local rows = rowBlock(ftable)
   for _, option in ipairs(info.rows) do
     local split = info.splits[option.name]
-    row = ftable:addRow(true, {})
+    row = rows:addRow(true, bandProps())
     row[1]:createText(option.label, { halign = "left", wordwrap = true, x = option.sub and Helper.standardIndentStep or nil })
     for i, fleet in ipairs(info.fleets) do
       local value = fleet.settings.values[option.name]
@@ -2077,22 +2133,20 @@ function menu.createSettingsPanel(x, width)
   ftable:setColWidth(1, Helper.round(width * (grid and config.gridLabelShare or config.labelColShare)), false)
 
   if not hasFleets then
-    local row = ftable:addRow(false, { fixed = true, bgColor = Color["row_title_background"] })
-    row[1]:setColSpan(cols):createText(ReadText(1001, 2679), Helper.titleTextProperties)
-    noticeRow(ftable, cols, (menu.view == nil) and 1302 or 1303)
+    titleRow(ftable, cols, ReadText(1001, 2679))
+    noticeRow(rowBlock(ftable), cols, (menu.view == nil) and 1302 or 1303)
     return menu.createControls(x, width, bottom, nil)
   end
 
-  local row = ftable:addRow(false, { fixed = true, bgColor = Color["row_title_background"] })
-  row[1]:setColSpan(cols):createText(title, Helper.titleTextProperties)
+  titleRow(ftable, cols, title)
   if fleet ~= nil then
-    addSettingsFleetRows(ftable, fleet, sector)
+    addSettingsFleetRows(rowBlock(ftable), fleet, sector)
   elseif grid ~= nil then
     addSettingsGridRows(ftable, grid)
   elseif sector ~= nil then
-    addSettingsSectorRows(ftable, sector)
+    addSettingsSectorRows(rowBlock(ftable), sector)
   else
-    addSettingsAllRows(ftable)
+    addSettingsAllRows(rowBlock(ftable))
   end
 
   menu.createControls(x, width, bottom, fleet)
@@ -2202,6 +2256,8 @@ end
 
 local function Init()
   ps.playerId = ConvertStringTo64Bit(tostring(C.GetPlayerID()))
+  -- Vanilla's own cdef (ego_debuglog), read here rather than redeclared.
+  ps.isV9 = C.GetGameVersion().major >= 9
   init()
   RegisterEvent("ProtectSector.OpenMenu", onOpenMenuEvent)
   RegisterEvent("ProtectSector.HistoryReady", onHistoryReady)
