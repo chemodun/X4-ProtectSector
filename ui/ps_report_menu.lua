@@ -8,7 +8,8 @@
 -- the targets it tried (each a scrolling table of seven rows) and a graph over the whole history depth,
 -- with the window controls under them. A tab row on top switches to Coordination:
 -- the same tree with each fleet's state on the coordinator's board, and on the
--- right the board entries of the current row with the targets they involve.
+-- right the board entries of the current row with the targets they involve. Settings:
+-- each fleet's order settings against the values most fleets of its sector hold.
 --
 -- The menu asks md/protect_sector_history.xml for a snapshot (requestHistory) and
 -- reads it back from the player blackboard when HistoryReady arrives: the live
@@ -59,12 +60,15 @@ local config = {
   mapSelectRetry     = 0.25, -- seconds between tries to select the ship on the map
   mapSelectTries     = 8,
   tabInputWidth      = 100, -- the tab-scroll input names either side of the tab icons
+  settingsGridFleets = 12, -- a sector of up to this many fleets shows one column per fleet
+  gridLabelShare     = 0.3,
 }
 
 -- The tab row, modelled on Helper.createTopLevelTab.
 local TABS = {
   { id = "stats", icon = "pi_statistics",  name = function() return ReadText(1001, 2500) end },
   { id = "board", icon = "mapst_fs_fight", name = function() return ReadText(PAGE, 1360) end },
+  { id = "settings", icon = "mapst_standing_orders", name = function() return ReadText(1001, 2679) end },
 }
 
 -- Board states other than idle (ReadText(1001, 12908)), and a label per engaged reason.
@@ -73,6 +77,45 @@ local BOARD_STATE_COLOR = { engaged = "text_positive", away = "text_inactive", h
 local WHY_TEXT = { solo = 1390, join = 1391, help = 1392, resp = 1393, release = 1394, assign = 1395, follow = 1396, sub = 1397, load = 1398 }
 -- How a board target was first found; an entry older than the field has none.
 local VIA_TEXT = { scan = 1400, attack = 1401 }
+-- Decline reasons that count as a refusal (the coordinator skips busy, pending and followup).
+local REFUSAL_TEXT = { skip = 1404, fog = 1405, stopped = 1406, relation = 1407, drone = 1408 }
+local PROBLEM_REFUSALS = 5
+
+-- Settings tab rows in display order, labelled with the order's own short texts where
+-- it has one; a sub-option is not compared while its parent is off.
+local SETTINGS = {
+  { name = "attackStations",                         textId = 111 },
+  { name = "attackStationsTactical",                 textId = 731, page = 1041, parent = "attackStations" },
+  { name = "attackStationsInternal",                 textId = 10001, parent = "attackStations" },
+  { name = "attackShipsXL",                          textId = 121 },
+  { name = "attackShipsL",                           textId = 122 },
+  { name = "attackShipsM",                           textId = 123 },
+  { name = "attackShipsS",                           textId = 124 },
+  { name = "attackShipsOutOfStationsDistance",       textId = 1409 },
+  { name = "attackVisibleOnly",                      textId = 131 },
+  { name = "attackHostileOnly",                      textId = 132 },
+  { name = "relationsThreshold",                     textId = 151 },
+  { name = "protectPlayerShipsInSector",             textId = 134 },
+  { name = "protectOnlyNonMilitaryShips",            textId = 1410, parent = "protectPlayerShipsInSector" },
+  { name = "pursueFleeingTarget",                    textId = 133 },
+  { name = "aggressiveSubordinates",                 textId = 1411 },
+  { name = "shareTargetsBetweenFleets",              textId = 1388 },
+  { name = "attackDistanceAsPercentageOfRadarRange", textId = 201, unit = " %" },
+  { name = "breakOnDestructionPercentage",           textId = 171, unit = " %", zeroOff = true },
+  { name = "receivedDamageSensitivity",              textId = 1412 },
+  { name = "ignoreBlackListsForAttack",              textId = 231 },
+  { name = "parkInSector",                           textId = 181 },
+  { name = "desiredParkingPosition",                 textId = 1413, parent = "parkInSector" },
+  { name = "delayBetweenScans",                      textId = 191 },
+  { name = "ignoreHazardThreat",                     textId = 1414 },
+  { name = "recordActionsToLogBook",                 textId = 901 },
+}
+local SETTING_BY_NAME = {}
+for _, setting in ipairs(SETTINGS) do
+  SETTING_BY_NAME[setting.name] = setting
+end
+-- The tree groups by homeSector; the other two are not player settings.
+local SETTINGS_SKIPPED = { homeSector = true, isStartedByPlayer = true, debugchance = true }
 
 -- Graph series in legend order; each sums the listed bucket keys.
 local SERIES = {
@@ -156,6 +199,12 @@ local function shipLabel(name, idcode)
   return name .. " (" .. idcode .. ")"
 end
 
+-- Text in the owner faction's colour; plain when the owner is unknown.
+local function factionColored(text, owner)
+  local color = (owner ~= nil and owner ~= "") and GetFactionData(owner, "color") or nil
+  return color and (Helper.convertColorToText(color) .. text .. "\27X") or text
+end
+
 local function fleetLabel(fleet)
   if fleet.assist then
     return pageText(1308, shipLabel(fleet.name, fleet.idcode), shipLabel(fleet.cmdName, fleet.cmdIdcode))
@@ -225,6 +274,8 @@ local function parseBoard(raw)
       since    = tonumber(entry.since) or 0,
       assigned = stripDollar(entry.assigned),
       share    = toBool(entry.share),
+      refusals = tonumber(entry.refusals) or 0,
+      refusalWhy = tostring(entry.refusalWhy or ""),
     }
     board.fleets[#board.fleets + 1] = fleet
     board.fleetByKey[fleet.key] = fleet
@@ -237,6 +288,7 @@ local function parseBoard(raw)
       size       = tostring(entry.size or "-"),
       sectorName = tostring(entry.sectorName or "-"),
       sectorKey  = tostring(entry.sectorKey or "-"),
+      owner      = tostring(entry.owner or ""),
       ship       = entry.ship,
       ratio      = tonumber(entry.ratio) or -2,
       foes       = tonumber(entry.foes) or 0,
@@ -306,6 +358,7 @@ local function parseView(raw)
         name = tostring(target.name or ""), idcode = tostring(target.idcode or ""), size = tostring(target.size or "-"),
         attempts = tonumber(target.attempts) or 0, sight = tonumber(target.sight) or 0, outran = tonumber(target.outran) or 0,
         firstAge = tonumber(target.firstAge) or view.now, sectorName = tostring(target.sectorName or "-"),
+        owner = tostring(target.owner or ""),
       }
     end
     view.fleets[#view.fleets + 1] = fleet
@@ -432,7 +485,7 @@ local function mergedTargets(fleets)
       local merged = byCode[target.idcode]
       if merged == nil then
         merged = {
-          name = target.name, idcode = target.idcode, size = target.size,
+          name = target.name, idcode = target.idcode, size = target.size, owner = target.owner,
           attempts = 0, sight = 0, outran = 0, firstAge = target.firstAge, sectorName = target.sectorName, tried = {},
         }
         byCode[target.idcode] = merged
@@ -509,6 +562,20 @@ local function boardStateText(state)
   return ReadText(PAGE, BOARD_STATE_TEXT[state]), color
 end
 
+local function isProblemFleet(entry)
+  return entry.refusals >= PROBLEM_REFUSALS
+end
+
+-- A problematic fleet's state is red whatever the state.
+local function boardEntryText(board, entry)
+  local text, color = boardStateText(boardState(board, entry))
+  return text, isProblemFleet(entry) and Color["text_negative"] or color
+end
+
+local function refusalText(why)
+  return REFUSAL_TEXT[why] and ReadText(PAGE, REFUSAL_TEXT[why]) or why
+end
+
 local function whyText(why)
   return WHY_TEXT[why] and ReadText(PAGE, WHY_TEXT[why]) or why
 end
@@ -536,7 +603,7 @@ local function ratioValue(board, ratio)
 end
 
 local function boardTargetLabel(target)
-  return target.name .. " (" .. target.idcode .. ", " .. target.size .. ")"
+  return factionColored(target.name .. " (" .. target.idcode .. ", " .. target.size .. ")", target.owner)
 end
 
 local function viaText(via)
@@ -553,18 +620,24 @@ local function viaColumnWidth()
   return math.ceil(width + 2 * Helper.scaleX(Helper.standardTextOffsetx))
 end
 
+-- The fleet name when it has one, else the commander's ship label.
+local function shortFleetLabel(fleet)
+  if (not fleet.assist) and (fleet.fleetName or "") ~= "" then
+    return fleet.fleetName
+  end
+  return shipLabel(fleet.name, fleet.idcode)
+end
+
+local function boardFleetLabel(board, key)
+  local fleet = menu.view.byKey[key] or board.fleetByKey[key]
+  return fleet and shortFleetLabel(fleet) or key
+end
+
 local function boardFleetNames(board, keys, skip)
   local names = {}
   for _, key in ipairs(keys) do
     if key ~= skip then
-      local fleet = menu.view.byKey[key] or board.fleetByKey[key]
-      if not fleet then
-        names[#names + 1] = key
-      elseif (not fleet.assist) and (fleet.fleetName or "") ~= "" then
-        names[#names + 1] = fleet.fleetName
-      else
-        names[#names + 1] = shipLabel(fleet.name, fleet.idcode)
-      end
+      names[#names + 1] = boardFleetLabel(board, key)
     end
   end
   return (#names > 0) and table.concat(names, ", ") or "-"
@@ -611,6 +684,191 @@ local function scopeTargets(board, entries, sectorKey)
   return list
 end
 
+-- *** order settings ***
+
+local function paramOn(param)
+  return param.value ~= nil and param.value ~= 0 and param.value ~= false
+end
+
+local function kmValue(metres)
+  return math.floor((tonumber(metres) or 0) / 1000 + 0.5)
+end
+
+-- A param value as shown; fleets are compared on this text.
+local function settingText(setting, param, home)
+  local value, kind = param.value, param.type
+  if value == nil then
+    return "-"
+  elseif kind == "bool" then
+    return ReadText(1001, paramOn(param) and 2617 or 2618)
+  elseif kind == "length" then
+    if param.inputparams and (tonumber(param.inputparams.step) or 0) >= 1000 then
+      return kmValue(value) .. " " .. ReadText(1001, 108)
+    end
+    return math.floor(value) .. " " .. ReadText(1001, 107)
+  elseif kind == "position" then
+    local offset = value[2]
+    if type(offset) ~= "table" then
+      return "-"
+    end
+    local x, y, z = kmValue(offset.x), kmValue(offset.y), kmValue(offset.z)
+    local text = ((y ~= 0) and string.format("%d, %d, %d", x, y, z) or string.format("%d, %d", x, z)) .. " " .. ReadText(1001, 108)
+    if home ~= nil and value[1] ~= nil and ConvertStringTo64Bit(tostring(value[1])) ~= ConvertStringTo64Bit(tostring(home)) then
+      text = GetComponentData(value[1], "name") .. ": " .. text
+    end
+    return text
+  elseif kind == "number" and setting ~= nil then
+    if setting.zeroOff and value == 0 then
+      return ReadText(1001, 12641)
+    end
+    return tostring(value) .. (setting.unit or "")
+  end
+  return tostring(value)
+end
+
+-- values[name] = { text, key }, key nil while the parent option is off; extras are
+-- params this list does not know (a later order version). nil when not readable.
+local function readSettings(fleet)
+  if fleet.assist or fleet.state ~= "active" or fleet.ship == nil
+      or not C.IsComponentOperational(ConvertIDTo64Bit(fleet.ship)) then
+    return nil
+  end
+  local params = GetOrderParams(fleet.ship, "default") or {}
+  local byName = {}
+  for _, param in ipairs(params) do
+    byName[param.name] = param
+  end
+  if byName.shareTargetsBetweenFleets == nil then
+    traceLog("settings: %s has another default order now.", fleet.key)
+    return nil
+  end
+  local home = byName.homeSector and byName.homeSector.value
+  local settings = { values = {}, extras = {} }
+  for _, param in ipairs(params) do
+    if not SETTINGS_SKIPPED[param.name] and param.type ~= "internal" then
+      local setting = SETTING_BY_NAME[param.name]
+      local parent = setting and setting.parent and byName[setting.parent]
+      if parent and not paramOn(parent) then
+        settings.values[param.name] = { text = "-" }
+      else
+        local text = settingText(setting, param, home)
+        settings.values[param.name] = { text = text, key = text }
+      end
+      if setting == nil then
+        settings.extras[#settings.extras + 1] = { name = param.name, label = tostring(param.text or param.name) }
+      end
+    end
+  end
+  return settings
+end
+
+-- Read once per snapshot: a new view brings new fleet objects.
+local function fleetSettings(fleet)
+  if fleet.settings == nil then
+    fleet.settings = readSettings(fleet) or false
+  end
+  return fleet.settings or nil
+end
+
+-- The known options, then unknown ones in the order the fleets list them.
+local function settingRows(fleets)
+  local rows, seen = {}, {}
+  for _, setting in ipairs(SETTINGS) do
+    rows[#rows + 1] = { name = setting.name, label = ReadText(setting.page or PAGE, setting.textId), sub = (setting.parent ~= nil) }
+  end
+  for _, fleet in ipairs(fleets) do
+    local settings = fleetSettings(fleet)
+    for _, extra in ipairs(settings and settings.extras or {}) do
+      if not seen[extra.name] then
+        seen[extra.name] = true
+        rows[#rows + 1] = { name = extra.name, label = extra.label }
+      end
+    end
+  end
+  return rows
+end
+
+-- The values the fleets hold for one option, most held first; base is the value more
+-- fleets hold than any other, nil on a tie at the top.
+local function settingSplit(fleets, name)
+  local counts, values = {}, {}
+  for _, fleet in ipairs(fleets) do
+    local settings = fleetSettings(fleet)
+    local value = settings and settings.values[name]
+    if value and value.key then
+      if counts[value.key] == nil then
+        counts[value.key] = 0
+        values[#values + 1] = value.key
+      end
+      counts[value.key] = counts[value.key] + 1
+    end
+  end
+  table.sort(values, function(a, b)
+    if counts[a] ~= counts[b] then return counts[a] > counts[b] end
+    return a < b
+  end)
+  local base = values[1]
+  if values[2] ~= nil and counts[values[2]] == counts[base] then
+    base = nil
+  end
+  return { counts = counts, values = values, base = base }
+end
+
+local function splitText(split)
+  if #split.values < 2 then
+    return split.values[1] or "-"
+  end
+  local parts = {}
+  for _, value in ipairs(split.values) do
+    parts[#parts + 1] = value .. " (" .. split.counts[value] .. ")"
+  end
+  return table.concat(parts, ", ")
+end
+
+local function differs(split, value)
+  return value ~= nil and value.key ~= nil and #split.values > 1 and value.key ~= split.base
+end
+
+-- A sector's readable fleets, a split per option and how many options each fleet differs on.
+local function sectorSettings(sector)
+  if sector.settings then
+    return sector.settings
+  end
+  local fleets = {}
+  for _, fleet in ipairs(sector.fleets) do
+    if fleetSettings(fleet) then
+      fleets[#fleets + 1] = fleet
+    end
+  end
+  local info = { fleets = fleets, rows = settingRows(fleets), splits = {}, differ = {}, differing = 0 }
+  for _, option in ipairs(info.rows) do
+    info.splits[option.name] = settingSplit(fleets, option.name)
+  end
+  for _, fleet in ipairs(fleets) do
+    local count = 0
+    for _, option in ipairs(info.rows) do
+      if differs(info.splits[option.name], fleet.settings.values[option.name]) then
+        count = count + 1
+      end
+    end
+    info.differ[fleet.key] = count
+    if count > 0 then
+      info.differing = info.differing + 1
+    end
+  end
+  sector.settings = info
+  return info
+end
+
+local function sectorOf(fleet)
+  for _, sector in ipairs(menu.groups or {}) do
+    if sector.key == fleet.sectorKey then
+      return sector
+    end
+  end
+  return nil
+end
+
 -- *** state ***
 
 local function resetState()
@@ -626,18 +884,19 @@ local function resetState()
   menu.boardTargetRow = nil
 end
 
--- The current row's fleets, falling back to all when its row is gone.
+-- The current row's fleets, falling back to all when its row is gone; the sector
+-- is the selected one or the fleet's.
 local function scopeFleets()
   local selection = menu.selection
   if selection.kind == "fleet" then
     local fleet = menu.view.byKey[selection.key]
     if fleet then
-      return { fleet }, fleetLabel(fleet), fleet
+      return { fleet }, fleetLabel(fleet), fleet, sectorOf(fleet)
     end
   elseif selection.kind == "sector" then
     for _, sector in ipairs(menu.groups or {}) do
       if sector.key == selection.key then
-        return sector.fleets, sector.name, nil
+        return sector.fleets, sector.name, nil, sector
       end
     end
   end
@@ -967,6 +1226,8 @@ function menu.createFrame()
   menu.createLeftPanel(Helper.frameBorder, leftWidth)
   if menu.tab == "board" then
     menu.createBoardPanel(rightX, rightWidth)
+  elseif menu.tab == "settings" then
+    menu.createSettingsPanel(rightX, rightWidth)
   else
     menu.createRightPanel(rightX, rightWidth)
   end
@@ -1085,11 +1346,37 @@ local function boardFleetText(board, fleet)
   if entry == nil then
     return "", nil
   end
-  return boardStateText(boardState(board, entry))
+  return boardEntryText(board, entry)
+end
+
+-- The Settings column: a sector or All counts its fleets that differ from their sector.
+local function settingsCountText(sectors)
+  local differing, total = 0, 0
+  for _, sector in ipairs(sectors) do
+    local info = sectorSettings(sector)
+    differing = differing + info.differing
+    total = total + #info.fleets
+  end
+  if total == 0 then
+    return "-", nil
+  end
+  return pageText(1417, differing, total), (differing > 0) and Color["text_warning"] or nil
+end
+
+-- Options the fleet differs on; blank for an Assist fleet and one not readable.
+local function settingsFleetText(sector, fleet)
+  local count = (not fleet.assist) and sectorSettings(sector).differ[fleet.key] or nil
+  if count == nil then
+    return "", nil
+  elseif count == 0 then
+    return "-", nil
+  end
+  return pageText(1416, count), Color["text_warning"]
 end
 
 function menu.createLeftPanel(x, width)
   local onBoard = (menu.tab == "board")
+  local onSettings = (menu.tab == "settings")
   local leftTable = menu.infoFrame:addTable(2, {
     tabOrder = 1, width = width, x = x, y = menu.panelTop, borderEnabled = true,
     maxVisibleHeight = panelHeight(menu.panelTop),
@@ -1102,10 +1389,12 @@ function menu.createLeftPanel(x, width)
 
   -- The header picks the counter the column shows; its row data is ignored by
   -- onRowChanged, the widget only needs a selectable row.
-  local row = leftTable:addRow(not onBoard, { fixed = true, bgColor = Color["row_title_background"] })
+  local row = leftTable:addRow(not (onBoard or onSettings), { fixed = true, bgColor = Color["row_title_background"] })
   row[1]:createText(ReadText(PAGE, 1300), Helper.titleTextProperties)
   if onBoard then
     row[2]:createText(ReadText(1001, 12), Helper.titleTextProperties)
+  elseif onSettings then
+    row[2]:createText(ReadText(PAGE, 1415), Helper.titleTextProperties)
   else
     local options = {}
     for i, stat in ipairs(COLUMN_STATS) do
@@ -1127,9 +1416,11 @@ function menu.createLeftPanel(x, width)
   local selection = menu.selection
   local selectedRow, scrollRow
   local board = menu.view.board
-  local function groupValue(fleets)
+  local function groupValue(fleets, sectors)
     if onBoard then
       return (board ~= nil) and boardCountText(board, fleets) or "-"
+    elseif onSettings then
+      return settingsCountText(sectors)
     end
     return columnValue(aggregate(fleets, from, to))
   end
@@ -1137,7 +1428,8 @@ function menu.createLeftPanel(x, width)
   -- The rows carry their identity as row data; the current row is the selection.
   row = leftTable:addRow({ "all" }, {})
   row[1]:createText(ReadText(PAGE, 1301), { halign = "left", font = Helper.standardFontBold })
-  row[2]:createText(groupValue(menu.view.fleets), { halign = "right" })
+  local value, valueColor = groupValue(menu.view.fleets, menu.groups or {})
+  row[2]:createText(value, { halign = "right", color = valueColor })
   if selection.kind == "all" then
     selectedRow = row.index
   end
@@ -1145,15 +1437,18 @@ function menu.createLeftPanel(x, width)
   for _, sector in ipairs(menu.groups or {}) do
     row = leftTable:addRow({ "sector", sector.key }, { bgColor = Color["row_title_background"] })
     row[1]:createText(sector.name, { halign = "left", font = Helper.standardFontBold })
-    row[2]:createText(groupValue(sector.fleets), { halign = "right" })
+    value, valueColor = groupValue(sector.fleets, { sector })
+    row[2]:createText(value, { halign = "right", color = valueColor })
     local sectorRow = row.index
     if selection.kind == "sector" and selection.key == sector.key then
       selectedRow, scrollRow = sectorRow, sectorRow
     end
     for _, fleet in ipairs(sector.fleets) do
       local color = (fleet.state ~= "active") and Color["text_inactive"] or nil
-      local value, valueColor
-      if not onBoard then
+      valueColor = nil
+      if onSettings then
+        value, valueColor = settingsFleetText(sector, fleet)
+      elseif not onBoard then
         value = columnValue(aggregate({ fleet }, from, to))
       elseif board ~= nil then
         value, valueColor = boardFleetText(board, fleet)
@@ -1257,7 +1552,7 @@ local function addTargetRows(ftable, targets)
       reason = pageText(1342, target.attempts, since)
     end
     local color = target.uncatchable and Color["text_warning"] or nil
-    local label = target.name .. " (" .. target.idcode .. ", " .. target.size .. "), " .. target.sectorName
+    local label = factionColored(target.name .. " (" .. target.idcode .. ", " .. target.size .. ")", target.owner) .. ", " .. target.sectorName
     if target.uncatchable then
       label = ReadText(PAGE, 1344) .. ": " .. label
     end
@@ -1502,7 +1797,7 @@ local function addBoardFleetRows(ftable, board, fleet)
     noticeRow(ftable, 2, 1385)
     return {}
   end
-  local stateText, stateColor = boardStateText(boardState(board, entry))
+  local stateText, stateColor = boardEntryText(board, entry)
   statRow(ftable, ReadText(1001, 12), stateText, stateColor)
   if entry.state == "engaged" then
     statRow(ftable, ReadText(PAGE, 1375), whyText(entry.why))
@@ -1558,8 +1853,15 @@ function menu.createBoardPanel(x, width)
   row[1]:setColSpan(2):createText(title, Helper.titleTextProperties)
 
   local targets = {}
+  local problems = {}
   if fleet == nil then
     local entries = scopeEntries(board, fleets)
+    for _, entry in ipairs(entries) do
+      if isProblemFleet(entry) then
+        problems[#problems + 1] = entry
+      end
+    end
+    table.sort(problems, function(a, b) return a.refusals > b.refusals end)
     local counts = { engaged = 0, idle = 0, away = 0, holding = 0, assigned = 0 }
     for _, entry in ipairs(entries) do
       local state = boardState(board, entry)
@@ -1584,6 +1886,18 @@ function menu.createBoardPanel(x, width)
   end
 
   y = y + infoTable:getVisibleHeight() + Helper.borderSize
+  -- All or a sector: fleets that keep refusing work, above the targets
+  if #problems > 0 and usableBottom - y >= 2 * Helper.scaleY(Helper.standardTextHeight) then
+    local section = createSectionTable(x, width, 4, pageText(1402, #problems), false)
+    for _, entry in ipairs(problems) do
+      local problemRow = section:addRow(false, {})
+      problemRow[1]:createText(boardFleetLabel(board, entry.key), { halign = "left", color = Color["text_negative"] })
+      problemRow[2]:createText(pageText(1403, entry.refusals, refusalText(entry.refusalWhy)), { halign = "left", wordwrap = true })
+    end
+    section.properties.y = y
+    section.properties.maxVisibleHeight = math.floor((usableBottom - y) / 2)
+    y = y + section:getVisibleHeight() + Helper.borderSize
+  end
   if usableBottom - y < 2 * Helper.scaleY(Helper.standardTextHeight) then
     targets = {}
   end
@@ -1626,6 +1940,164 @@ function menu.createBoardPanel(x, width)
   menu.createControls(x, width, bottom, fleet)
 end
 
+-- Selectable, so a long list scrolls; the table draws no highlight.
+local function settingRow(ftable, option, text, color)
+  local row = ftable:addRow(true, {})
+  row[1]:createText(option.label, { halign = "left", wordwrap = true, x = option.sub and Helper.standardIndentStep or nil })
+  row[2]:createText(text, { halign = "left", color = color })
+  return row
+end
+
+-- A differing value in warning colour with the sector's common value (or its split) after it.
+local function addSettingsFleetRows(ftable, fleet, sector)
+  if fleet.assist then
+    local row = ftable:addRow(false, {})
+    row[1]:setColSpan(2):createText(pageText(1419, shipLabel(fleet.cmdName, fleet.cmdIdcode)), { halign = "left", wordwrap = true, color = Color["text_inactive"] })
+    return
+  end
+  local settings = fleetSettings(fleet)
+  if settings == nil or sector == nil then
+    return noticeRow(ftable, 2, 1418)
+  end
+  local info = sectorSettings(sector)
+  for _, option in ipairs(info.rows) do
+    local value = settings.values[option.name]
+    local split = info.splits[option.name]
+    local text = value and value.text or "-"
+    local color = (value == nil or value.key == nil) and Color["text_inactive"] or nil
+    if differs(split, value) then
+      text = pageText(1420, text, split.base or splitText(split))
+      color = Color["text_warning"]
+    end
+    settingRow(ftable, option, text, color)
+  end
+end
+
+-- The common value per option; a mixed one shows its split, then per value other than
+-- the common one the fleets holding it (every value on a tie).
+local function addSettingsSectorRows(ftable, sector)
+  local info = sectorSettings(sector)
+  if #info.fleets == 0 then
+    return noticeRow(ftable, 2, 1418)
+  end
+  for _, option in ipairs(info.rows) do
+    local split = info.splits[option.name]
+    local mixed = #split.values > 1
+    settingRow(ftable, option, splitText(split), mixed and Color["text_warning"] or nil)
+    if mixed then
+      local indent = (option.sub and 2 or 1) * Helper.standardIndentStep
+      for _, value in ipairs(split.values) do
+        if value ~= split.base then
+          local names = {}
+          for _, fleet in ipairs(info.fleets) do
+            local own = fleet.settings.values[option.name]
+            if own and own.key == value then
+              names[#names + 1] = shortFleetLabel(fleet)
+            end
+          end
+          local row = ftable:addRow(true, {})
+          row[1]:createText(value, { halign = "left", x = indent, color = Color["text_warning"] })
+          row[2]:createText(table.concat(names, ", "), { halign = "left", wordwrap = true })
+        end
+      end
+    end
+  end
+end
+
+-- A sector of few fleets: one column per fleet, a value that differs in warning colour.
+local function addSettingsGridRows(ftable, info)
+  local row = ftable:addRow(false, { fixed = true, bgColor = Color["row_title_background"] })
+  for i, fleet in ipairs(info.fleets) do
+    row[i + 1]:createText(shortFleetLabel(fleet), { halign = "center", wordwrap = true, font = Helper.standardFontBold })
+  end
+  for _, option in ipairs(info.rows) do
+    local split = info.splits[option.name]
+    row = ftable:addRow(true, {})
+    row[1]:createText(option.label, { halign = "left", wordwrap = true, x = option.sub and Helper.standardIndentStep or nil })
+    for i, fleet in ipairs(info.fleets) do
+      local value = fleet.settings.values[option.name]
+      local color = nil
+      if differs(split, value) then
+        color = Color["text_warning"]
+      elseif value == nil or value.key == nil then
+        color = Color["text_inactive"]
+      end
+      row[i + 1]:createText(value and value.text or "-", { halign = "center", wordwrap = true, color = color })
+    end
+  end
+end
+
+-- The split over every readable fleet, in warning colour where any sector is mixed.
+local function addSettingsAllRows(ftable)
+  local fleets, mixed = {}, {}
+  for _, sector in ipairs(menu.groups or {}) do
+    local info = sectorSettings(sector)
+    for _, fleet in ipairs(info.fleets) do
+      fleets[#fleets + 1] = fleet
+    end
+    for name, split in pairs(info.splits) do
+      if #split.values > 1 then
+        mixed[name] = true
+      end
+    end
+  end
+  if #fleets == 0 then
+    return noticeRow(ftable, 2, 1418)
+  end
+  for _, option in ipairs(settingRows(fleets)) do
+    settingRow(ftable, option, splitText(settingSplit(fleets, option.name)), mixed[option.name] and Color["text_warning"] or nil)
+  end
+end
+
+-- Settings tab, right side: the current row's order settings.
+function menu.createSettingsPanel(x, width)
+  local bottom         = Helper.viewHeight - Helper.frameBorder
+  local controlsHeight = Helper.scaleY(Helper.standardButtonHeight) + Helper.borderSize
+  local y              = menu.panelTop
+
+  local hasFleets = (menu.view ~= nil) and (#menu.view.fleets > 0)
+  local _, title, fleet, sector
+  if hasFleets then
+    _, title, fleet, sector = scopeFleets()
+  end
+  local grid = nil
+  if fleet == nil and sector ~= nil then
+    local info = sectorSettings(sector)
+    if #info.fleets > 0 and #info.fleets <= config.settingsGridFleets then
+      grid = info
+    end
+  end
+  local cols = grid and (#grid.fleets + 1) or 2
+
+  local ftable = menu.infoFrame:addTable(cols, {
+    tabOrder = 2, width = width, x = x, y = y, borderEnabled = true,
+    maxVisibleHeight = bottom - controlsHeight - y, highlightMode = "off",
+    backgroundID = "solid", backgroundColor = Color["frame_background_semitransparent"],
+  })
+  ftable:setColWidth(1, Helper.round(width * (grid and config.gridLabelShare or config.labelColShare)), false)
+
+  if not hasFleets then
+    local row = ftable:addRow(false, { fixed = true, bgColor = Color["row_title_background"] })
+    row[1]:setColSpan(cols):createText(ReadText(1001, 2679), Helper.titleTextProperties)
+    noticeRow(ftable, cols, (menu.view == nil) and 1302 or 1303)
+    return menu.createControls(x, width, bottom, nil)
+  end
+
+  local row = ftable:addRow(false, { fixed = true, bgColor = Color["row_title_background"] })
+  row[1]:setColSpan(cols):createText(title, Helper.titleTextProperties)
+  if fleet ~= nil then
+    addSettingsFleetRows(ftable, fleet, sector)
+  elseif grid ~= nil then
+    addSettingsGridRows(ftable, grid)
+  elseif sector ~= nil then
+    addSettingsSectorRows(ftable, sector)
+  else
+    addSettingsAllRows(ftable)
+  end
+
+  menu.createControls(x, width, bottom, fleet)
+end
+
 function menu.buttonShowTarget()
   local target = currentBoardTarget()
   if target and canShowShip(target.ship) then
@@ -1633,11 +2105,13 @@ function menu.buttonShowTarget()
   end
 end
 
--- Coordination tab: Refresh, Show on Map for the fleet and for the current Targets row.
+-- Coordination and Settings tabs: Refresh, Show on Map for the fleet and, on
+-- Coordination, for the current Targets row.
 local function createBoardControls(x, width, bottom, fleet)
   local buttonHeight = Helper.scaleY(Helper.standardButtonHeight)
-  local target = currentBoardTarget()
-  local controls = menu.infoFrame:addTable(3, {
+  local onBoard = (menu.tab == "board")
+  local target = onBoard and currentBoardTarget() or nil
+  local controls = menu.infoFrame:addTable(onBoard and 3 or 2, {
     tabOrder = 3, width = width, x = x, y = bottom - buttonHeight, reserveScrollBar = false,
     backgroundID = "solid", backgroundColor = Color["frame_background_semitransparent"],
   })
@@ -1646,13 +2120,15 @@ local function createBoardControls(x, width, bottom, fleet)
   row[1].handlers.onClick = function() return menu.buttonRefresh() end
   row[2]:createButton({ active = canShowOnMap(fleet) }):setText(ReadText(1001, 3408), { halign = "center" })
   row[2].handlers.onClick = function() return menu.buttonShowOnMap(fleet) end
-  row[3]:createButton({ active = (target ~= nil) and canShowShip(target.ship) }):setText(ReadText(PAGE, 1387), { halign = "center" })
-  row[3].handlers.onClick = function() return menu.buttonShowTarget() end
+  if onBoard then
+    row[3]:createButton({ active = (target ~= nil) and canShowShip(target.ship) }):setText(ReadText(PAGE, 1387), { halign = "center" })
+    row[3].handlers.onClick = function() return menu.buttonShowTarget() end
+  end
 end
 
 -- Width, older, newer, Now, Refresh, Show on Map in one row under the right panel.
 function menu.createControls(x, width, bottom, fleet)
-  if menu.tab == "board" then
+  if menu.tab ~= "stats" then
     return createBoardControls(x, width, bottom, fleet)
   end
   local buttonHeight = Helper.scaleY(Helper.standardButtonHeight)

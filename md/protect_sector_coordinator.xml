@@ -605,7 +605,7 @@
         </library>
 
         <!-- every message from an order script -->
-        <cue name="Board" instantiate="true" version="4">
+        <cue name="Board" instantiate="true" version="5">
           <conditions>
             <event_object_signalled object="player.entity" param="'ProtectSector.Board'" />
             <check_value value="@event.param2.exists and @event.param3.$op != null" />
@@ -717,6 +717,11 @@
               <do_elseif value="$psOp == 'decline'">
                 <set_value name="$psT" exact="@$psP.$target" />
                 <set_value name="$psFE.$assigned" exact="null" />
+                <!-- a refusal: free, yet declined; busy, pending and followup are not -->
+                <do_if value="['busy', 'pending', 'followup'].indexof.{@$psP.$why} == 0">
+                  <set_value name="$psFE.$refusals" exact="if $psFE.$refusals? then $psFE.$refusals + 1 else 1" />
+                  <set_value name="$psFE.$refusalWhy" exact="@$psP.$why" />
+                </do_if>
                 <do_if value="@$psT != null and $psB.$targets.{$psT}?">
                   <set_value name="$psTE" exact="$psB.$targets.{$psT}" />
                   <set_value name="$psTE.$declined.{$psF}" exact="player.age" />

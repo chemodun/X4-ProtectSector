@@ -86,6 +86,9 @@
               <include_actions ref="ClearDebugChances" />
             </do_if>
             <remove_value name="$oldConfig" />
+            <!-- TEMP (save series): force 'debug' on every load; remove before release -->
+            <set_value name="player.entity.$ProtectSectorConfig.$debugLevel" exact="'debug'" />
+            <debug_text text="'ProtectSector: Options: TEMP forced debug level'" />
           </actions>
         </library>
 

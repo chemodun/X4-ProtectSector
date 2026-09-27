@@ -183,7 +183,7 @@
         </cue>
 
         <!-- the menu's snapshot: every live fleet with its current partial bucket, subordinates, targets and its history when there is one; then the records of fleets that are gone -->
-        <cue name="Request" instantiate="true" version="4">
+        <cue name="Request" instantiate="true" version="6">
           <conditions>
             <event_ui_triggered screen="'ProtectSector'" control="'requestHistory'" />
           </conditions>
@@ -227,7 +227,7 @@
                 <do_for_each name="$pshTarget" valuename="$pshT" in="$psF.$ship.pilot.$protectSectorTargets">
                   <do_if value="@$pshTarget.exists and not $pshTarget.iswreck">
                     <set_value name="$pshSize" exact="if $pshT.$class == class.ship_xl then {1001, 48} else if $pshT.$class == class.ship_l then {1001, 49} else if $pshT.$class == class.ship_m then {1001, 50} else if $pshT.$class == class.ship_s then {1001, 51} else '-'" />
-                    <append_to_list name="$psEntry.$targets" exact="table[$name = $pshT.$name, $idcode = $pshT.$idcode, $size = $pshSize, $attempts = $pshT.$attempts, $sight = $pshT.$hardBreaks + $pshT.$fogBreaks, $outran = $pshT.$rangeBreaks + $pshT.$bailouts, $firstAge = ($pshT.$firstAge / 1s)i, $lastAge = ($pshT.$lastAge / 1s)i, $sectorName = (if @$pshTarget.sector.exists then $pshTarget.sector.knownname else '-')]" />
+                    <append_to_list name="$psEntry.$targets" exact="table[$name = $pshT.$name, $idcode = $pshT.$idcode, $owner = (if @$pshTarget.exists then $pshTarget.owner.id else ''), $size = $pshSize, $attempts = $pshT.$attempts, $sight = $pshT.$hardBreaks + $pshT.$fogBreaks, $outran = $pshT.$rangeBreaks + $pshT.$bailouts, $firstAge = ($pshT.$firstAge / 1s)i, $lastAge = ($pshT.$lastAge / 1s)i, $sectorName = (if @$pshTarget.sector.exists then $pshTarget.sector.knownname else '-')]" />
                   </do_if>
                 </do_for_each>
               </do_if>
@@ -256,7 +256,7 @@
               <set_value name="$psView.$board" exact="table[$policy = $psPolicy, $ksolo = $ksolo, $kmin = $kmin, $kbreak = $kbreak, $fleets = [], $targets = []]" />
               <do_for_each name="$psBk" valuename="$psBe" in="player.entity.$ProtectSectorBoard.$fleets">
                 <do_if value="@$psBk.exists">
-                  <append_to_list name="$psView.$board.$fleets" exact="table[$key = '$%s'.[$psBk.idcode], $name = $psBk.name, $idcode = $psBk.idcode, $state = $psBe.$state, $target = (if @$psBe.$target.exists then '$%s'.[$psBe.$target.idcode] else ''), $why = (if @$psBe.$why != null then $psBe.$why else ''), $since = ((player.age - $psBe.$since) / 1s)i, $assigned = (if @$psBe.$assigned.exists then '$%s'.[$psBe.$assigned.idcode] else ''), $power = $psBe.$power, $share = (@$psBe.$share == true)]" />
+                  <append_to_list name="$psView.$board.$fleets" exact="table[$key = '$%s'.[$psBk.idcode], $name = $psBk.name, $idcode = $psBk.idcode, $refusals = (if $psBe.$refusals? then $psBe.$refusals else 0), $refusalWhy = (if $psBe.$refusalWhy? then $psBe.$refusalWhy else ''), $state = $psBe.$state, $target = (if @$psBe.$target.exists then '$%s'.[$psBe.$target.idcode] else ''), $why = (if @$psBe.$why != null then $psBe.$why else ''), $since = ((player.age - $psBe.$since) / 1s)i, $assigned = (if @$psBe.$assigned.exists then '$%s'.[$psBe.$assigned.idcode] else ''), $power = $psBe.$power, $share = (@$psBe.$share == true)]" />
                 </do_if>
               </do_for_each>
               <do_for_each name="$psBk" valuename="$psBe" in="player.entity.$ProtectSectorBoard.$targets">
@@ -272,7 +272,7 @@
                     </do_for_each>
                     <append_to_list name="$psBl" exact="$psBkeys" />
                   </do_for_each>
-                  <append_to_list name="$psView.$board.$targets" exact="table[$key = '$%s'.[$psBk.idcode], $name = $psBk.name, $idcode = $psBk.idcode, $size = (if $psBk.isclass.ship_xl then {1001, 48} else if $psBk.isclass.ship_l then {1001, 49} else if $psBk.isclass.ship_m then {1001, 50} else if $psBk.isclass.ship_s then {1001, 51} else '-'), $sectorName = (if @$psBk.sector.exists then $psBk.sector.knownname else '-'), $sectorKey = (if @$psBk.sector.exists then $psBk.sector.macro else '-'), $ship = $psBk, $ratio = (if (typeof $psBe.$ratio).isnumeric then $psBe.$ratio else -2), $group = $psBe.$group, $foes = $psBe.$foes, $engaged = $psBl.{1}, $pledged = $psBl.{2}, $assigned = $psBl.{3}, $help = (if $psBe.$help != null then ((player.age - $psBe.$help) / 1s)i else -1), $via = (if @$psBe.$via != null then $psBe.$via else '')]" />
+                  <append_to_list name="$psView.$board.$targets" exact="table[$key = '$%s'.[$psBk.idcode], $name = $psBk.name, $idcode = $psBk.idcode, $owner = $psBk.owner.id, $size = (if $psBk.isclass.ship_xl then {1001, 48} else if $psBk.isclass.ship_l then {1001, 49} else if $psBk.isclass.ship_m then {1001, 50} else if $psBk.isclass.ship_s then {1001, 51} else '-'), $sectorName = (if @$psBk.sector.exists then $psBk.sector.knownname else '-'), $sectorKey = (if @$psBk.sector.exists then $psBk.sector.macro else '-'), $ship = $psBk, $ratio = (if (typeof $psBe.$ratio).isnumeric then $psBe.$ratio else -2), $group = $psBe.$group, $foes = $psBe.$foes, $engaged = $psBl.{1}, $pledged = $psBl.{2}, $assigned = $psBl.{3}, $help = (if $psBe.$help != null then ((player.age - $psBe.$help) / 1s)i else -1), $via = (if @$psBe.$via != null then $psBe.$via else '')]" />
                 </do_if>
               </do_for_each>
             </do_if>

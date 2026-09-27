@@ -2675,7 +2675,7 @@
             $stationIsUnderConstruction = false
           ]" />
           <include_interrupt_actions ref="PsTargetPick" />
-          <set_value name="$tel" exact="'target|id=%s|class=%s|dist=%s|rel=%s|why=%s'.[$target.debugname, $target.class, $targetDistanceTo, $target.relationto.{this.owner}, if @$respWhy != null then $respWhy else (if @$fuPick then 'follow' else 'sub')]" />
+          <set_value name="$tel" exact="'target|id=%s|class=%s|dist=%s|rel=%s|owner=%s|why=%s'.[$target.debugname, $target.class, $targetDistanceTo, $target.relationto.{this.owner}, @$target.trueowner.id, if @$respWhy != null then $respWhy else (if @$fuPick then 'follow' else 'sub')]" />
           <include_interrupt_actions ref="Telemetry" />
           <remove_value name="$respWhy" />
 
@@ -3331,7 +3331,7 @@
             forceposition="false" finishonapproach="true" radius="$targetOptimalDistanceForAttack / 3">
             <position value="if $approachChase then $chaseOffset else $destination" max="$targetOptimalDistanceForAttack / 4"
               space="if $approachChase then $target else $homeSector" />
-            <interrupt_after_time time="$approachCap" />
+            <interrupt_after_time time="@$approachCap" />
             <interrupt>
               <conditions>
                 <check_any>
@@ -3394,7 +3394,7 @@
             @this.assignedcontrolled.travel.iscoasting,
             $approachTrv0,
             if $approachChase then 1 else 0,
-            if $approachCut? then $approachCut else (if player.age - $passStartedAt ge $approachCap - 1s then 'cap' else 'arrive')
+            if $approachCut? then $approachCut else (if player.age - $passStartedAt ge @$approachCap - 1s then 'cap' else 'arrive')
           ]" />
           <include_interrupt_actions ref="Telemetry" />
 
