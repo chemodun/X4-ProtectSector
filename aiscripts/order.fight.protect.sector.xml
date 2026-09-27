@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="iso-8859-1"?>
-<aiscript name="order.fight.protect.sector" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="aiscripts.xsd" version="119">
+<aiscript name="order.fight.protect.sector" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="aiscripts.xsd" version="200">
   <order id="ProtectSector" name="{1972092401, 1}" description="{1972092401, 2}" category="combat" infinite="true" allowinloop="false">
     <params>
       <param name="homeSector"
@@ -544,10 +544,10 @@
           chance="@$traceChance" />
       </actions>
       <actions name="SetVersion">
-        <set_value name="$scriptVersion" exact="119" />
+        <set_value name="$scriptVersion" exact="200" />
       </actions>
       <actions name="ProtectSectorGlobalApply">
-        <!-- a pre-1.19 save's patch and restart run before the MD migration, so the old flag still exists and maps as it does -->
+        <!-- a pre-2.00 save's patch and restart run before the MD migration, so the old flag still exists and maps as it does -->
         <set_value name="$debugLevel" exact="if @player.entity.$ProtectSectorConfig.$debugLevel != null then player.entity.$ProtectSectorConfig.$debugLevel
           else (if @global.$chemODun.$protectSector.$debugLog == true then 'debug' else 'none')" />
         <set_value name="$debugChance" exact="if $debugLevel == 'debug' or $debugLevel == 'trace' then 100 else 0" />
@@ -568,7 +568,7 @@
       <!-- productivity counters live on the pilot (an AI script cannot write a ship variable): they survive an order restart and a reload; the history sampler (md/protect_sector_history.xml) replaces $protectSectorStats with a fresh table of the same shape every 15 min, $protectSectorTargets stays; $attackOpenAt / $idleOpenAt are the open stamps the sampler moves to its tick -->
       <actions name="PsStats">
         <do_if value="not this.$protectSectorStats?">
-          <set_value name="this.$protectSectorStats" exact="table[$since = player.age, $assisted = (@this.assignedcontrolled.order.id == 'Assist'), $attacks = 0, $responses = 0, $lost = 0, $attackTime = 0s, $killsSelf = 0, $killsSubs = 0, $killsOther = 0, $killsBy = table[], $fogBreaks = 0, $hardBreaks = 0, $rangeBreaks = 0, $bailouts = 0, $idleTime = 0s, $scans = 0, $scansEmpty = 0, $outsideEnds = 0, $stationHandoffs = 0, $hullMin = this.assignedcontrolled.hullpercentage]" />
+          <set_value name="this.$protectSectorStats" exact="table[$since = player.age, $assisted = (@this.assignedcontrolled.order.id == 'Assist'), $attacks = 0, $responses = 0, $lost = 0, $attackTime = 0s, $killsSelf = 0, $killsSubs = 0, $killsOther = 0, $killsBy = table[], $fogBreaks = 0, $hardBreaks = 0, $rangeBreaks = 0, $bailouts = 0, $idleTime = 0s, $scans = 0, $scansEmpty = 0, $outsideEnds = 0, $stationHandoffs = 0, $noDps = 0, $hullMin = this.assignedcontrolled.hullpercentage]" />
         </do_if>
         <!-- tables from before these counters lack them -->
         <do_if value="not this.$protectSectorStats.$responses?">
@@ -577,9 +577,39 @@
         <do_if value="not this.$protectSectorStats.$lost?">
           <set_value name="this.$protectSectorStats.$lost" exact="0" />
         </do_if>
+        <do_if value="not this.$protectSectorStats.$noDps?">
+          <set_value name="this.$protectSectorStats.$noDps" exact="0" />
+        </do_if>
         <do_if value="not this.$protectSectorTargets?">
           <set_value name="this.$protectSectorTargets" exact="table[]" />
         </do_if>
+      </actions>
+      <!-- $psNoDps: null while the ship can fire, else 'noweapons' or 'noammo', told apart as vanilla's attack does -->
+      <actions name="PsNoDpsCheck">
+        <set_value name="$psNoDps" exact="null" />
+        <do_if value="not this.assignedcontrolled.dps.all">
+          <set_value name="$psNoDps" exact="'noweapons'" />
+          <do_for_each name="$psWeapon" in="this.assignedcontrolled.weapons.operational.list">
+            <do_if value="$psWeapon.isinactiveweapongroup and $psWeapon.ammo.macro and not this.assignedcontrolled.ammostorage.{$psWeapon.ammo.macro}.count">
+              <set_value name="$psNoDps" exact="'noammo'" />
+              <break />
+            </do_if>
+          </do_for_each>
+          <remove_value name="$psWeapon" />
+        </do_if>
+      </actions>
+      <!-- no attack on $psNoDpsTarget ($psNoDpsAt 'pick' or 'attack'): a decline to the coordinator, which marks the fleet at once -->
+      <actions name="PsNoDpsBlock">
+        <set_value name="$tel" exact="'nodps|why=%s|at=%s|target=%s|dur=%s'.[$psNoDps, $psNoDpsAt, @$psNoDpsTarget.debugname, if $psNoDpsAt == 'attack' then player.age - @$attackStartedAt else 0]" />
+        <include_interrupt_actions ref="Telemetry" />
+        <set_value name="$psOp" exact="'decline'" />
+        <set_value name="$psOpTarget" exact="@$psNoDpsTarget" />
+        <set_value name="$psOpWhy" exact="$psNoDps" />
+        <include_interrupt_actions ref="PsBoardSend" />
+        <set_value name="$idleWhy" exact="$psNoDps" />
+        <remove_value name="$psNoDps" />
+        <remove_value name="$psNoDpsAt" />
+        <remove_value name="$psNoDpsTarget" />
       </actions>
       <actions name="PsHull">
         <include_interrupt_actions ref="PsStats" />
@@ -1021,7 +1051,7 @@
     <handler consume="false">
       <conditions>
         <event_game_loaded />
-        <check_value value="@$scriptVersion ge 119" />
+        <check_value value="@$scriptVersion ge 200" />
       </conditions>
       <actions>
         <include_interrupt_actions ref="TelemetryShip" />
@@ -1083,9 +1113,15 @@
           <set_value name="$psAnswerNo" exact="null" />
           <!-- an attack response may take the fleet off an ordinary pick (coordinator option) -->
           <set_value name="$psAnswerPre" exact="@event.param3.$preempt == true and $psAnswerWhy == 'resp' and (@$target != null or @$isAttackingTarget) and not ['resp', 'help', 'release'].indexof.{@$psEngWhy}" />
-          <do_if value="not @$psAnswer.exists or $psAnswer.iswreck or not $psAnswer.isoperational">
-            <set_value name="$psAnswerNo" exact="'gone'" />
+          <include_interrupt_actions ref="PsNoDpsCheck" />
+          <do_if value="$psNoDps != null">
+            <set_value name="$psAnswerNo" exact="$psNoDps" />
+            <include_interrupt_actions ref="PsStats" />
+            <set_value name="this.$protectSectorStats.$noDps" operation="add" />
           </do_if>
+          <do_elseif value="not @$psAnswer.exists or $psAnswer.iswreck or not $psAnswer.isoperational">
+            <set_value name="$psAnswerNo" exact="'gone'" />
+          </do_elseif>
           <do_elseif value="$psAnswer.sector != this.assignedcontrolled.sector or $homeSector != this.assignedcontrolled.sector">
             <set_value name="$psAnswerNo" exact="'sector'" />
           </do_elseif>
@@ -1116,6 +1152,7 @@
           <do_elseif value="@this.$protectSectorFogHard.{$psAnswer} != null and this.$protectSectorFogHard.{$psAnswer} gt player.age">
             <set_value name="$psAnswerNo" exact="'fog'" />
           </do_elseif>
+          <remove_value name="$psNoDps" />
           <do_if value="$psAnswerNo == null">
             <set_value name="$idleTill" exact="0" />
             <set_value name="$targetOnResponse" exact="$psAnswer" />
@@ -1212,7 +1249,7 @@
             </do_if>
             <do_elseif value="$psKiller == this.assignedcontrolled">
               <set_value name="$psField" exact="'$killsSubs'" />
-              <!-- per-subordinate count by the direct killer; tables from before 1.19 lack $killsBy -->
+              <!-- per-subordinate count by the direct killer; tables from before 2.00 lack $killsBy -->
               <do_if value="not this.$protectSectorStats.$killsBy?">
                 <set_value name="this.$protectSectorStats.$killsBy" exact="table[]" />
               </do_if>
@@ -1965,9 +2002,11 @@
       <set_value name="$targetInfo" exact="table[]" />
     </do_if>
 
+    <set_value name="$orderParamsEdited" exact="false" />
     <do_if value="@$desiredParkingPosition == null or @$desiredParkingPosition.{1}.isclass.sector and @$desiredParkingPosition.{1} != $homeSector">
       <include_interrupt_actions ref="CreateParkingPosition" />
       <edit_order_param order="this.assignedcontrolled.order" param="'desiredParkingPosition'" value="[$homeSector, $parkingPosition]" />
+      <set_value name="$orderParamsEdited" exact="true" />
       <set_value name="$desiredParkingPosition" exact="[$homeSector, $parkingPosition]" />
     </do_if>
     <set_value name="$parkingPosition" exact="null" />
@@ -2012,6 +2051,7 @@
         <set_value name="$attackStationsInternal" exact="false" />
         <do_if value="this.assignedcontrolled.order.id == 'ProtectSector'">
           <edit_order_param order="this.assignedcontrolled.order" param="'attackStationsInternal'" value="false" />
+          <set_value name="$orderParamsEdited" exact="true" />
           <do_if value="$attackStations">
             <edit_order_param order="this.assignedcontrolled.order" param="'attackStations'" value="false" />
           </do_if>
@@ -2031,6 +2071,7 @@
         <set_value name="$attackStationsTactical" exact="false" />
         <do_if value="this.assignedcontrolled.order.id == 'ProtectSector'">
           <edit_order_param order="this.assignedcontrolled.order" param="'attackStationsTactical'" value="false" />
+          <set_value name="$orderParamsEdited" exact="true" />
         </do_if>
         <debug_text
           text="'ProtectSector [%s at %s, %s]: Both station attack modes selected, the experimental one is kept.'
@@ -2050,6 +2091,7 @@
     <do_if value="$attackHostileOnly and $relationsThreshold lt 25">
       <set_value name="$relationsThreshold" exact="25" />
       <edit_order_param order="this.assignedcontrolled.order" param="'relationsThreshold'" value="25" />
+      <set_value name="$orderParamsEdited" exact="true" />
     </do_if>
     <set_value name="$relationsThresholdInternal" exact="$relationsConversionList.{$relationsThreshold}" />
 
@@ -2072,6 +2114,12 @@
       value="@this.assignedcontrolled.subordinates.count gt 0 and @this.assignedcontrolled.toplevelcommander == this.assignedcontrolled">
       <set_value name="$textUnit" exact="{1972092401, 1012}.[this.assignedcontrolled.fleet.name, $textUnit]" />
     </do_if>
+
+    <!-- a param edit re-inits the order at the next blocking action; the re-run must not log "started" again -->
+    <do_if value="$orderParamsEdited and this.assignedcontrolled.order.id == 'ProtectSector' and @this.assignedcontrolled.order.$isStartedByPlayer">
+      <edit_order_param order="this.assignedcontrolled.order" param="'isStartedByPlayer'" value="false" />
+    </do_if>
+    <remove_value name="$orderParamsEdited" />
 
     <do_if value="$isStartedByPlayer">
       <write_to_logbook category="general" title="$textTitle" text="{1972092401, 1021}.[$textUnit, $textHomeSector]" interaction="showonmap"
@@ -2273,11 +2321,11 @@
     <include_interrupt_actions ref="SetVersion" />
     <set_value name="$isAttackingTarget" exact="false" />
   </patch>
-  <patch sinceversion="119">
+  <patch sinceversion="200">
     <!-- resume and abort_called_scripts are not allowed in a patch; init sets everything on the restart -->
     <include_interrupt_actions ref="ProtectSectorGlobalApply" />
     <debug_text
-      text="'ProtectSector [%s at %s, %s]: Patched for version 119. Order: %s, default: %s. Signalling a restart.'
+      text="'ProtectSector [%s at %s, %s]: Patched for version 200. Order: %s, default: %s. Signalling a restart.'
         .[
           this.assignedcontrolled.debugname,
           this.assignedcontrolled.sector.knownname,
@@ -2664,6 +2712,17 @@
           <set_value name="$keepSubsTarget" exact="$target" />
         </do_if>
         <do_if value="$target != null">
+
+          <include_interrupt_actions ref="PsNoDpsCheck" />
+          <do_if value="$psNoDps != null">
+            <include_interrupt_actions ref="PsStats" />
+            <set_value name="this.$protectSectorStats.$noDps" operation="add" />
+            <set_value name="$psNoDpsAt" exact="'pick'" />
+            <set_value name="$psNoDpsTarget" exact="$target" />
+            <include_interrupt_actions ref="PsNoDpsBlock" />
+            <resume label="goingIdle" />
+          </do_if>
+          <remove_value name="$psNoDps" />
 
           <do_if value="$target.coverowner">
             <signal_objects object="$target" param="'LoseCover'" param2="true" />
@@ -3575,7 +3634,19 @@
 
           <set_value name="$targetDistanceTo" exact="this.assignedcontrolled.distanceto.{$target}" />
           <include_interrupt_actions ref="PsAttackClose" />
-          <!-- vanilla leaves some targets at once (no DPS, beyond pursuedistance, steering early-outs): the third quick return in a row skips the target -->
+          <!-- weapons or ammunition gone during the attack: that is the engagement's outcome -->
+          <include_interrupt_actions ref="PsNoDpsCheck" />
+          <do_if value="$psNoDps != null">
+            <set_value name="$psField" exact="'$noDps'" />
+            <include_interrupt_actions ref="PsEngageClose" />
+            <remove_value name="$psField" />
+            <set_value name="$psNoDpsAt" exact="'attack'" />
+            <set_value name="$psNoDpsTarget" exact="$target" />
+            <include_interrupt_actions ref="PsNoDpsBlock" />
+            <resume label="goingIdle" />
+          </do_if>
+          <remove_value name="$psNoDps" />
+          <!-- vanilla leaves some targets at once (beyond pursuedistance, steering early-outs): the third quick return in a row skips the target -->
           <do_if value="player.age - $attackStartedAt lt 3s and @$target.canbeattacked">
             <do_if value="@$quickReturnTarget == $target">
               <set_value name="$quickReturns" operation="add" />

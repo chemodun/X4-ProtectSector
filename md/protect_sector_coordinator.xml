@@ -2,7 +2,7 @@
 <mdscript name="ProtectSector_Coordinator" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="md.xsd">
 
   <!-- The board every Protect Sector commander reports to and the only place a coordination decision is taken (claude/protectsector/13-central-coordinator-build.md).
-       player.entity.$ProtectSectorBoard = table[$fleets = table[{commander} = entry], $targets = table[{target} = entry]].
+       player.entity.$ProtectSectorBoard = table[$fleets = table[{commander} = entry], $targets = table[{target} = entry], $marked = table[{commander} = mark]].
        Ship to MD: signal 'ProtectSector.Board' on player.entity, param2 the commander, param3 table[$op, $state, $target, $vtarget, $why, $cands, $classes, $rel, $share, $home, $visibleOnly, $protect, $nonMil].
        MD to ship: 'ProtectSector.Answer' (param2 target or null, param3 table[$why, $rule, $skips, $from, $victim]) and 'ProtectSector.BreakOff' (param2 target). -->
   <cues>
@@ -49,6 +49,11 @@
             <set_value name="$psPreemptOn" exact="@player.entity.$ProtectSectorConfig.$respPriority == true" />
             <!-- engagements an attack response never takes a fleet off -->
             <set_value name="$preemptKeep" exact="['resp', 'help', 'release']" />
+            <!-- decline reasons that are the fleet's own, and how many in one order run mark it -->
+            <set_value name="$refusalWhys" exact="['skip', 'fog', 'scan']" />
+            <set_value name="$markRefusals" exact="5" />
+            <!-- decline reasons that mark at once and clear themselves once the ship can fire -->
+            <set_value name="$noDpsWhys" exact="['noweapons', 'noammo']" />
             <include_actions ref="md.ProtectSector_Options.ReadDebugChances" />
           </actions>
         </library>
@@ -56,9 +61,13 @@
         <library name="BoardEnsure" purpose="include_actions">
           <actions>
             <do_if value="@player.entity.$ProtectSectorBoard == null">
-              <set_value name="player.entity.$ProtectSectorBoard" exact="table[$fleets = table[], $targets = table[]]" />
+              <set_value name="player.entity.$ProtectSectorBoard" exact="table[$fleets = table[], $targets = table[], $marked = table[]]" />
             </do_if>
             <set_value name="$psB" exact="player.entity.$ProtectSectorBoard" />
+            <!-- $marked[commander] = table[$at, $refusals, $why]: kept across order restarts, cleared only by Unmark or the ship being gone; a $noDpsWhys mark also once the ship can fire -->
+            <do_if value="not $psB.$marked?">
+              <set_value name="$psB.$marked" exact="table[]" />
+            </do_if>
           </actions>
         </library>
 
@@ -132,6 +141,19 @@
               <set_value name="$psF" exact="$psPk" />
               <include_actions ref="Detach" />
               <remove_value name="$psB.$fleets.{$psPk}" />
+            </do_for_each>
+            <set_value name="$psDrop" exact="[]" />
+            <do_for_each name="$psPk" valuename="$psPe" in="$psB.$marked">
+              <do_if value="not @$psPk.exists or $psPk.iswreck or not $psPk.isplayerowned">
+                <append_to_list name="$psDrop" exact="$psPk" />
+              </do_if>
+              <do_elseif value="$noDpsWhys.indexof.{@$psPe.$why} and $psPk.dps.all">
+                <append_to_list name="$psDrop" exact="$psPk" />
+                <debug_text text="'PS1|%s|%s|%s|%s|unmark|by=auto|why=%s|dps=%s'.[player.age, $psPk.debugname, $psPk.class, @$psPk.sector.debugname, $psPe.$why, $psPk.dps.all]" chance="$debugChance" />
+              </do_elseif>
+            </do_for_each>
+            <do_for_each name="$psPk" in="$psDrop">
+              <remove_value name="$psB.$marked.{$psPk}" />
             </do_for_each>
             <set_value name="$psDrop" exact="[]" />
             <do_for_each name="$psPk" valuename="$psPe" in="$psB.$targets">
@@ -233,6 +255,9 @@
             <do_if value="not $psH.exists or not $psH.isoperational or $psH.iswreck or @$psH.defaultorder.id != 'ProtectSector'">
               <set_value name="$psNo" exact="'gone'" />
             </do_if>
+            <do_elseif value="$psB.$marked.{$psH}?">
+              <set_value name="$psNo" exact="'marked'" />
+            </do_elseif>
             <do_elseif value="$psH.order != $psH.defaultorder">
               <set_value name="$psNo" exact="'order'" />
             </do_elseif>
@@ -620,7 +645,7 @@
         </library>
 
         <!-- every message from an order script -->
-        <cue name="Board" instantiate="true" version="5">
+        <cue name="Board" instantiate="true" version="7">
           <conditions>
             <event_object_signalled object="player.entity" param="'ProtectSector.Board'" />
             <check_value value="@event.param2.exists and @event.param3.$op != null" />
@@ -650,6 +675,19 @@
                   <signal_objects object="$psF" param="'ProtectSector.BreakOff'" param2="$psT" param3="'nearer'" />
                   <debug_text text="'PS1|%s|%s|%s|%s|resend|kind=breakoff|target=%s|why=nearer|op=%s|age=%s'.[player.age, $psF.debugname, $psF.class, @$psF.sector.debugname, $psT.debugname, $psOp, player.age - $psFE.$brokeOffAt]" chance="$debugChance" />
                 </do_if>
+                <!-- a marked fleet's own fight holds no target for the others -->
+                <do_elseif value="$psB.$marked.{$psF}? and (@$psP.$state == 'engaged' or $psOp == 'hb') and @$psT.exists and not $psT.iswreck">
+                  <include_actions ref="Detach" />
+                  <do_if value="$psFE.$state != 'engaged' or $psFE.$target != $psT">
+                    <set_value name="$psFE.$since" exact="player.age" />
+                  </do_if>
+                  <set_value name="$psFE.$state" exact="'engaged'" />
+                  <set_value name="$psFE.$target" exact="$psT" />
+                  <do_if value="$psOp == 'state'">
+                    <set_value name="$psFE.$why" exact="@$psP.$why" />
+                  </do_if>
+                  <set_value name="$psFE.$assigned" exact="null" />
+                </do_elseif>
                 <do_elseif value="(@$psP.$state == 'engaged' or $psOp == 'hb') and @$psT.exists and not $psT.iswreck">
                   <include_actions ref="Detach" />
                   <set_value name="$psVia" exact="if @$psP.$why == 'resp' then 'attack' else (if @$psP.$why == null or @$psP.$why == 'load' then null else 'scan')" />
@@ -732,11 +770,6 @@
               <do_elseif value="$psOp == 'decline'">
                 <set_value name="$psT" exact="@$psP.$target" />
                 <set_value name="$psFE.$assigned" exact="null" />
-                <!-- a refusal: free, yet declined; busy, pending and followup are not -->
-                <do_if value="['busy', 'pending', 'followup'].indexof.{@$psP.$why} == 0">
-                  <set_value name="$psFE.$refusals" exact="if $psFE.$refusals? then $psFE.$refusals + 1 else 1" />
-                  <set_value name="$psFE.$refusalWhy" exact="@$psP.$why" />
-                </do_if>
                 <do_if value="@$psT != null and $psB.$targets.{$psT}?">
                   <set_value name="$psTE" exact="$psB.$targets.{$psT}" />
                   <set_value name="$psTE.$declined.{$psF}" exact="player.age" />
@@ -747,6 +780,54 @@
                   </do_if>
                   <set_value name="$psTE.$busy" exact="$psTE.$engaged.count gt 0 or $psTE.$assigned.count gt 0" />
                 </do_if>
+                <!-- it cannot fire: marked at once, a refusal mark stays as it is -->
+                <do_if value="$noDpsWhys.indexof.{@$psP.$why}">
+                  <do_if value="not $psB.$marked.{$psF}? or $noDpsWhys.indexof.{@$psB.$marked.{$psF}.$why}">
+                    <set_value name="$psMkNew" exact="not $psB.$marked.{$psF}?" />
+                    <set_value name="$psB.$marked.{$psF}" exact="table[$at = player.age, $refusals = 0, $why = $psP.$why]" />
+                    <include_actions ref="Detach" />
+                    <do_if value="$psMkNew">
+                      <set_value name="$psMkText" exact="{1972092401, 1053}.[{1972092401, 1011}.[$psF.name, $psF.idcode], if $psP.$why == 'noammo' then {1045, 151} else {1045, 150}]" />
+                      <write_to_logbook category="general" title="{1972092401, 1000}" text="$psMkText" interaction="showonmap" object="$psF" />
+                      <show_notification text="'%s\n%s'.[{1972092401, 1000}, $psMkText]" priority="1" />
+                      <debug_text text="'PS1|%s|%s|%s|%s|mark|refusals=0|why=%s|target=%s'.[player.age, $psF.debugname, $psF.class, @$psF.sector.debugname, $psP.$why, @$psT.debugname]" chance="$debugChance" />
+                      <remove_value name="$psMkText" />
+                    </do_if>
+                    <remove_value name="$psMkNew" />
+                  </do_if>
+                </do_if>
+                <!-- a refusal: a reason of the fleet's own; the fifth in one order run marks the fleet -->
+                <do_elseif value="$refusalWhys.indexof.{@$psP.$why}">
+                  <set_value name="$psFE.$refusals" exact="if $psFE.$refusals? then $psFE.$refusals + 1 else 1" />
+                  <set_value name="$psFE.$refusalWhy" exact="$psP.$why" />
+                  <do_if value="$psFE.$refusals ge $markRefusals and not $psB.$marked.{$psF}?">
+                    <set_value name="$psB.$marked.{$psF}" exact="table[$at = player.age, $refusals = $psFE.$refusals, $why = $psFE.$refusalWhy]" />
+                    <include_actions ref="Detach" />
+                    <set_value name="$psMkWhy" exact="if $psFE.$refusalWhy == 'skip' then {1972092401, 1404} else if $psFE.$refusalWhy == 'fog' then {1972092401, 1405} else {1972092401, 1459}" />
+                    <set_value name="$psMkText" exact="{1972092401, 1052}.[{1972092401, 1011}.[$psF.name, $psF.idcode], $psFE.$refusals, $psMkWhy]" />
+                    <write_to_logbook category="general" title="{1972092401, 1000}" text="$psMkText" interaction="showonmap" object="$psF" />
+                    <show_notification text="'%s\n%s'.[{1972092401, 1000}, $psMkText]" priority="1" />
+                    <debug_text text="'PS1|%s|%s|%s|%s|mark|refusals=%s|why=%s|target=%s'.[player.age, $psF.debugname, $psF.class, @$psF.sector.debugname, $psFE.$refusals, $psFE.$refusalWhy, @$psT.debugname]" chance="$debugChance" />
+                    <remove_value name="$psMkWhy" />
+                    <remove_value name="$psMkText" />
+                  </do_if>
+                </do_elseif>
+              </do_elseif>
+
+              <!-- a marked fleet gets no target, not even from its own search; the candidates go back as skips -->
+              <do_elseif value="$psOp == 'ask' and $psB.$marked.{$psF}?">
+                <include_actions ref="Detach" />
+                <set_value name="$psFE.$state" exact="'idle'" />
+                <set_value name="$psFE.$target" exact="null" />
+                <set_value name="$psFE.$assigned" exact="null" />
+                <set_value name="$psFE.$askedAt" exact="player.age" />
+                <set_value name="$psSkips" exact="[]" />
+                <set_value name="$psCandList" exact="if @$psP.$cands != null then $psP.$cands else []" />
+                <do_for_each name="$psT" in="$psCandList">
+                  <append_to_list name="$psSkips" exact="[$psT, 'marked']" />
+                </do_for_each>
+                <signal_objects object="$psF" param="'ProtectSector.Answer'" param2="null" param3="table[$why = 'none', $rule = 'marked', $skips = $psSkips, $from = null, $victim = null]" />
+                <debug_text text="'PS1|%s|%s|%s|%s|coord|id=%s|why=none|rule=marked|src=ask|cands=%s'.[player.age, $psF.debugname, $psF.class, @$psF.sector.debugname, @$psCandList.{1}.debugname, $psCandList.count]" chance="$debugChance" />
               </do_elseif>
 
               <do_elseif value="$psOp == 'ask'">
@@ -852,7 +933,7 @@
         </cue>
 
         <!-- the protect response: one evaluation per hit, the responders chosen by their own settings -->
-        <cue name="Attacked" instantiate="true" version="3">
+        <cue name="Attacked" instantiate="true" version="4">
           <conditions>
             <event_player_owned_attacked />
             <check_value value="@player.entity.$ProtectSectorBoard.$fleets.keys.count gt 0" />
@@ -1051,7 +1132,7 @@
         </cue>
 
         <!-- the board's own clock: prune, the group of every engaged target, help and break-off, pledges, open requests -->
-        <cue name="Tick" instantiate="true" checkinterval="30s">
+        <cue name="Tick" instantiate="true" checkinterval="30s" version="2">
           <conditions>
             <check_value value="@player.entity.$ProtectSectorBoard.$fleets.keys.count gt 0" />
           </conditions>
@@ -1137,7 +1218,35 @@
                 <set_value name="$psFIdle" operation="add" />
               </do_else>
             </do_for_each>
-            <debug_text text="'PS1|%s|coordinator|-|-|tick|fleets=%s|fidle=%s|feng=%s|faway=%s|targets=%s|engaged=%s|pledged=%s|assigned=%s|requests=%s|policy=%s'.[player.age, $psB.$fleets.keys.count, $psFIdle, $psFEng, $psFAway, $psB.$targets.keys.count, $psEngagedN, $psPledgedN, $psAssignedN, $psHelpN, if $psPolicy then 'on' else 'off']" chance="$debugChance" />
+            <debug_text text="'PS1|%s|coordinator|-|-|tick|fleets=%s|fidle=%s|feng=%s|faway=%s|targets=%s|engaged=%s|pledged=%s|assigned=%s|requests=%s|policy=%s|marked=%s'.[player.age, $psB.$fleets.keys.count, $psFIdle, $psFEng, $psFAway, $psB.$targets.keys.count, $psEngagedN, $psPledgedN, $psAssignedN, $psHelpN, if $psPolicy then 'on' else 'off', $psB.$marked.keys.count]" chance="$debugChance" />
+          </actions>
+        </cue>
+
+        <!-- Unmark on the overview's Coordination tab, param3 the commander's idcode -->
+        <cue name="Unmark" instantiate="true">
+          <conditions>
+            <event_ui_triggered screen="'ProtectSector'" control="'unmarkFleet'" />
+          </conditions>
+          <actions>
+            <include_actions ref="Consts" />
+            <include_actions ref="BoardEnsure" />
+            <set_value name="$psDrop" exact="[]" />
+            <do_for_each name="$psF" valuename="$psMk" in="$psB.$marked">
+              <do_if value="@$psF.idcode == @event.param3">
+                <append_to_list name="$psDrop" exact="$psF" />
+              </do_if>
+            </do_for_each>
+            <do_for_each name="$psF" in="$psDrop">
+              <remove_value name="$psB.$marked.{$psF}" />
+              <do_if value="$psB.$fleets.{$psF}?">
+                <remove_value name="$psB.$fleets.{$psF}.$refusals" />
+                <remove_value name="$psB.$fleets.{$psF}.$refusalWhy" />
+              </do_if>
+              <debug_text text="'PS1|%s|%s|%s|%s|unmark|by=player'.[player.age, $psF.debugname, $psF.class, @$psF.sector.debugname]" chance="$debugChance" />
+            </do_for_each>
+            <do_if value="$psDrop.count == 0">
+              <debug_text text="'PS1|%s|coordinator|-|-|unmark|id=%s|found=0'.[player.age, @event.param3]" chance="$debugChance" />
+            </do_if>
           </actions>
         </cue>
 

@@ -36,7 +36,7 @@ local WIDTHS = { 900, 1800, 3600, 7200, 14400, 28800, 43200, 86400 }
 local DEFAULT_WIDTH_INDEX = 3
 
 -- Bucket counter keys as the sampler writes them.
-local COUNTER_KEYS = { "a", "rp", "l", "t", "ks", "kb", "ko", "f", "h", "r", "b", "i", "e", "s", "sc", "se" }
+local COUNTER_KEYS = { "a", "rp", "l", "t", "ks", "kb", "ko", "f", "h", "r", "b", "i", "e", "s", "sc", "se", "nd" }
 local UNCATCHABLE_BREAKS = 3
 local DEFAULT_REFRESH = 30 -- seconds, when the Options key is missing
 
@@ -79,9 +79,10 @@ local BOARD_STATE_COLOR = { engaged = "text_positive", away = "text_inactive", h
 local WHY_TEXT = { solo = 1390, join = 1391, help = 1392, resp = 1393, release = 1394, assign = 1395, follow = 1396, sub = 1397, load = 1398 }
 -- How a board target was first found; an entry older than the field has none.
 local VIA_TEXT = { scan = 1400, attack = 1401 }
--- Decline reasons that count as a refusal (the coordinator skips busy, pending and followup).
-local REFUSAL_TEXT = { skip = 1404, fog = 1405, stopped = 1406, relation = 1407, drone = 1408 }
-local PROBLEM_REFUSALS = 5
+-- Decline reasons the coordinator counts as a refusal; the rest are older entries' reasons.
+local REFUSAL_TEXT = { skip = 1404, fog = 1405, scan = 1459, stopped = 1406, relation = 1407, drone = 1408 }
+-- Mark reasons that need no refusals: vanilla's own order messages on page 1045.
+local NO_DPS_TEXT = { noweapons = 150, noammo = 151 }
 
 -- The coordinator's settings, on the Coordination tab with All selected; default, min
 -- and max come from the spec protect_sector_options.xml publishes. The mouse-over
@@ -314,6 +315,7 @@ local function parseBoard(raw)
       since    = tonumber(entry.since) or 0,
       assigned = stripDollar(entry.assigned),
       share    = toBool(entry.share),
+      marked   = toBool(entry.marked),
       refusals = tonumber(entry.refusals) or 0,
       refusalWhy = tostring(entry.refusalWhy or ""),
     }
@@ -370,6 +372,8 @@ local function parseView(raw)
       cmdKey     = stripDollar(entry.cmdKey),
       sectorName = tostring(entry.sectorName or "-"),
       sectorKey  = tostring(entry.sectorKey or "-"),
+      sectorOwner = tostring(entry.sectorOwner or ""),
+      noDps      = tostring(entry.noDps or ""),
       state      = tostring(entry.state or "off"),
       ship       = entry.ship,
       buckets    = {},
@@ -414,9 +418,13 @@ local function buildGroups(view)
   for _, fleet in ipairs(view.fleets) do
     local sector = sectors[fleet.sectorKey]
     if sector == nil then
-      sector = { key = fleet.sectorKey, name = fleet.sectorName, fleets = {} }
+      sector = { key = fleet.sectorKey, name = fleet.sectorName, owner = "", fleets = {} }
       sectors[fleet.sectorKey] = sector
       order[#order + 1] = sector
+    end
+    -- a record from before the owner field has none
+    if sector.owner == "" then
+      sector.owner = fleet.sectorOwner
     end
     sector.fleets[#sector.fleets + 1] = fleet
   end
@@ -602,8 +610,9 @@ local function boardStateText(state)
   return ReadText(PAGE, BOARD_STATE_TEXT[state]), color
 end
 
+-- Marked by the coordinator for refusing its targets or being unable to fire; left out until unmarked.
 local function isProblemFleet(entry)
-  return entry.refusals >= PROBLEM_REFUSALS
+  return entry.marked
 end
 
 -- A problematic fleet's state is red whatever the state.
@@ -614,6 +623,13 @@ end
 
 local function refusalText(why)
   return REFUSAL_TEXT[why] and ReadText(PAGE, REFUSAL_TEXT[why]) or why
+end
+
+local function markText(entry)
+  if NO_DPS_TEXT[entry.refusalWhy] then
+    return ReadText(1045, NO_DPS_TEXT[entry.refusalWhy])
+  end
+  return pageText(1403, entry.refusals, refusalText(entry.refusalWhy))
 end
 
 local function whyText(why)
@@ -663,6 +679,12 @@ local function viaColumnWidth()
   return math.ceil(width + 2 * Helper.scaleX(Helper.standardTextOffsetx) + inset)
 end
 
+local function unmarkColumnWidth()
+  local width = C.GetTextWidth(ReadText(PAGE, 1460), Helper.standardFont, Helper.scaleFont(Helper.standardFont, Helper.standardFontSize))
+  local inset = ps.isV9 and Helper.standardContainerOffset or 0
+  return math.ceil(width + 4 * Helper.scaleX(Helper.standardTextOffsetx) + inset)
+end
+
 -- The fleet name when it has one, else the commander's ship label.
 local function shortFleetLabel(fleet)
   if (not fleet.assist) and (fleet.fleetName or "") ~= "" then
@@ -697,6 +719,18 @@ local function scopeEntries(board, fleets)
     end
   end
   return entries
+end
+
+-- The marked ones, the most refusals first.
+local function problemEntries(entries)
+  local problems = {}
+  for _, entry in ipairs(entries) do
+    if isProblemFleet(entry) then
+      problems[#problems + 1] = entry
+    end
+  end
+  table.sort(problems, function(a, b) return a.refusals > b.refusals end)
+  return problems
 end
 
 -- Targets in the sector or involving a scope fleet (All: every target); open
@@ -1411,6 +1445,7 @@ local COLUMN_STATS = {
   { id = "combat",    textId = 1324, value = function(sum) return formatDuration(sum.c.t) end },
   { id = "sight",     textId = 1325, value = function(sum) return sum.c.f + sum.c.h end },
   { id = "range",     textId = 1326, value = function(sum) return sum.c.r end },
+  { id = "nodps",     textId = 1335, value = function(sum) return sum.c.nd end },
   { id = "fast",      textId = 1327, value = function(sum) return sum.c.b end },
   { id = "idle",      textId = 1328, value = function(sum) return idleShare(sum) .. " %" end },
   { id = "ends",      textId = 1329, value = function(sum) return sum.c.e end },
@@ -1543,7 +1578,7 @@ function menu.createLeftPanel(x, width)
 
   for _, sector in ipairs(menu.groups or {}) do
     row = leftTable:addRow({ "sector", sector.key }, { bgColor = Color["row_title_background"] })
-    row[1]:createText(sector.name, { halign = "left", font = Helper.standardFontBold })
+    row[1]:createText(factionColored(sector.name, sector.owner), { halign = "left", font = Helper.standardFontBold })
     value, valueColor = groupValue(sector.fleets, { sector })
     row[2]:createText(value, { halign = "right", color = valueColor })
     local sectorRow = row.index
@@ -1552,7 +1587,7 @@ function menu.createLeftPanel(x, width)
     end
     local fleetRows = rowGroup(leftTable)
     for _, fleet in ipairs(sector.fleets) do
-      local color = (fleet.state ~= "active") and Color["text_inactive"] or nil
+      local color = (fleet.state ~= "active") and Color["text_inactive"] or ((fleet.noDps ~= "") and Color["text_negative"] or nil)
       valueColor = nil
       if onSettings then
         value, valueColor = settingsFleetText(sector, fleet)
@@ -1788,6 +1823,36 @@ local function createGraphPanel(x, width, y, height, points, to)
   menu.graphPoints = points
 end
 
+-- The MD drops the mark; the local copy follows at once.
+function menu.unmarkFleet(key)
+  local entry = menu.view and menu.view.board and menu.view.board.fleetByKey[key]
+  if entry ~= nil then
+    entry.marked = false
+    entry.refusals = 0
+    entry.refusalWhy = ""
+    debugLog("unmarking %s.", entry.idcode)
+    AddUITriggeredEvent("ProtectSector", "unmarkFleet", entry.idcode)
+    menu.refreshQueued = true
+  end
+end
+
+local function addUnmarkButton(cell, key)
+  cell:createButton({ height = Helper.standardTextHeight, mouseOverText = ReadText(PAGE, 1461) }):setText(ReadText(PAGE, 1460), { halign = "center" })
+  cell.handlers.onClick = function() return menu.unmarkFleet(key) end
+end
+
+-- Marked fleets with their reason and an Unmark button; the caller places it.
+local function createProblemSection(x, width, tabOrder, board, problems)
+  local section, rows = createSectionTable(x, width, tabOrder, pageText(1402, #problems), true, "", unmarkColumnWidth())
+  for _, entry in ipairs(problems) do
+    local row = rows:addRow({ "unmark", entry.key }, bandProps())
+    row[1]:createText(boardFleetLabel(board, entry.key), { halign = "left", color = Color["text_negative"] })
+    row[2]:createText(markText(entry), { halign = "left", wordwrap = true })
+    addUnmarkButton(row[3], entry.key)
+  end
+  return section
+end
+
 function menu.createRightPanel(x, width)
   local bottom         = Helper.viewHeight - Helper.frameBorder
   local controlsHeight = Helper.scaleY(Helper.standardButtonHeight) + Helper.borderSize
@@ -1821,6 +1886,10 @@ function menu.createRightPanel(x, width)
     end
     row = about:addRow(false, bandProps(true))
     row[1]:setColSpan(2):createText(text, { halign = "left", color = (state ~= "") and Color["text_warning"] or nil })
+    if NO_DPS_TEXT[fleet.noDps] then
+      row = about:addRow(false, bandProps(true))
+      row[1]:setColSpan(2):createText(ReadText(1045, NO_DPS_TEXT[fleet.noDps]), { halign = "left", color = Color["text_negative"] })
+    end
   end
   row = about:addRow(false, bandProps(true))
   row[1]:setColSpan(2):createText(ReadText(PAGE, 1304) .. ": " .. windowLabel(windowWidth), { halign = "left", color = Color["text_inactive"] })
@@ -1844,6 +1913,7 @@ function menu.createRightPanel(x, width)
   statRow(stats, ReadText(PAGE, 1324), shown(formatDuration(c.t)))
   statRow(stats, ReadText(PAGE, 1325), shown(c.f + c.h))
   statRow(stats, ReadText(PAGE, 1326), shown(c.r))
+  statRow(stats, ReadText(PAGE, 1335), shown(c.nd))
   statRow(stats, ReadText(PAGE, 1327), shown(c.b))
   statRow(stats, ReadText(PAGE, 1328), shown(idleShare(sum) .. " %"))
   statRow(stats, ReadText(PAGE, 1329), shown(c.e))
@@ -1853,12 +1923,13 @@ function menu.createRightPanel(x, width)
   statRow(stats, ReadText(PAGE, 1332), shown(c.sc .. " (" .. c.se .. ")"))
 
   local subs = (fleet ~= nil) and subordinateRows(fleet, sum) or {}
+  local problems = (fleet == nil) and problemEntries(scopeEntries(menu.view.board, fleets)) or {}
   local targets = mergedTargets(fleets)
   local points = historyOn() and graphPoints(fleets, to, windowWidth) or {}
   local usableBottom = bottom - controlsHeight
   y = y + rightTable:getVisibleHeight() + Helper.borderSize
   local available = usableBottom - y
-  if (#subs == 0 and #targets == 0 and #points == 0) or available < 2 * Helper.scaleY(Helper.standardTextHeight) then
+  if (#subs == 0 and #problems == 0 and #targets == 0 and #points == 0) or available < 2 * Helper.scaleY(Helper.standardTextHeight) then
     return menu.createControls(x, width, bottom, fleet)
   end
 
@@ -1867,6 +1938,10 @@ function menu.createRightPanel(x, width)
     local ftable, rows = createSectionTable(x, width, 5, ReadText(1001, 1503) .. " (" .. #subs .. ")")
     addSubordinateRows(rows, subs)
     sections[#sections + 1] = ftable
+  end
+  -- All or a sector, so never with the subordinates' tab order.
+  if #problems > 0 then
+    sections[#sections + 1] = createProblemSection(x, width, 5, menu.view.board, problems)
   end
   if #targets > 0 then
     local ftable, rows = createSectionTable(x, width, 6, ReadText(PAGE, 1340) .. " (" .. #targets .. ")", true)
@@ -1925,6 +2000,11 @@ local function addBoardFleetRows(ftable, board, fleet)
   end
   local stateText, stateColor = boardEntryText(board, entry)
   statRow(ftable, ReadText(1001, 12), stateText, stateColor)
+  if entry.marked then
+    statRow(ftable, ReadText(PAGE, 1462), markText(entry), Color["text_negative"])
+    local row = ftable:addRow({ "unmark", entry.key }, bandProps())
+    addUnmarkButton(row[2], entry.key)
+  end
   if entry.state == "engaged" then
     statRow(ftable, ReadText(PAGE, 1375), whyText(entry.why))
   end
@@ -2102,12 +2182,7 @@ function menu.createBoardPanel(x, width)
   local problems = {}
   if fleet == nil then
     local entries = scopeEntries(board, fleets)
-    for _, entry in ipairs(entries) do
-      if isProblemFleet(entry) then
-        problems[#problems + 1] = entry
-      end
-    end
-    table.sort(problems, function(a, b) return a.refusals > b.refusals end)
+    problems = problemEntries(entries)
     local counts = { engaged = 0, idle = 0, away = 0, holding = 0, assigned = 0 }
     for _, entry in ipairs(entries) do
       local state = boardState(board, entry)
@@ -2134,12 +2209,7 @@ function menu.createBoardPanel(x, width)
   y = y + infoTable:getVisibleHeight() + Helper.borderSize
   -- All or a sector: fleets that keep refusing work, above the targets
   if #problems > 0 and usableBottom - y >= 2 * Helper.scaleY(Helper.standardTextHeight) then
-    local section, problemRows = createSectionTable(x, width, 4, pageText(1402, #problems), false)
-    for _, entry in ipairs(problems) do
-      local problemRow = problemRows:addRow(false, bandProps())
-      problemRow[1]:createText(boardFleetLabel(board, entry.key), { halign = "left", color = Color["text_negative"] })
-      problemRow[2]:createText(pageText(1403, entry.refusals, refusalText(entry.refusalWhy)), { halign = "left", wordwrap = true })
-    end
+    local section = createProblemSection(x, width, 4, board, problems)
     section.properties.y = y
     section.properties.maxVisibleHeight = math.floor((usableBottom - y) / 2)
     y = y + section:getVisibleHeight() + Helper.borderSize

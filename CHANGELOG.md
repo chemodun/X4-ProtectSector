@@ -1,6 +1,6 @@
 # Changelog
 
-## [1.19] - 2026-09-??
+## [2.00] - 2026-09-??
 
 - Fixed
   - An idle ship (or fleet leader) did not re-scan its sector every few seconds as intended, a regression since version `1.13`. It reacted to a new enemy only when its idle delay ran out: 4 minutes for S/M, 9 for L, 15 for XL. The periodic re-scan works again.
@@ -22,6 +22,7 @@
   - With `Aggressive subordinates` on, subordinates were ordered to attack while their leader was still approaching the target, and those orders were cancelled at the leader's next step. They are now ordered to attack only once the leader attacks.
   - In areas that reduce radar range, a ship started its attack from farther away than its radar could reach, then flew at the target for a minute without firing and gave up. The attack distance now follows the ship's current radar range.
   - A ship that lost sight of its target mid-attack gave it up at once and called its subordinates back, even when the target was still on the map and close. While the target is on the map and within radar range, the ship now restarts the attack; within twice that range it flies after it and gives up only if it cannot close in. Subordinates already attacking it carry on.
+  - Starting `Protect Sector` could write the "started" logbook entry twice, and a restart after loading a save could write it once although the order had not been started again.
 
 - Changed
   - The `Extension options` page is now built with `Options Helper`: the damage sensitivity thresholds are sliders, and a `Debug Level` dropdown (`None`, `Debug`, `Trace`) replaces the `Enable debug log` checkbox. Settings from the old page are carried over once.
@@ -38,6 +39,9 @@
   - `Fleet coordination`, on by default in `Extension options`: every fleet running the order reports to one coordinator, which decides for the fleets of a sector together. A fleet leader leaves a target that fleets nearer to it already handle with enough force, leaves a target it cannot reach or catch to the fleet already on it, hands a target to a nearer idle fleet, and calls the idle fleets nearby to a group too strong for it alone; fleets that cannot take a group hold off and pledge their strength to it, with a logbook entry and a notification, and go together once enough have gathered; fleets losing their fight call for help once and break off together if none comes within a minute; an attack on one of your ships or stations sends the nearest fleet that is strong enough, or two together, instead of waking every idle fleet, and a far or slower fleet when no other can go. `Share target with other` is now `Share target with other fleets`: off, the fleet fights alone and no other fleet is sent to its target, whether the option is on or off, unless a fleet much nearer to the target asks for it: that one takes it over and the farther one is released. A shared target is taken over the same way by a much nearer fleet strong enough alone, and a fleet moving on to the next ship of the group it fought leaves one that nearer fleets already handle.
   - `Attack responses before a fleet's own targets`, on by default: an attack on one of your ships or stations may take the nearest fleet off a target it picked itself, never off another attack response or a call for help. An idle fleet goes instead unless the busy one is more than 5 km nearer.
   - `Coordinator settings` at the top of the overview's `Coordination` tab with `All fleets` selected: the attack responses option above, and sliders for the strength a fleet needs to attack alone, to attack with help and to stay in a fight, the radius of a hostile group, the distance and speed past which a fleet leaves a target to another fleet already on it, the margin by which a fleet must be nearer to take a target over, and the coordinator's timers, with a `Restore Defaults` button. The mouse-over text of each explains it. Every load puts a missing or invalid setting back to its default.
+  - A fleet that keeps refusing the targets the coordinator gives it (five times, because its own attacks on them failed or it lost them) is marked, with a logbook entry and a notification, and takes no targets until you unmark it with the `Unmark` button in `Problematic fleets` on the overview's `Statistics` or `Coordination` tab, or on that fleet's own page on `Coordination`. The mark stays through reloads and order restarts, so fix the fleet's loadout or settings first.
+  - A ship with no working weapons or no ammunition for them no longer flies at a target only to break off at once. It skips the attack, is marked in `Problematic fleets` with a logbook entry and a notification, takes no targets, and clears the mark by itself once it can fire again. The overview counts these as `Could not attack: no weapons or ammunition` instead of `Broken off, out of range`, and shows `No weapons.` or `No ammunition.` on the fleet's page and its name in red in the list, whether `Fleet coordination` is on or off.
+  - The overview's list colours each home sector's name by its owner.
 
 ## [1.18] - 2026-07-20
 

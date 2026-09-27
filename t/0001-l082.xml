@@ -52,6 +52,8 @@
       <t id="1043">%s: %s가 %s에서 떠났습니다</t>
       <t id="1044">%s: %s가 %s에서 너무 빠릅니다</t>
       <t id="1051">%s: %s을\(를\) %s에서 견제 중: 적 %s척, 전력비 %s 대 100, 다른 함대를 기다리는 중</t>
+      <t id="1052">%s: refused %s targets from the fleet coordinator, last: %s. It takes no targets until it is unmarked on the Coordination tab of the Protect Sector overview.</t>
+      <t id="1053">%s: cannot attack. %s It takes no targets until it can fire again, then it resumes on its own.</t>
       <t id="1101">%s: %s는 \033R위험한\033X 구역을 포함하고 있습니다. 작업을 중단합니다...</t>
       <t id="1102">%s: %s에 도달할 수 없습니다. 작업을 중단합니다...</t>
       <t id="1300">Protect Sector overview</t>
@@ -84,6 +86,7 @@
       <t id="1332">Scans, empty</t>
       <t id="1333"> - including reactions to attacks</t>
       <t id="1334">Ships lost</t>
+      <t id="1335">Could not attack: no weapons or ammunition</t>
       <t id="1340">Targets tried</t>
       <t id="1341">%s attempts over %s, too fast</t>
       <t id="1342">%s attempts over %s, stays out of sight</t>
@@ -190,6 +193,10 @@
       <t id="1456">How long a measured hostile group strength is reused. Shorter is more exact and costs more script time.</t>
       <t id="1457">Fleet strength check interval</t>
       <t id="1458">How long a measured fleet strength is reused. Shorter is more exact and costs more script time.</t>
+      <t id="1459">target dropped by its own search</t>
+      <t id="1460">Unmark</t>
+      <t id="1461">The fleet takes targets again, from its own search and from the coordinator. Fix what made it refuse them first.</t>
+      <t id="1462">Marked, takes no targets</t>
       <t id="10001">스테이션 공격</t>
       <t id="10011">스테이션만 공격하는 실험적 명령입니다. L 및 XL 함선에서만 사용 가능합니다</t>
       <t id="20001">스마트 스테이션 공격</t>

@@ -52,6 +52,8 @@
       <t id="1043">%s: %s залишив %s</t>
       <t id="1044">%s: %s в %s занадто швидкий</t>
       <t id="1051">%s: стримується перед %s у %s: %s ворог\(ів\), співвідношення сил %s до 100, чекає на інші флоти</t>
+      <t id="1052">%s: refused %s targets from the fleet coordinator, last: %s. It takes no targets until it is unmarked on the Coordination tab of the Protect Sector overview.</t>
+      <t id="1053">%s: cannot attack. %s It takes no targets until it can fire again, then it resumes on its own.</t>
       <t id="1101">%s: %s містить \033Rнебезпечні\033X зони. Зупиняю роботу...</t>
       <t id="1102">%s: %s недосяжний. Зупиняю роботу...</t>
       <t id="1300">Protect Sector overview</t>
@@ -84,6 +86,7 @@
       <t id="1332">Scans, empty</t>
       <t id="1333"> - including reactions to attacks</t>
       <t id="1334">Ships lost</t>
+      <t id="1335">Could not attack: no weapons or ammunition</t>
       <t id="1340">Targets tried</t>
       <t id="1341">%s attempts over %s, too fast</t>
       <t id="1342">%s attempts over %s, stays out of sight</t>
@@ -190,6 +193,10 @@
       <t id="1456">How long a measured hostile group strength is reused. Shorter is more exact and costs more script time.</t>
       <t id="1457">Fleet strength check interval</t>
       <t id="1458">How long a measured fleet strength is reused. Shorter is more exact and costs more script time.</t>
+      <t id="1459">target dropped by its own search</t>
+      <t id="1460">Unmark</t>
+      <t id="1461">The fleet takes targets again, from its own search and from the coordinator. Fix what made it refuse them first.</t>
+      <t id="1462">Marked, takes no targets</t>
       <t id="10001">Атакувати станцію</t>
       <t id="10011">Експериментальний наказ атакувати тільки станції. Доступно лише для L та XL кораблів</t>
       <t id="20001">Розумна атака на станцію</t>

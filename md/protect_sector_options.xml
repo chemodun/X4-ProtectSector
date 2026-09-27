@@ -2,7 +2,13 @@
 <mdscript name="ProtectSector_Options" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="md.xsd">
 
   <cues>
-    <cue name="Init" instantiate="false">
+    <!-- runs once when the script is new to the game (a new game or an update from 1.18), where Validate_On_Load misses that load's event -->
+    <cue name="Init" instantiate="false" version="2">
+      <actions>
+        <do_if value="@player.entity.exists">
+          <include_actions ref="Ensure_Config" />
+        </do_if>
+      </actions>
       <cues>
 
         <library name="ReadDebugChances" purpose="include_actions">
@@ -120,7 +126,7 @@
             <remove_value name="$cfg" />
             <include_actions ref="Coord_Validate" />
 
-            <!-- one-time move from the pre-1.19 storage, which is then dropped -->
+            <!-- one-time move from the pre-2.00 storage, which is then dropped -->
             <set_value name="$oldConfig" exact="@global.$chemODun.$protectSector" />
             <do_if value="$oldConfig != null">
               <do_if value="@$oldConfig.$debugLog == true">
@@ -141,7 +147,7 @@
               </do_if>
               <remove_value name="global.$chemODun.$protectSector" />
               <include_actions ref="ReadDebugChances" />
-              <debug_text text="'ProtectSector: Options: migrated the pre-1.19 settings, debug level %s'.[player.entity.$ProtectSectorConfig.$debugLevel]"
+              <debug_text text="'ProtectSector: Options: migrated the pre-2.00 settings, debug level %s'.[player.entity.$ProtectSectorConfig.$debugLevel]"
                 chance="$debugChance" />
               <include_actions ref="ClearDebugChances" />
             </do_if>
@@ -152,7 +158,7 @@
           </actions>
         </library>
 
-        <!-- every load: the config exists and every coordinator setting holds a valid value -->
+        <!-- every load: the config exists and every coordinator setting holds a valid value; misses the first load after it is added (vanilla drain_stations.xml:18), Init and Register_Menu cover that one -->
         <cue name="Validate_On_Load" instantiate="true">
           <conditions>
             <event_game_loaded />
