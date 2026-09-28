@@ -121,6 +121,8 @@ Please take in account -  when previous parameter is enabled, you can set this o
 If the `Attack only hostile targets` is disabled - the value can be set in between 0 and 30 (0 and -30 relation).
 **Use it carefully.**
 
+In that mode a target above `-25` relation is made hostile to the attacking ship only, and this is stronger than the fire authorisation override in `Global Orders`: the override does not stop such an attack. A target at `-25` and lower is attacked only when the override allows it.
+
 ### Protect our ships and stations in sector
 
 `Enabled` by default.

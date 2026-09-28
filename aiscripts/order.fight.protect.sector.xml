@@ -611,7 +611,7 @@
         <remove_value name="$psNoDpsAt" />
         <remove_value name="$psNoDpsTarget" />
       </actions>
-      <!-- $psFaNo: the fire authorisation override forbids attacking $psFaT and no boost would lift it (hostile-only: never boosted; threshold: PsRelBoost only reaches kill) -->
+      <!-- $psFaNo: the fire authorisation override forbids attacking $psFaT and no boost would lift it (hostile-only: never boosted; threshold: PsRelBoost skips a kill target) -->
       <actions name="PsFireAuthCheck">
         <set_value name="$psFaNo" exact="false" />
         <do_if value="@$psFaT.exists and not this.assignedcontrolled.mayattack.{$psFaT}">
@@ -619,15 +619,16 @@
         </do_if>
       </actions>
       <!-- hostile-only off: 8.00's boost of $psRbT against $psRbShip alone, so vanilla 9.00 never boosts $psRbT against the whole player faction; $psRbAt names the caller -->
+      <!-- a kill target that may not be attacked is under a fire authorisation override: never boosted -->
       <actions name="PsRelBoost">
         <set_value name="$psRbDone" exact="false" />
-        <do_if value="not $attackHostileOnly and @$psRbT.canbeattacked and not $psRbShip.mayattack.{$psRbT}">
+        <do_if value="not $attackHostileOnly and @$psRbT.canbeattacked and not $psRbShip.mayattack.{$psRbT} and not $psRbShip.hasrelation.kill.{$psRbT}">
           <do_if value="$psRbT.coverowner">
             <signal_objects object="$psRbT" param="'LoseCover'" />
           </do_if>
-          <set_relation_boost object="$psRbT" otherobject="$psRbShip" value="$psRbShip.owner.relation.kill.min" decay="1" delay="10min" silent="true" />
+          <set_relation_boost object="$psRbT" otherobject="$psRbShip" value="$psRbShip.owner.relation.kill.min" decay="1" delay="if $psRbT.isclass.[class.station, class.buildstorage] then 30min else 10min" silent="true" />
           <set_value name="$psRbDone" exact="true" />
-          <set_value name="$tel" exact="'rboost|id=%s|ship=%s|at=%s|may=%s|kill=%s|rel=%s|pilotmay=%s'.[$psRbT.debugname, $psRbShip.debugname, $psRbAt, $psRbShip.mayattack.{$psRbT}, $psRbShip.hasrelation.kill.{$psRbT}, $psRbT.relationto.{$psRbShip}, @$psRbShip.pilot.mayattack.{$psRbT}]" />
+          <set_value name="$tel" exact="'rboost|id=%s|ship=%s|at=%s|may=%s|rel=%s|pilotmay=%s'.[$psRbT.debugname, $psRbShip.debugname, $psRbAt, $psRbShip.mayattack.{$psRbT}, $psRbT.relationto.{$psRbShip}, @$psRbShip.pilot.mayattack.{$psRbT}]" />
           <include_interrupt_actions ref="Telemetry" />
         </do_if>
         <remove_value name="$psRbShip" />
@@ -1836,7 +1837,7 @@
                   <include_interrupt_actions ref="PsRelBoost" />
                   <!-- its own fire authorisation override: an Attack order would loop without firing -->
                   <do_if value="not $subordinate.mayattack.{$target}">
-                    <set_value name="$tel" exact="'subfa|sub=%s|id=%s|mode=%s|kill=%s|boost=%s'.[$subordinate.debugname, $target.debugname, if $attackHostileOnly then 'hostile' else 'threshold', $subordinate.hasrelation.kill.{$target}, $psRbDone]" />
+                    <set_value name="$tel" exact="'subfa|sub=%s|id=%s|mode=%s|kill=%s|boost=%s|at=sub'.[$subordinate.debugname, $target.debugname, if $attackHostileOnly then 'hostile' else 'threshold', $subordinate.hasrelation.kill.{$target}, $psRbDone]" />
                     <include_interrupt_actions ref="Telemetry" />
                     <continue />
                   </do_if>
@@ -1903,11 +1904,18 @@
                   </do_else>
                 </do_if>
                 <!-- the boost lapses after 10 min -->
-                <do_elseif value="not $attackHostileOnly and @$subordinate.order.id == 'Attack' and @$target != null and @$subordinate.order.$primarytarget == $target">
+                <do_elseif value="@$subordinate.order.id == 'Attack' and @$target != null and @$subordinate.order.$primarytarget == $target">
                   <set_value name="$psRbShip" exact="$subordinate" />
                   <set_value name="$psRbT" exact="$target" />
                   <set_value name="$psRbAt" exact="'subhb'" />
                   <include_interrupt_actions ref="PsRelBoost" />
+                  <!-- an override set mid-attack: vanilla re-picks the forced primary target every few ms without firing -->
+                  <do_if value="not $subordinate.mayattack.{$target}">
+                    <set_value name="$tel" exact="'subfa|sub=%s|id=%s|mode=%s|kill=%s|boost=%s|at=subhb'.[$subordinate.debugname, $target.debugname, if $attackHostileOnly then 'hostile' else 'threshold', $subordinate.hasrelation.kill.{$target}, $psRbDone]" />
+                    <include_interrupt_actions ref="Telemetry" />
+                    <cancel_all_orders object="$subordinate" />
+                    <set_value name="$subsCancelled" operation="add" />
+                  </do_if>
                 </do_elseif>
               </do_if>
             </do_if>
@@ -3039,7 +3047,9 @@
             $idcode = $target.idcode,
             $class = $target.class,
             $isShip = false,
-            $stationIsUnderConstruction = not $target.isclass.station
+            $stationIsUnderConstruction = not $target.isclass.station,
+            $psRelBoost = not $attackHostileOnly,
+            $psDebug = @$debugChance
           ]" />
 
           <debug_text

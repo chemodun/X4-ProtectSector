@@ -2059,6 +2059,12 @@
         </do_if>
         <remove_value name="$components" />
         <include_interrupt_actions ref="RefreshTargetsRelatedData" />
+        <!-- a Protect Sector handoff with hostile-only off: renew the lapsed per-object boost, or the ship stops firing -->
+        <do_if value="@this.assignedcontrolled.aipilot.$targetInfo.$target == $primaryTarget and @this.assignedcontrolled.aipilot.$targetInfo.$psRelBoost and @$primaryTarget.canbeattacked and not this.assignedcontrolled.mayattack.{$primaryTarget} and not this.assignedcontrolled.hasrelation.kill.{$primaryTarget}">
+          <set_relation_boost object="$primaryTarget" otherobject="this.assignedcontrolled" value="this.assignedcontrolled.owner.relation.kill.min" decay="1" delay="30min" silent="true" />
+          <debug_text text="'PS1|%s|%s|%s|%s|rboost|id=%s|ship=%s|at=stloop|may=%s|rel=%s'.[player.age, this.assignedcontrolled.debugname, this.assignedcontrolled.class, @this.assignedcontrolled.sector.debugname, $primaryTarget.debugname, this.assignedcontrolled.debugname, this.assignedcontrolled.mayattack.{$primaryTarget}, $primaryTarget.relationto.{this.assignedcontrolled}]"
+            chance="@this.assignedcontrolled.aipilot.$targetInfo.$psDebug" />
+        </do_if>
         <do_if value="@this.assignedcontrolled.defencenpc">
           <signal_objects object="this.assignedcontrolled.defencenpc" param="'attack'" param2="$primaryTarget"
             param3="[null, false, false, [], -1, [], @$target, false]" />

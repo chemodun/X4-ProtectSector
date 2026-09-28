@@ -1,6 +1,34 @@
-﻿<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <diff>
   <replace sel="/aiscript/order[@id='TacticalOrder']/location[@object='$selectedtarget.toplevelcommander']/@condition">@$selectedtarget.toplevelcommander and @$selectedtarget.canbeattacked</replace>
   <replace sel="/aiscript/patch[@sinceversion='5']/do_if[@value='$fleetcommander.toplevelcommander']/@value">@$fleetcommander.toplevelcommander</replace>
   <replace sel="/aiscript/attention[@min='unknown']/actions/do_if[@value='$fleetcommander.toplevelcommander']/@value">@$fleetcommander.toplevelcommander</replace>
+  <!-- Protect Sector station handoff (own default order, or Assist under a Protect Sector commander): per-object boost and checkrelation true, so vanilla 9.00 never boosts the target against the whole player faction -->
+  <add sel="/aiscript/interrupts/library/actions[@name='create_orders']/do_if/do_else/create_order[@id=&quot;'Attack'&quot;]" pos="before">
+    <set_value name="$psHandoff" exact="(@this.ship.defaultorder.id == 'ProtectSector' or (@this.ship.defaultorder.id == 'Assist' and @this.ship.commander.defaultorder.id == 'ProtectSector')) and @this.assignedcontrolled.aipilot.$targetInfo.$target == $selectedtarget" />
+    <do_if value="$psHandoff and @this.assignedcontrolled.aipilot.$targetInfo.$psRelBoost and @$enemytarget.canbeattacked and not $subordinate.mayattack.{$enemytarget} and not $subordinate.hasrelation.kill.{$enemytarget}">
+      <do_if value="$enemytarget.coverowner">
+        <signal_objects object="$enemytarget" param="'LoseCover'" />
+      </do_if>
+      <set_relation_boost object="$enemytarget" otherobject="$subordinate" value="$subordinate.owner.relation.kill.min" decay="1" delay="if $enemytarget.isclass.station then 30min else 10min" silent="true" />
+      <debug_text text="'PS1|%s|%s|%s|%s|rboost|id=%s|ship=%s|at=tsub|may=%s|rel=%s'.[player.age, this.assignedcontrolled.debugname, this.assignedcontrolled.class, @this.assignedcontrolled.sector.debugname, $enemytarget.debugname, $subordinate.debugname, $subordinate.mayattack.{$enemytarget}, $enemytarget.relationto.{$subordinate}]"
+        chance="@this.assignedcontrolled.aipilot.$targetInfo.$psDebug" />
+    </do_if>
+  </add>
+  <replace sel="/aiscript/interrupts/library/actions[@name='create_orders']/do_if/do_else/create_order[@id=&quot;'Attack'&quot;]/param[@name='checkrelation']/@value">$psHandoff</replace>
+  <add sel="/aiscript/attention[@min='unknown']/actions/run_script[@name=&quot;'order.fight.attack.object'&quot;]" pos="before">
+    <set_value name="$psHandoff" exact="(@this.ship.defaultorder.id == 'ProtectSector' or (@this.ship.defaultorder.id == 'Assist' and @this.ship.commander.defaultorder.id == 'ProtectSector')) and @this.assignedcontrolled.aipilot.$targetInfo.$target == $selectedtarget" />
+    <do_if value="$psHandoff and @this.assignedcontrolled.aipilot.$targetInfo.$psRelBoost and @$primarytarget.canbeattacked and not this.ship.mayattack.{$primarytarget} and not this.ship.hasrelation.kill.{$primarytarget}">
+      <do_if value="$primarytarget.coverowner">
+        <signal_objects object="$primarytarget" param="'LoseCover'" />
+      </do_if>
+      <set_relation_boost object="$primarytarget" otherobject="this.ship" value="this.ship.owner.relation.kill.min" decay="1" delay="if $primarytarget.isclass.station then 30min else 10min" silent="true" />
+      <debug_text text="'PS1|%s|%s|%s|%s|rboost|id=%s|ship=%s|at=tcmd|may=%s|rel=%s'.[player.age, this.ship.debugname, this.ship.class, @this.ship.sector.debugname, $primarytarget.debugname, this.ship.debugname, this.ship.mayattack.{$primarytarget}, $primarytarget.relationto.{this.ship}]"
+        chance="@this.assignedcontrolled.aipilot.$targetInfo.$psDebug" />
+    </do_if>
+  </add>
+  <!-- vanilla's own default, except true in a Protect Sector handoff -->
+  <add sel="/aiscript/attention[@min='unknown']/actions/run_script[@name=&quot;'order.fight.attack.object'&quot;]">
+    <param name="checkrelation" value="if $psHandoff then true else (if ($primarytarget and this.ship.isplayerowned) then this.ship.mayattack.{$primarytarget} else true)" />
+  </add>
 </diff>
