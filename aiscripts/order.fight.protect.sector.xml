@@ -1493,6 +1493,9 @@
                 <do_if value="$reScanStationPick != null and $macrosToSkip.indexof.{@$reScanStationPick.macro} gt 0">
                   <set_value name="$reScanStationPick" exact="null" />
                 </do_if>
+                <do_if value="$reScanStationPick != null and @this.$protectSectorStationSkip.{$reScanStationPick} gt player.age">
+                  <set_value name="$reScanStationPick" exact="null" />
+                </do_if>
                 <do_if value="$reScanStationPick != null">
                   <break />
                 </do_if>
@@ -2035,6 +2038,21 @@
         </do_if>
         <set_value name="$IdleAfterStationDestroy" exact="true" />
       </do_if>
+      <!-- the handoff ended with the station alive: skip it for a while; on the pilot, so it survives the restart and a reload -->
+      <do_elseif value="@$target.exists and not @$targetInfo.$isShip">
+        <do_if value="not this.$protectSectorStationSkip?">
+          <set_value name="this.$protectSectorStationSkip" exact="table[]" />
+        </do_if>
+        <do_for_each name="$psSkipKey" in="this.$protectSectorStationSkip.keys.list">
+          <do_if value="not @$psSkipKey.exists or this.$protectSectorStationSkip.{$psSkipKey} le player.age">
+            <remove_value name="this.$protectSectorStationSkip.{$psSkipKey}" />
+          </do_if>
+        </do_for_each>
+        <remove_value name="$psSkipKey" />
+        <set_value name="this.$protectSectorStationSkip.{$target}" exact="player.age + 30min" />
+        <set_value name="$tel" exact="'stationmem|id=%s|op=set|held=%s|until=%s'.[$target.debugname, if @$targetInfo.$psAt != null then player.age - $targetInfo.$psAt else -1, this.$protectSectorStationSkip.{$target}]" />
+        <include_interrupt_actions ref="Telemetry" />
+      </do_elseif>
       <remove_value name="this.assignedcontrolled.aipilot.$targetInfo" />
     </do_if>
 
@@ -3003,6 +3021,11 @@
                 chance="$traceChance" />
               <set_value name="$target" exact="null" />
             </do_if>
+            <do_if value="$target != null and @this.$protectSectorStationSkip.{$target} gt player.age">
+              <set_value name="$tel" exact="'stationmem|id=%s|op=skip|left=%s'.[$target.debugname, this.$protectSectorStationSkip.{$target} - player.age]" />
+              <include_interrupt_actions ref="Telemetry" />
+              <set_value name="$target" exact="null" />
+            </do_if>
             <!-- the handoff Attack has checkrelation true: a station this ship may not fire on would end it at once -->
             <do_if value="$target != null">
               <set_value name="$psRbShip" exact="this.assignedcontrolled" />
@@ -3049,7 +3072,8 @@
             $isShip = false,
             $stationIsUnderConstruction = not $target.isclass.station,
             $psRelBoost = not $attackHostileOnly,
-            $psDebug = @$debugChance
+            $psDebug = @$debugChance,
+            $psAt = player.age
           ]" />
 
           <debug_text
@@ -3096,7 +3120,18 @@
           <include_interrupt_actions ref="PsStats" />
           <set_value name="this.$protectSectorStats.$stationHandoffs" operation="add" />
           <set_value name="$psInternalEnd" exact="true" />
-          <set_value name="$tel" exact="'station|id=%s|order=%s|dist=%s'.[$target.debugname, if @$attackStationsInternal then 'Internal' else (if not @$attackStationsTactical then 'Attack' else 'Tactical'), @$stationDistanceTo]" />
+          <!-- TacticalOrder waits on a syncpoint only its members release (vanilla's filter): with none it never fires -->
+          <set_value name="$psTacMembers" exact="0" />
+          <do_if value="@$attackStationsTactical and not @$attackStationsInternal">
+            <do_for_each name="$psSub" in="this.assignedcontrolled.subordinates">
+              <do_if value="[assignment.defence, assignment.attack, assignment.interception, assignment.bombardment].indexof.{$psSub.assignment} and not $psSub.subordinategroupdockoverride">
+                <set_value name="$psTacMembers" operation="add" />
+              </do_if>
+            </do_for_each>
+            <remove_value name="$psSub" />
+          </do_if>
+          <set_value name="$stationTactical" exact="@$attackStationsTactical and $psTacMembers gt 0" />
+          <set_value name="$tel" exact="'station|id=%s|order=%s|dist=%s|members=%s'.[$target.debugname, if @$attackStationsInternal then 'Internal' else (if not $stationTactical then 'Attack' else 'Tactical'), @$stationDistanceTo, $psTacMembers]" />
           <include_interrupt_actions ref="Telemetry" />
           <include_interrupt_actions ref="SubordinatesResetOrders" />
           <do_if value="@$attackStationsInternal">
@@ -3116,7 +3151,7 @@
                   $target.class
                 ]"
               chance="$traceChance" />
-            <do_if value="not @$attackStationsTactical">
+            <do_if value="not $stationTactical">
               <create_order id="'Attack'" object="this.assignedcontrolled" immediate="true">
                 <param name="primarytarget" value="$target" />
                 <param name="pursuetargets" value="true" />
@@ -3142,7 +3177,7 @@
             </do_else>
           </do_elseif>
           <do_else>
-            <do_if value="not @$attackStationsTactical">
+            <do_if value="not $stationTactical">
               <create_order id="'Attack'" object="this.assignedcontrolled" immediate="true">
                 <param name="primarytarget" value="$target" />
                 <param name="pursuetargets" value="true" />

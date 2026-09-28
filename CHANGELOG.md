@@ -26,6 +26,8 @@
   - A ship could choose a target that had just left its home sector, log and count the attack, and only drop the target at its next step. The sector scans now always cover the home sector, and a target outside it is never chosen.
   - With `Attack hostile only` off, attacking a non-hostile ship or station (with `Coordinate Attack` too) made it hostile to every player ship and station for 10 minutes (the game 9.00 behaviour), so all of them joined in. The target is now hostile only to the ships that attack it, as in 8.00, and they no longer pick unrelated ships as their next target.
   - A ship or subordinate no longer starts an attack it is not allowed to fire in (fire authorisation override); it looked engaged but never shot. A station it may not fire on is skipped for 2 minutes.
+  - A ship without subordinates attacking stations in the `Coordinate Attack` mode never fired: the game's coordinated attack waits up to an hour for subordinates to take their positions, and with none it waits out the full hour. Against a non-hostile station the order restarted before that and picked the same station again, endlessly. A ship with no subordinates able to join now attacks the station directly.
+  - A station the ship stopped attacking without destroying it was picked again at once. It is now skipped for 30 minutes.
 
 - Changed
   - The `Extension options` page is now built with `Options Helper`: the damage sensitivity thresholds are sliders, and a `Debug Level` dropdown (`None`, `Debug`, `Trace`) replaces the `Enable debug log` checkbox. Settings from the old page are carried over once.
