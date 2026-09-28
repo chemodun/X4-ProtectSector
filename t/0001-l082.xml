@@ -199,6 +199,8 @@
       <t id="1461">The fleet takes targets again, from its own search and from the coordinator. Fix what made it refuse them first.</t>
       <t id="1462">Marked, takes no targets</t>
       <t id="1463">The Protect Sector overview shows every fleet on the Protect Sector order: its statistics, its state on the fleet coordinator and its order settings.</t>
+      <t id="1464">LSR</t>
+      <t id="1465">Lost Ship Replacement</t>
       <t id="10001">스테이션 공격</t>
       <t id="10011">스테이션만 공격하는 실험적 명령입니다. L 및 XL 함선에서만 사용 가능합니다</t>
       <t id="20001">스마트 스테이션 공격</t>

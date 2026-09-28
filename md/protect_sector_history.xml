@@ -305,7 +305,7 @@
           <cues>
             <!-- vanilla promoted a subordinate in a ProtectSector commander's place: after 2 s (Assist's own restart waits 1 ms) the order restarts on it with the stored settings, and the fleet's record moves to it -->
             <!-- own namespace: every cue here shares History's by default, and Walk's $psP would clear this one's during the 2 s delay -->
-            <cue name="Promoted" instantiate="true" namespace="this" version="3">
+            <cue name="Promoted" instantiate="true" namespace="this" version="4">
               <conditions>
                 <event_object_subordinate_promoted group="History.$leaders" />
               </conditions>
@@ -321,6 +321,9 @@
                 <debug_text text="'PS1|%s|%s|%s|%s|promoted|at=event|old=%s|cmd=%s|dorder=%s|olddorder=%s|oldop=%s|stored=%s'.[player.age, @$psNew.debugname, @$psNew.class, @$psNew.sector.debugname, $psOldName, @$psNew.commander.debugname, @$psNew.defaultorder.id, $psOldDorder, @$psOld.isoperational, $psP != null]"
                   chance="$debugChance" />
                 <include_actions ref="md.ProtectSector_Options.ClearDebugChances" />
+                <!-- vanilla drops Lost Ship Replacement with a dying fleet lead: Lua reads it off the old commander, in this order -->
+                <raise_lua_event name="'ProtectSector.PromotedFrom'" param="$psOld" />
+                <raise_lua_event name="'ProtectSector.PromotedTo'" param="$psNew" />
               </actions>
               <cues>
                 <cue name="PromotedAct" version="2">

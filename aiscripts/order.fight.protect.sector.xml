@@ -611,12 +611,42 @@
         <remove_value name="$psNoDpsAt" />
         <remove_value name="$psNoDpsTarget" />
       </actions>
-      <!-- $psFaNo: the fire authorisation override forbids attacking $psFaT and vanilla's attack would not lift it (hostile-only: never; threshold: its relation boost only reaches kill) -->
+      <!-- $psFaNo: the fire authorisation override forbids attacking $psFaT and no boost would lift it (hostile-only: never boosted; threshold: PsRelBoost only reaches kill) -->
       <actions name="PsFireAuthCheck">
         <set_value name="$psFaNo" exact="false" />
         <do_if value="@$psFaT.exists and not this.assignedcontrolled.mayattack.{$psFaT}">
           <set_value name="$psFaNo" exact="$attackHostileOnly or this.assignedcontrolled.hasrelation.kill.{$psFaT}" />
         </do_if>
+      </actions>
+      <!-- hostile-only off: 8.00's boost of $psRbT against $psRbShip alone, so vanilla 9.00 never boosts $psRbT against the whole player faction; $psRbAt names the caller -->
+      <actions name="PsRelBoost">
+        <set_value name="$psRbDone" exact="false" />
+        <do_if value="not $attackHostileOnly and @$psRbT.canbeattacked and not $psRbShip.mayattack.{$psRbT}">
+          <do_if value="$psRbT.coverowner">
+            <signal_objects object="$psRbT" param="'LoseCover'" />
+          </do_if>
+          <set_relation_boost object="$psRbT" otherobject="$psRbShip" value="$psRbShip.owner.relation.kill.min" decay="1" delay="10min" silent="true" />
+          <set_value name="$psRbDone" exact="true" />
+          <set_value name="$tel" exact="'rboost|id=%s|ship=%s|at=%s|may=%s|kill=%s|rel=%s|pilotmay=%s'.[$psRbT.debugname, $psRbShip.debugname, $psRbAt, $psRbShip.mayattack.{$psRbT}, $psRbShip.hasrelation.kill.{$psRbT}, $psRbT.relationto.{$psRbShip}, @$psRbShip.pilot.mayattack.{$psRbT}]" />
+          <include_interrupt_actions ref="Telemetry" />
+        </do_if>
+        <remove_value name="$psRbShip" />
+        <remove_value name="$psRbT" />
+        <remove_value name="$psRbAt" />
+      </actions>
+      <!-- the attack's fire-authorisation exit: skipped 120 s like a quick return; the caller resumes at targetSearching -->
+      <actions name="PsFireAuthSkip">
+        <do_if value="not $targetSkip?">
+          <set_value name="$targetSkip" exact="table[]" />
+        </do_if>
+        <set_value name="$targetSkip.{$target}" exact="player.age + 120s" />
+        <set_value name="$quickReturnTarget" exact="null" />
+        <set_value name="$quickReturns" exact="0" />
+        <set_value name="$psField" exact="'$fireAuth'" />
+        <include_interrupt_actions ref="PsEngageClose" />
+        <remove_value name="$psField" />
+        <include_interrupt_actions ref="SubordinatesResetOrders" />
+        <set_value name="$searchReason" exact="'fireauth'" />
       </actions>
       <actions name="PsHull">
         <include_interrupt_actions ref="PsStats" />
@@ -1642,6 +1672,11 @@
         <check_value value="@$target.exists and not @$target.iswreck" />
       </conditions>
       <actions>
+        <!-- the boost lapses after 10 min -->
+        <set_value name="$psRbShip" exact="this.assignedcontrolled" />
+        <set_value name="$psRbT" exact="$target" />
+        <set_value name="$psRbAt" exact="'hb'" />
+        <include_interrupt_actions ref="PsRelBoost" />
         <!-- gratio is the coordinator's committed power over the group's for this target, refreshed on its tick -->
         <set_value name="$tel" exact="'attackhb|id=%s|dur=%s|dist=%s|limit=%s|cansee=%s|alive=%s|thull=%s|tshield=%s|hull=%s|shield=%s|att=%s|vcmd=%s|vtarget=%s|tdock=%s|thw=%s|tsec=%s|tatt=%s|tlive=%s|gratio=%s'.[
           @$target.debugname,
@@ -1795,6 +1830,16 @@
                     (@$target != @$subordinate.order.$primarytarget and ($subordinate.distanceto.{this.assignedcontrolled} gt this.assignedcontrolled.maxradarrange * 0.6)
                   )
                 )">
+                  <set_value name="$psRbShip" exact="$subordinate" />
+                  <set_value name="$psRbT" exact="$target" />
+                  <set_value name="$psRbAt" exact="'sub'" />
+                  <include_interrupt_actions ref="PsRelBoost" />
+                  <!-- its own fire authorisation override: an Attack order would loop without firing -->
+                  <do_if value="not $subordinate.mayattack.{$target}">
+                    <set_value name="$tel" exact="'subfa|sub=%s|id=%s|mode=%s|kill=%s|boost=%s'.[$subordinate.debugname, $target.debugname, if $attackHostileOnly then 'hostile' else 'threshold', $subordinate.hasrelation.kill.{$target}, $psRbDone]" />
+                    <include_interrupt_actions ref="Telemetry" />
+                    <continue />
+                  </do_if>
                   <do_if value="@$subordinate.order.id != 'Escort'">
                     <cancel_all_orders object="$subordinate" />
                     <set_value name="$subsCancelled" operation="add" />
@@ -1825,7 +1870,7 @@
                       <param name="primarytarget" value="$target" />
                       <param name="pursuetargets" value="false" />
                       <param name="allowothertargets" value="true" />
-                      <param name="checkrelation" value="$attackHostileOnly" />
+                      <param name="checkrelation" value="true" />
                       <param name="disable" value="$breakOnDestructionPercentage gt 0" />
                       <param name="disablehullpercentagethreshold" value="$breakOnDestructionPercentage" />
                       <param name="maintaindistance" value="false" />
@@ -1844,7 +1889,7 @@
                       <param name="primarytarget" value="$target" />
                       <param name="pursuetargets" value="false" />
                       <param name="allowothertargets" value="true" />
-                      <param name="checkrelation" value="$attackHostileOnly" />
+                      <param name="checkrelation" value="true" />
                       <param name="disable" value="$breakOnDestructionPercentage gt 0" />
                       <param name="disablehullpercentagethreshold" value="$breakOnDestructionPercentage" />
                       <param name="maintaindistance" value="false" />
@@ -1857,6 +1902,13 @@
                     </create_order>
                   </do_else>
                 </do_if>
+                <!-- the boost lapses after 10 min -->
+                <do_elseif value="not $attackHostileOnly and @$subordinate.order.id == 'Attack' and @$target != null and @$subordinate.order.$primarytarget == $target">
+                  <set_value name="$psRbShip" exact="$subordinate" />
+                  <set_value name="$psRbT" exact="$target" />
+                  <set_value name="$psRbAt" exact="'subhb'" />
+                  <include_interrupt_actions ref="PsRelBoost" />
+                </do_elseif>
               </do_if>
             </do_if>
           </do_if>
@@ -2873,6 +2925,9 @@
 
         <do_for_each name="$station" in="$stations" counter="$stationIndex">
           <!-- the list is a scan snapshot and the loop waits between entries: an entry can be gone or unmeasurable by now -->
+          <do_if value="@$targetSkip.{$station} gt player.age">
+            <continue />
+          </do_if>
           <set_value name="$stationDistanceTo" exact="if @$station.exists then @this.assignedcontrolled.distanceto.{$station} else null" />
           <do_if value="$stationDistanceTo == null">
             <set_value name="$tel" exact="'stationskip|id=%s|class=%s|exists=%s|sector=%s|base=%s|baseclass=%s|why=%s'.[@$station.debugname, @$station.class, @$station.exists, @$station.sector.debugname, @$station.base.debugname, @$station.base.class, if @$station.exists then 'nodist' else 'gone']" />
@@ -2939,6 +2994,22 @@
                 ]"
                 chance="$traceChance" />
               <set_value name="$target" exact="null" />
+            </do_if>
+            <!-- the handoff Attack has checkrelation true: a station this ship may not fire on would end it at once -->
+            <do_if value="$target != null">
+              <set_value name="$psRbShip" exact="this.assignedcontrolled" />
+              <set_value name="$psRbT" exact="$target" />
+              <set_value name="$psRbAt" exact="'station'" />
+              <include_interrupt_actions ref="PsRelBoost" />
+              <do_if value="not this.assignedcontrolled.mayattack.{$target}">
+                <set_value name="$tel" exact="'stfa|id=%s|mode=%s|rel=%s|kill=%s|boost=%s'.[$target.debugname, if $attackHostileOnly then 'hostile' else 'threshold', $target.relationto.{this.owner}, this.assignedcontrolled.hasrelation.kill.{$target}, $psRbDone]" />
+                <include_interrupt_actions ref="Telemetry" />
+                <do_if value="not $targetSkip?">
+                  <set_value name="$targetSkip" exact="table[]" />
+                </do_if>
+                <set_value name="$targetSkip.{$target}" exact="player.age + 120s" />
+                <set_value name="$target" exact="null" />
+              </do_if>
             </do_if>
           </do_if>
           <do_if value="$target != null">
@@ -3040,7 +3111,7 @@
                 <param name="primarytarget" value="$target" />
                 <param name="pursuetargets" value="true" />
                 <param name="allowothertargets" value="false" />
-                <param name="checkrelation" value="false" />
+                <param name="checkrelation" value="true" />
                 <param name="disable" value="false" />
                 <param name="maintaindistance" value="false" />
                 <param name="targetclasses" value="[class.station]" />
@@ -3066,7 +3137,7 @@
                 <param name="primarytarget" value="$target" />
                 <param name="pursuetargets" value="true" />
                 <param name="allowothertargets" value="false" />
-                <param name="checkrelation" value="false" />
+                <param name="checkrelation" value="true" />
                 <param name="disable" value="false" />
                 <param name="maintaindistance" value="false" />
                 <param name="targetclasses" value="[class.station]" />
@@ -3558,6 +3629,17 @@
         <remove_value name="$positionIdle" />
 
         <do_if value="not $targetOptimalDistanceForAttack? or $targetDistanceTo le $targetOptimalDistanceForAttack">
+          <set_value name="$psRbShip" exact="this.assignedcontrolled" />
+          <set_value name="$psRbT" exact="$target" />
+          <set_value name="$psRbAt" exact="'attack'" />
+          <include_interrupt_actions ref="PsRelBoost" />
+          <!-- with checkrelation true vanilla would loop on it without firing -->
+          <do_if value="not this.assignedcontrolled.mayattack.{$target}">
+            <set_value name="$tel" exact="'fastart|id=%s|mode=%s|rel=%s|kill=%s|boost=%s|purpose=%s'.[$target.debugname, if $attackHostileOnly then 'hostile' else 'threshold', $target.relationto.{this.owner}, this.assignedcontrolled.hasrelation.kill.{$target}, $psRbDone, @$target.primarypurpose]" />
+            <include_interrupt_actions ref="Telemetry" />
+            <include_interrupt_actions ref="PsFireAuthSkip" />
+            <resume label="targetSearching" />
+          </do_if>
           <debug_text
             text="'ProtectSector [%s at %s, %s]: Run order.fight.attack.object : %s {%s} status: iswreck: %s, isoperational: %s,  pilot: %s (%s), distance - %s, acceptable distance - %s'
               .[
@@ -3657,7 +3739,7 @@
               <param name="primarytarget" value="$target" />
               <param name="pursuetargets" value="false" />
               <param name="allowothertargets" value="true" />
-              <param name="checkrelation" value="$attackHostileOnly" />
+              <param name="checkrelation" value="true" />
               <param name="disable" value="$breakOnDestructionPercentage gt 0" />
               <param name="disablehullpercentagethreshold" value="$breakOnDestructionPercentage" />
               <param name="maintaindistance" value="false" />
@@ -3676,7 +3758,7 @@
               <param name="primarytarget" value="$target" />
               <param name="pursuetargets" value="false" />
               <param name="allowothertargets" value="true" />
-              <param name="checkrelation" value="$attackHostileOnly" />
+              <param name="checkrelation" value="true" />
               <param name="disable" value="$breakOnDestructionPercentage gt 0" />
               <param name="disablehullpercentagethreshold" value="$breakOnDestructionPercentage" />
               <param name="maintaindistance" value="false" />
@@ -3705,23 +3787,20 @@
             <resume label="goingIdle" />
           </do_if>
           <remove_value name="$psNoDps" />
-          <!-- vanilla refused the attack for the fire authorisation override: hostile-only it disengages at once, a threshold attack aborts after its relation boost; skipped like a quick return -->
-          <do_if value="@$target.exists and not $target.iswreck and not this.assignedcontrolled.mayattack.{$target} and ($attackHostileOnly or (player.age - $attackStartedAt lt 3s and $target.canbeattacked and not @$target.dock and not @$target.zone.isclass.highway))">
+          <!-- vanilla looped on a target the fire authorisation override forbids (checkrelation is always true) until a watchdog broke it; a lapsed threshold boost is not this -->
+          <do_if value="@$target.exists and not $target.iswreck">
+            <set_value name="$psFaT" exact="$target" />
+            <include_interrupt_actions ref="PsFireAuthCheck" />
+            <remove_value name="$psFaT" />
+          </do_if>
+          <do_if value="@$psFaNo">
+            <remove_value name="$psFaNo" />
             <set_value name="$tel" exact="'fareturn|id=%s|dur=%s|mode=%s|rel=%s|kill=%s|purpose=%s'.[$target.debugname, player.age - $attackStartedAt, if $attackHostileOnly then 'hostile' else 'threshold', $target.relationto.{this.owner}, this.assignedcontrolled.hasrelation.kill.{$target}, @$target.primarypurpose]" />
             <include_interrupt_actions ref="Telemetry" />
-            <do_if value="not $targetSkip?">
-              <set_value name="$targetSkip" exact="table[]" />
-            </do_if>
-            <set_value name="$targetSkip.{$target}" exact="player.age + 120s" />
-            <set_value name="$quickReturnTarget" exact="null" />
-            <set_value name="$quickReturns" exact="0" />
-            <set_value name="$psField" exact="'$fireAuth'" />
-            <include_interrupt_actions ref="PsEngageClose" />
-            <remove_value name="$psField" />
-            <include_interrupt_actions ref="SubordinatesResetOrders" />
-            <set_value name="$searchReason" exact="'fireauth'" />
+            <include_interrupt_actions ref="PsFireAuthSkip" />
             <resume label="targetSearching" />
           </do_if>
+          <remove_value name="$psFaNo" />
           <!-- vanilla leaves some targets at once (beyond pursuedistance, steering early-outs): the third quick return in a row skips the target -->
           <do_if value="player.age - $attackStartedAt lt 3s and @$target.canbeattacked">
             <do_if value="@$quickReturnTarget == $target">

@@ -199,6 +199,8 @@
       <t id="1461">The fleet takes targets again, from its own search and from the coordinator. Fix what made it refuse them first.</t>
       <t id="1462">Marked, takes no targets</t>
       <t id="1463">The Protect Sector overview shows every fleet on the Protect Sector order: its statistics, its state on the fleet coordinator and its order settings.</t>
+      <t id="1464">LSR</t>
+      <t id="1465">Lost Ship Replacement</t>
       <t id="10001">攻击空间站</t>
       <t id="10011">一个仅攻击空间站的实验性命令。仅适用于大型和超大型舰船</t>
       <t id="20001">智能空间站攻击</t>

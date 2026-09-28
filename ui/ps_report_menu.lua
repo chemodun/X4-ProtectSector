@@ -65,6 +65,7 @@ local config = {
   settingsGridFleets = 12, -- a sector of up to this many fleets shows one column per fleet
   gridLabelShare     = 0.3,
   coordShare         = 0.6, -- Coordination tab, All: the settings' share of the right side
+  lsrScanInterval    = 10, -- seconds between Lost Ship Replacement rescans
 }
 
 -- Our entry in Helper.topLevelMenus.
@@ -1077,6 +1078,52 @@ local function onOpenMenuEvent(_, componentLuaId)
   OpenMenu("ProtectSectorReportMenu", { 0, 0, id64 }, { "MapMenu", { 0, 0 }, nil })
 end
 
+-- Vanilla drops Lost Ship Replacement with a dying fleet lead, and the old ship is gone
+-- before Lua hears of the promotion: a rescan keeps the ships that have it on.
+local lsrLeads = {}
+
+local function scanLsrLeads()
+  local leads = {}
+  local n = C.GetNumAllFactionShips("player")
+  if n > 0 then
+    local buf = ffi.new("UniverseID[?]", n)
+    n = C.GetAllFactionShips(buf, n, "player")
+    for i = 0, n - 1 do
+      local id64 = ConvertStringTo64Bit(tostring(buf[i]))
+      if GetComponentData(id64, "isfleetlead") then
+        leads[id64] = true
+      end
+    end
+  end
+  lsrLeads = leads
+end
+
+local function lsrScanLoop()
+  scanLsrLeads()
+  Helper.addDelayedOneTimeCallbackOnUpdate(lsrScanLoop, false, getElapsedTime() + config.lsrScanInterval)
+end
+
+-- MD raises From (the old commander), then To (the ship vanilla promoted).
+local promotedLsr
+local function onPromotedFrom(_, old)
+  ---@diagnostic disable-next-line: param-type-mismatch
+  promotedLsr = lsrLeads[ConvertIDTo64Bit(old)] == true
+  debugLog("promoted: old commander %s, Lost Ship Replacement %s.", tostring(old), tostring(promotedLsr))
+end
+
+local function onPromotedTo(_, new)
+  local carry = promotedLsr
+  promotedLsr = nil
+  ---@diagnostic disable-next-line: param-type-mismatch
+  local new64 = ConvertIDTo64Bit(new)
+  if not carry or not C.IsComponentOperational(new64) or GetCommander(new) ~= nil or not C.IsFleetManagerPlayerEnabled() then
+    return
+  end
+  C.SetFleetManagement(new64, true)
+  lsrLeads[new64] = true
+  debugLog("promoted: Lost Ship Replacement on for %s (%s).", GetComponentData(new, "name"), GetComponentData(new, "idcode"))
+end
+
 local function onHistoryReady()
   if not menu.open then
     return
@@ -1563,10 +1610,89 @@ local function settingsFleetText(sector, fleet)
   return pageText(1416, count), Color["text_warning"]
 end
 
+-- The Lost Ship Replacement column: its header or the checkbox, whichever is wider.
+local function lsrColumnWidth()
+  local header = Helper.headerRowCenteredProperties
+  local width = math.max(Helper.scaleX(Helper.standardTextHeight),
+    C.GetTextWidth(ReadText(PAGE, 1464), header.font, Helper.scaleFont(header.font, header.fontsize)))
+  local inset = ps.isV9 and Helper.standardContainerOffset or 0
+  return math.ceil(width + 2 * Helper.scaleX(Helper.standardTextOffsetx) + inset)
+end
+
+-- One x for every box: a row group narrows only the right edge of the last column, so
+-- centre on the grouped span.
+local function lsrBoxX()
+  local inset = ps.isV9 and Helper.standardContainerOffset or 0
+  return math.max(0, math.floor((lsrColumnWidth() - inset - Helper.scaleX(Helper.standardTextHeight)) / 2))
+end
+
+-- The setting belongs to the top-level commander; own is false when the climb left the
+-- fleet. nil for a fleet not live.
+local function lsrShip(fleet)
+  if fleet.state ~= "active" or fleet.ship == nil or not C.IsComponentOperational(ConvertIDTo64Bit(fleet.ship)) then
+    return nil, false
+  end
+  local ship, own = fleet.ship, not fleet.assist
+  local commander = GetCommander(ship)
+  while commander do
+    ship, own = commander, false
+    commander = GetCommander(ship)
+  end
+  return ship, own
+end
+
+-- A group box covers the fleets that own their setting: nil when none does, ticked
+-- only when every one has it on.
+local function lsrGroup(fleets)
+  local ships, allOn = {}, true
+  for _, fleet in ipairs(fleets) do
+    local ship, own = lsrShip(fleet)
+    if own then
+      ships[#ships + 1] = ship
+      allOn = allOn and (GetComponentData(ship, "isfleetlead") and true or false)
+    end
+  end
+  if #ships == 0 then
+    return nil, false
+  end
+  return ships, allOn
+end
+
+local function setLsr(ships, enable)
+  for _, ship in ipairs(ships) do
+    local id64 = ConvertIDTo64Bit(ship)
+    C.SetFleetManagement(id64, enable)
+    lsrLeads[id64] = enable or nil
+  end
+  debugLog("settings: Lost Ship Replacement %s on %d fleet(s).", enable and "on" or "off", #ships)
+  menu.refreshQueued = true
+end
+
+-- The mouseover says what a click does, on an inactive box too.
+local function lsrCheckBox(cell, x, on, ships)
+  local size = Helper.scaleX(Helper.standardTextHeight)
+  cell:createCheckBox(on, { width = size, height = size, x = x, scaling = false, active = (ships ~= nil),
+    mouseOverText = ReadText(1001, on and 11147 or 11146) })
+  if ships ~= nil then
+    cell.handlers.onClick = function(_, checked) return setLsr(ships, checked) end
+  end
+end
+
+-- The group rows (All, a sector) get a box only when a fleet under them owns its setting.
+local function lsrGroupCell(cell, x, fleets)
+  local ships, allOn = lsrGroup(fleets)
+  if ships ~= nil then
+    lsrCheckBox(cell, x, allOn, ships)
+  end
+end
+
 function menu.createLeftPanel(x, width)
   local onBoard = (menu.tab == "board")
   local onSettings = (menu.tab == "settings")
-  local leftTable = menu.infoFrame:addTable(2, {
+  local withLsr = onSettings and C.IsFleetManagerPlayerEnabled()
+  local lsrX = withLsr and lsrBoxX() or 0
+  local cols = withLsr and 3 or 2
+  local leftTable = menu.infoFrame:addTable(cols, {
     tabOrder = 1, width = width, x = x, y = menu.panelTop, borderEnabled = true,
     maxVisibleHeight = panelHeight(menu.panelTop),
     backgroundID = "solid", backgroundColor = Color["frame_background_semitransparent"],
@@ -1575,6 +1701,9 @@ function menu.createLeftPanel(x, width)
     defaultInteractiveObject = (menu.scrollToSelection == true),
   })
   leftTable:setColWidth(2, Helper.scaleX(config.statColWidth), false)
+  if withLsr then
+    leftTable:setColWidth(3, lsrColumnWidth(), false)
+  end
 
   -- The header picks the counter the column shows; its row data is ignored by
   -- onRowChanged, the widget only needs a selectable row.
@@ -1583,6 +1712,13 @@ function menu.createLeftPanel(x, width)
     row[2]:createText(ReadText(1001, 12), Helper.headerRowCenteredProperties)
   elseif onSettings then
     row[2]:createText(ReadText(PAGE, 1415), Helper.headerRowCenteredProperties)
+    if withLsr then
+      local header = { mouseOverText = ReadText(PAGE, 1465) }
+      for key, value in pairs(Helper.headerRowCenteredProperties) do
+        header[key] = value
+      end
+      row[3]:createText(ReadText(PAGE, 1464), header)
+    end
   else
     local options = {}
     for i, stat in ipairs(COLUMN_STATS) do
@@ -1593,10 +1729,10 @@ function menu.createLeftPanel(x, width)
   end
 
   if menu.view == nil then
-    return noticeRow(rowBlock(leftTable), 2, 1302)
+    return noticeRow(rowBlock(leftTable), cols, 1302)
   end
   if #menu.view.fleets == 0 then
-    return noticeRow(rowBlock(leftTable), 2, 1303)
+    return noticeRow(rowBlock(leftTable), cols, 1303)
   end
 
   -- The list covers the whole period held, not the window.
@@ -1618,6 +1754,9 @@ function menu.createLeftPanel(x, width)
   row[1]:createText(ReadText(PAGE, 1301), { halign = "left", font = Helper.standardFontBold })
   local value, valueColor = groupValue(menu.view.fleets, menu.groups or {})
   row[2]:createText(value, { halign = "right", color = valueColor })
+  if withLsr then
+    lsrGroupCell(row[3], lsrX, menu.view.fleets)
+  end
   if selection.kind == "all" then
     selectedRow = row.index
   end
@@ -1627,6 +1766,9 @@ function menu.createLeftPanel(x, width)
     row[1]:createText(factionColored(sector.name, sector.owner), { halign = "left", font = Helper.standardFontBold })
     value, valueColor = groupValue(sector.fleets, { sector })
     row[2]:createText(value, { halign = "right", color = valueColor })
+    if withLsr then
+      lsrGroupCell(row[3], lsrX, sector.fleets)
+    end
     local sectorRow = row.index
     if selection.kind == "sector" and selection.key == sector.key then
       selectedRow, scrollRow = sectorRow, sectorRow
@@ -1647,6 +1789,12 @@ function menu.createLeftPanel(x, width)
       row = fleetRows:addRow({ "fleet", fleet.key }, bandProps())
       row[1]:createText("  " .. fleetLabel(fleet), { halign = "left", color = color })
       row[2]:createText(value, { halign = "right", color = color or valueColor })
+      if withLsr then
+        local ship, own = lsrShip(fleet)
+        if ship ~= nil then
+          lsrCheckBox(row[3], lsrX, GetComponentData(ship, "isfleetlead") and true or false, own and { ship } or nil)
+        end
+      end
       if selection.kind == "fleet" and selection.key == fleet.key then
         selectedRow, scrollRow = row.index, sectorRow
       end
@@ -2590,6 +2738,9 @@ local function Init()
   init()
   RegisterEvent("ProtectSector.OpenMenu", onOpenMenuEvent)
   RegisterEvent("ProtectSector.HistoryReady", onHistoryReady)
+  RegisterEvent("ProtectSector.PromotedFrom", onPromotedFrom)
+  RegisterEvent("ProtectSector.PromotedTo", onPromotedTo)
+  lsrScanLoop()
 end
 
 Register_OnLoad_Init(Init)
