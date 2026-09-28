@@ -127,6 +127,8 @@ Please take in account -  when previous parameter is enabled, you can set this o
 If the [b]Attack only hostile targets[/b] is disabled - the value can be set in between 0 and 30 (0 and -30 relation).
 [b]Use it carefully.[/b]
 
+In that mode a target above [b]-25[/b] relation is made hostile to the attacking ship only, and this is stronger than the fire authorisation override in `Global Orders`: the override does not stop such an attack. A target at [b]-25[/b] and lower is attacked only when the override allows it.
+
 [size=3][u][i]Protect our ships and stations in sector[/i][/u][/size]
 
 [b]Enabled[/b] by default.
@@ -150,11 +152,13 @@ If enabled, the ship will pursue the target, which is trying to flee after is be
 [b]Disabled[/b] by default.
 If enabled, the subordinates will be more aggressive in attacking the targets. It will force them to attack more and more.
 
-[size=3][u][i]Share target with other[/i][/u][/size]
+[size=3][u][i]Share target with other fleets[/i][/u][/size]
 
 [b]Enabled[/b] by default.
 
-If you have more than one ship or squad with the same order, you can disable this option to prevent them from attacking the same target.
+With it on, this fleet may attack a target together with other fleets running the order in the sector, and they may join it: the coordinator (see [b]Fleet coordination[/b] below) can send it to a fight another fleet started, call other fleets to its own, or release it together with others against a group none of them could take alone.
+
+With it off, the fleet fights alone and its target is left to it: no other fleet is sent to its target while it is on it, and it is never sent to a target another fleet is already on. This holds whether [b]Fleet coordination[/b] is on or off.
 
 [size=3][u][i]Attack distance: percentage of radar range[/i][/u][/size]
 
@@ -226,11 +230,41 @@ Each combination has its own slider, from [b]10%[/b] to [b]100%[/b] in steps of 
 
 [size=3][u][i]Fleet overview[/i][/u][/size]
 
-Two sliders for the [b]Protect Sector overview[/b] screen, opened from the right-click menu of a ship running the order.
+Two sliders for the [b]Protect Sector overview[/b] screen, opened from the right-click menu of a ship running the order, or from its own icon in the game's top menu row, right after `Map`.
 [list]
 [*] [b]History depth[/b] - how many hours of 15-minute samples are kept for the screen, from [b]3[/b] to `48`, default `24`. [b]0[/b] turns the history off and drops what was recorded; the screen then shows the totals since the counters started.
 [*] [b]Auto-refresh[/b] - how often the open screen fetches fresh numbers, from [b]30[/b] seconds to [b]10[/b] minutes in steps of [b]30[/b] seconds, default [b]30[/b] seconds. [b]0[/b] leaves it to the [b]Refresh[/b] button.
 [/list]
+[size=3][u][i]Fleet coordination[/i][/u][/size]
+
+[b]Enabled[/b] by default.
+
+Every fleet running [b]Protect Sector[/b] reports to one coordinator: what it is doing, and every target it would like to attack. With the option on, the coordinator decides for the fleets of a sector together. Before a fleet leader attacks a group of enemies, the coordinator weighs the fleet's firepower and that of the fleets already fighting there against the group's:
+[list]
+[*] a target that fleets nearer to it already handle with enough force is left to them; a fleet farther away than the leader does not count, so the leader attacks a close target itself rather than wait for it;
+[*] a target too far away, or too fast for the leader to catch, is left to the fleet already on it instead of being chased across the sector; a target no fleet is on is still taken;
+[*] a target a nearer idle fleet can take is handed to that fleet;
+[*] a fleet that does not share its target keeps it only while no other fleet is much nearer: the nearer fleet takes it over and the farther one is released;
+[*] a group too strong for one fleet is taken on together: the leader goes and the idle fleets nearby are called in, or, when none can help, the fleets hold off and pledge their strength to the group; they are released together once enough of them have gathered, with one logbook entry and one notification per group per hour;
+[*] a fight that turns against the fleets on it calls for help once and, if none comes within a minute, they break off together;
+[*] when one of your ships or stations is attacked, the coordinator sends the nearest fleet that is strong enough, or two together, instead of waking every idle fleet in the sector; distance and speed only choose between the fleets, so a far or slower fleet still goes when no other can.
+[/list]
+With the option off, every fleet takes its own targets as before, and every idle fleet in the sector responds to an attack on your ships. [b]Share target with other fleets[/b] keeps its meaning in both cases. The option applies at once, on every running order, without a restart.
+
+The coordinator's own settings are on the [b]Protect Sector overview[/b] screen, [b]Coordination[/b] tab, at the top of the right side while [b]All fleets[/b] is selected. Each applies at once; its mouse-over text explains it.
+[list]
+[*] [b]Attack responses before a fleet's own targets[/b] - on by default: an attack on one of your ships or stations may take the nearest fleet off a target it picked itself, never off another attack response or a call for help. An idle fleet goes instead unless the busy one is more than 5 km nearer. Applies with coordination on or off.
+[*] [b]Strength to attack alone[/b] - default `1.5`: the multiple of a hostile group's strength a fleet needs to take it alone. Coordination on only.
+[*] [b]Strength to attack with help[/b] - default `0.7`: from this multiple a fleet goes in and calls for help; below it, it holds off. Coordination on only.
+[*] [b]Strength to break off[/b] - default `0.4`: fleets whose fight falls below this multiple call for help, and break off a minute later if still below. Coordination on only.
+[*] [b]Hostile group radius[/b] - default `10 km`: the enemies of the target's faction within this distance count as its group.
+[*] [b]Max. distance to a target another fleet has[/b] - default `100 km`: a fleet farther away leaves such a target to the fleet on it.
+[*] [b]Min. speed against a target another fleet has[/b] - default [b]90 %[/b] of the target's speed: past the group radius, a slower fleet leaves such a target to the fleet on it.
+[*] [b]Handoff margin[/b] - default `5 km`: how much nearer a fleet must be to take a target over from another, or for a target to go to an idle fleet instead of the one asking.
+[*] [b]Timers[/b] - how long the coordinator waits for help before a break-off (`60 s`), keeps a call for help open (`10 min`), ignores further attacks by an attacker it already sent a fleet to (`30 s`), does not offer a declined target again (`5 min`), keeps a refused target out of a fleet's search (`30 s`), between two holding notifications for a target (`60 min`), keeps an unattended target on its board (`60 s`), holds a target for a fleet awaiting its confirmation (`20 s`), resends a break-off (`10 s`), and reuses a measured group or fleet strength (`5 s`, `10 s`).
+[/list]
+The three strengths keep their order: [b]break off[/b] is never above `with help`, which is never above `alone`. [b]Restore Defaults[/b] under the list puts every one of them back. Each load checks them and puts a missing or invalid value back to its default.
+
 [size=3][u][i]Debug Level[/i][/u][/size]
 
 Sets how much the order writes to the game's debug log:
