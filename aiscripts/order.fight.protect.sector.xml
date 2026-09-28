@@ -4059,13 +4059,13 @@
       </do_if>
 
       <do_if value="$ignoreBlackListsForAttack">
-        <move_to object="this.assignedcontrolled" destination="$homeDestination" travel="true" forceposition="false" finishonapproach="true" boost="true" uselocalhighways="true"
+        <move_to object="this.assignedcontrolled" destination="$homeDestination" travel="true" forceposition="false" finishonapproach="true" boost="true" uselocalhighways="not this.assignedcontrolled.iscapitalship"
           useknownpath="true" commandaction="false">
           <position value="$destinationAtHome" min="5km" max="6km" />
         </move_to>
       </do_if>
       <do_else>
-        <move_to object="this.assignedcontrolled" destination="$homeDestination" travel="true" forceposition="false" finishonapproach="true" useblacklist="$blacklistGroup" boost="true" uselocalhighways="true"
+        <move_to object="this.assignedcontrolled" destination="$homeDestination" travel="true" forceposition="false" finishonapproach="true" useblacklist="$blacklistGroup" boost="true" uselocalhighways="not this.assignedcontrolled.iscapitalship"
           useknownpath="true" commandaction="false">
           <position value="$destinationAtHome" min="5km" max="6km" />
         </move_to>

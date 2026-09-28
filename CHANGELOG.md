@@ -28,6 +28,7 @@
   - A ship or subordinate no longer starts an attack it is not allowed to fire in (fire authorisation override); it looked engaged but never shot. A station it may not fire on is skipped for 2 minutes.
   - A ship without subordinates attacking stations in the `Coordinate Attack` mode never fired: the game's coordinated attack waits up to an hour for subordinates to take their positions, and with none it waits out the full hour. Against a non-hostile station the order restarted before that and picked the same station again, endlessly. A ship with no subordinates able to join now attacks the station directly.
   - A station the ship stopped attacking without destroying it was picked again at once. It is now skipped for 30 minutes.
+  - An L or XL ship flying back to its home sector logged a script error each time, because it asked for local highways, which the game does not allow for large ships.
 
 - Changed
   - The `Extension options` page is now built with `Options Helper`: the damage sensitivity thresholds are sliders, and a `Debug Level` dropdown (`None`, `Debug`, `Trace`) replaces the `Enable debug log` checkbox. Settings from the old page are carried over once.
