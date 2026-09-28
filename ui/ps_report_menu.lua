@@ -1253,6 +1253,17 @@ function menu.selectGraphPoint(data)
   menu.refreshInfoFrame()
 end
 
+-- 8.00's graph has only selectDataPoint, and only once displayed: onUpdate applies it then.
+local function selectGraphPoint(graph, recordIdx, dataIdx)
+  if graph.setSelectedDataPoint then
+    graph:setSelectedDataPoint(recordIdx, dataIdx, true)
+  elseif graph.id then
+    graph:selectDataPoint(recordIdx, dataIdx, true)
+  else
+    menu.graphSelectPending = { recordIdx, dataIdx }
+  end
+end
+
 -- The legend checkbox whose cell is selected (click or keyboard) takes the crosshair,
 -- moved in place: a rebuild would put the legend selection back on the first checkbox.
 function menu.onColChanged(_row, col, uitable)
@@ -1267,7 +1278,7 @@ function menu.onColChanged(_row, col, uitable)
   end
   menu.crosshairSeries = series.key
   if menu.graphCell and menu.crosshairDataIdx then
-    menu.graphCell:setSelectedDataPoint(recordIdx, menu.crosshairDataIdx, true)
+    selectGraphPoint(menu.graphCell, recordIdx, menu.crosshairDataIdx)
   end
 end
 
@@ -1975,6 +1986,7 @@ local function createGraphPanel(x, width, y, height, points, to)
   local maxY, records, crosshairRecord = 0, 0, nil
   local markerSize = (#points > 96) and 4 or ((#points > 48) and 6 or 8)
   menu.graphCell, menu.graphRecords, menu.graphRecordOf, menu.crosshairDataIdx = graph, {}, {}, nil
+  menu.graphSelectPending = nil
   for _, series in ipairs(SERIES) do
     if not menu.hiddenSeries[series.key] then
       local record = graph:addDataRecord({
@@ -2011,7 +2023,7 @@ local function createGraphPanel(x, width, y, height, points, to)
         dataIdx = i
       end
     end
-    graph:setSelectedDataPoint(crosshairRecord or 1, dataIdx, true)
+    selectGraphPoint(graph, crosshairRecord or 1, dataIdx)
     menu.crosshairDataIdx = dataIdx
   end
   menu.graphPoints = points
@@ -2710,6 +2722,11 @@ function menu.onUpdate()
   if menu.refreshQueued then
     menu.refreshQueued = nil
     return menu.createFrame()
+  end
+  local pending = menu.graphSelectPending
+  if pending and menu.graphCell and menu.graphCell.id then
+    menu.graphSelectPending = nil
+    menu.graphCell:selectDataPoint(pending[1], pending[2], true)
   end
   if menu.open and ps.refreshInterval > 0 and (not menu.pending)
       and getElapsedTime() - menu.lastRequestTime >= ps.refreshInterval then
