@@ -2244,7 +2244,8 @@ function menu.createBoardPanel(x, width)
       local state = boardState(board, entry)
       counts[state] = counts[state] + 1
     end
-    targets = scopeTargets(board, entries, (menu.selection.kind == "sector") and menu.selection.key or nil)
+    local sectorKey = (menu.selection.kind == "sector") and menu.selection.key or nil
+    targets = scopeTargets(board, entries, sectorKey)
     local requests = 0
     for _, target in ipairs(targets) do
       if target.help >= 0 then

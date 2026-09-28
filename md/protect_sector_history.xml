@@ -200,17 +200,253 @@
           </actions>
         </library>
 
-        <!-- keeps History.$owners current between ticks; a pilot off the order gets its final bucket here too -->
-        <cue name="Walk" instantiate="true" checkinterval="60s">
-          <conditions>
-            <check_value value="@player.entity.$ProtectSectorConfig.$historyDepth gt 0" />
-          </conditions>
+        <!-- $psP: the settings of the ProtectSector default order of $pshShip, as the order script sends them -->
+        <library name="ParamsOf" purpose="include_actions">
+          <actions>
+            <set_value name="$pshOrder" exact="$pshShip.defaultorder" />
+            <set_value name="$psP" exact="table[
+              $homeSector = $pshOrder.$homeSector,
+              $attackStations = $pshOrder.$attackStations,
+              $attackStationsTactical = $pshOrder.$attackStationsTactical,
+              $attackStationsInternal = $pshOrder.$attackStationsInternal,
+              $attackShipsXL = $pshOrder.$attackShipsXL,
+              $attackShipsL = $pshOrder.$attackShipsL,
+              $attackShipsM = $pshOrder.$attackShipsM,
+              $attackShipsS = $pshOrder.$attackShipsS,
+              $attackShipsOutOfStationsDistance = $pshOrder.$attackShipsOutOfStationsDistance,
+              $attackVisibleOnly = $pshOrder.$attackVisibleOnly,
+              $attackHostileOnly = $pshOrder.$attackHostileOnly,
+              $relationsThreshold = $pshOrder.$relationsThreshold,
+              $protectPlayerShipsInSector = $pshOrder.$protectPlayerShipsInSector,
+              $protectOnlyNonMilitaryShips = $pshOrder.$protectOnlyNonMilitaryShips,
+              $pursueFleeingTarget = $pshOrder.$pursueFleeingTarget,
+              $aggressiveSubordinates = $pshOrder.$aggressiveSubordinates,
+              $shareTargetsBetweenFleets = $pshOrder.$shareTargetsBetweenFleets,
+              $attackDistanceAsPercentageOfRadarRange = $pshOrder.$attackDistanceAsPercentageOfRadarRange,
+              $breakOnDestructionPercentage = $pshOrder.$breakOnDestructionPercentage,
+              $receivedDamageSensitivity = $pshOrder.$receivedDamageSensitivity,
+              $ignoreBlackListsForAttack = $pshOrder.$ignoreBlackListsForAttack,
+              $parkInSector = $pshOrder.$parkInSector,
+              $desiredParkingPosition = $pshOrder.$desiredParkingPosition,
+              $delayBetweenScans = $pshOrder.$delayBetweenScans,
+              $ignoreHazardThreat = $pshOrder.$ignoreHazardThreat,
+              $recordActionsToLogBook = $pshOrder.$recordActionsToLogBook
+            ]" />
+            <remove_value name="$pshOrder" />
+          </actions>
+        </library>
+
+        <!-- keeps History.$owners current between ticks, a pilot off the order gets its final bucket here too; every commander's settings are stored for Promoted, history on or off -->
+        <cue name="Walk" instantiate="true" checkinterval="60s" version="3">
           <actions>
             <include_actions ref="md.ProtectSector_Options.ReadDebugChances" />
             <include_actions ref="FleetWalk" />
+            <!-- a gone commander's settings stay 2 min for a promotion that comes late -->
+            <set_value name="$psParams" exact="table[]" />
+            <set_value name="$psLeaders" exact="[]" />
+            <do_for_each name="$psF" in="$psFleets">
+              <do_if value="not $psF.$assist">
+                <set_value name="$pshShip" exact="$psF.$ship" />
+                <include_actions ref="ParamsOf" />
+                <set_value name="$psParams.{'$%s'.[$pshShip.idcode]}" exact="table[$ship = $pshShip, $at = player.age, $p = $psP]" />
+                <append_to_list name="$psLeaders" exact="$pshShip" />
+              </do_if>
+            </do_for_each>
+            <do_if value="History.$params?">
+              <do_for_each name="$psPk" valuename="$psPv" in="History.$params">
+                <do_if value="not $psParams.{$psPk}?">
+                  <do_if value="not @$psPv.$ship.isoperational and $psPv.$at ge player.age - 120s">
+                    <set_value name="$psParams.{$psPk}" exact="$psPv" />
+                  </do_if>
+                  <do_else>
+                    <debug_text text="'PS1|%s|history|-|-|params|drop=%s|why=%s|stored=%s'.[player.age, $psPk, if @$psPv.$ship.isoperational then 'off' else 'expired', @$psPv.$at]" chance="$debugChance" />
+                  </do_else>
+                </do_if>
+              </do_for_each>
+            </do_if>
+            <set_value name="History.$params" exact="$psParams" />
+            <do_if value="$psLeaders.count gt 0">
+              <add_to_group groupname="History.$leaders" list="$psLeaders" replace="true" />
+            </do_if>
+            <do_elseif value="@History.$leaders.count gt 0">
+              <clear_group group="History.$leaders" />
+            </do_elseif>
             <remove_value name="$psFleets" />
+            <remove_value name="$psParams" />
+            <remove_value name="$psLeaders" />
+            <remove_value name="$psF" />
+            <remove_value name="$pshShip" />
+            <remove_value name="$psP" />
+            <remove_value name="$psPk" />
+            <remove_value name="$psPv" />
             <include_actions ref="md.ProtectSector_Options.ClearDebugChances" />
           </actions>
+        </cue>
+
+        <!-- the order script's settings at every start, for Promoted -->
+        <cue name="Params" instantiate="true">
+          <conditions>
+            <event_object_signalled object="player.entity" param="'ProtectSector.Params'" />
+            <check_value value="@event.param2.exists and event.param3 != null" />
+          </conditions>
+          <actions>
+            <do_if value="not History.$params?">
+              <set_value name="History.$params" exact="table[]" />
+            </do_if>
+            <set_value name="History.$params.{'$%s'.[event.param2.idcode]}" exact="table[$ship = event.param2, $at = player.age, $p = event.param3]" />
+            <add_to_group groupname="History.$leaders" object="event.param2" />
+          </actions>
+        </cue>
+
+        <cue name="Leaders" instantiate="false">
+          <actions>
+            <create_group groupname="History.$leaders" />
+          </actions>
+          <cues>
+            <!-- vanilla promoted a subordinate in a ProtectSector commander's place: after 2 s (Assist's own restart waits 1 ms) the order restarts on it with the stored settings, and the fleet's record moves to it -->
+            <!-- own namespace: every cue here shares History's by default, and Walk's $psP would clear this one's during the 2 s delay -->
+            <cue name="Promoted" instantiate="true" namespace="this" version="3">
+              <conditions>
+                <event_object_subordinate_promoted group="History.$leaders" />
+              </conditions>
+              <actions>
+                <include_actions ref="md.ProtectSector_Options.ReadDebugChances" />
+                <set_value name="$psOld" exact="event.object" />
+                <set_value name="$psOldKey" exact="'$%s'.[event.object.idcode]" />
+                <set_value name="$psOldName" exact="@event.object.debugname" />
+                <!-- the old commander is still operational here; a changed order since the last Walk voids the stored settings -->
+                <set_value name="$psOldDorder" exact="@event.object.defaultorder.id" />
+                <set_value name="$psNew" exact="event.param" />
+                <set_value name="$psP" exact="@History.$params.{$psOldKey}.$p" />
+                <debug_text text="'PS1|%s|%s|%s|%s|promoted|at=event|old=%s|cmd=%s|dorder=%s|olddorder=%s|oldop=%s|stored=%s'.[player.age, @$psNew.debugname, @$psNew.class, @$psNew.sector.debugname, $psOldName, @$psNew.commander.debugname, @$psNew.defaultorder.id, $psOldDorder, @$psOld.isoperational, $psP != null]"
+                  chance="$debugChance" />
+                <include_actions ref="md.ProtectSector_Options.ClearDebugChances" />
+              </actions>
+              <cues>
+                <cue name="PromotedAct" version="2">
+                  <delay exact="2s" />
+                  <actions>
+                    <include_actions ref="md.ProtectSector_Options.ReadDebugChances" />
+                    <set_value name="$psOp" exact="'restart'" />
+                    <do_if value="not @$psNew.isoperational or @$psNew.owner != faction.player or @$psNew.commander.isoperational">
+                      <set_value name="$psOp" exact="'skip-notop'" />
+                    </do_if>
+                    <do_elseif value="@$psNew.defaultorder.id == 'ProtectSector'">
+                      <set_value name="$psOp" exact="'skip-running'" />
+                    </do_elseif>
+                    <do_elseif value="$psP == null">
+                      <set_value name="$psOp" exact="'skip-nostore'" />
+                    </do_elseif>
+                    <do_elseif value="$psOldDorder != null and $psOldDorder != 'ProtectSector'">
+                      <set_value name="$psOp" exact="'skip-oldoff'" />
+                    </do_elseif>
+                    <do_elseif value="@$psOld.isoperational and @$psOld.owner == faction.player and @$psOld.defaultorder.id == 'ProtectSector'">
+                      <set_value name="$psOp" exact="'skip-oldon'" />
+                    </do_elseif>
+                    <do_else>
+                      <!-- as our order.assist.xml diff does for an Assist subordinate -->
+                      <create_order id="'ProtectSector'" object="$psNew" default="true">
+                        <param name="homeSector" value="$psP.$homeSector" />
+                        <param name="attackStations" value="$psP.$attackStations" />
+                        <param name="attackStationsTactical" value="$psP.$attackStationsTactical" />
+                        <param name="attackStationsInternal" value="$psP.$attackStationsInternal" />
+                        <param name="attackShipsXL" value="$psP.$attackShipsXL" />
+                        <param name="attackShipsL" value="$psP.$attackShipsL" />
+                        <param name="attackShipsM" value="$psP.$attackShipsM" />
+                        <param name="attackShipsS" value="$psP.$attackShipsS" />
+                        <param name="attackShipsOutOfStationsDistance" value="$psP.$attackShipsOutOfStationsDistance" />
+                        <param name="attackVisibleOnly" value="$psP.$attackVisibleOnly" />
+                        <param name="attackHostileOnly" value="$psP.$attackHostileOnly" />
+                        <param name="relationsThreshold" value="$psP.$relationsThreshold" />
+                        <param name="protectPlayerShipsInSector" value="$psP.$protectPlayerShipsInSector" />
+                        <param name="protectOnlyNonMilitaryShips" value="$psP.$protectOnlyNonMilitaryShips" />
+                        <param name="pursueFleeingTarget" value="$psP.$pursueFleeingTarget" />
+                        <param name="aggressiveSubordinates" value="$psP.$aggressiveSubordinates" />
+                        <param name="shareTargetsBetweenFleets" value="$psP.$shareTargetsBetweenFleets" />
+                        <param name="attackDistanceAsPercentageOfRadarRange" value="$psP.$attackDistanceAsPercentageOfRadarRange" />
+                        <param name="breakOnDestructionPercentage" value="$psP.$breakOnDestructionPercentage" />
+                        <param name="receivedDamageSensitivity" value="$psP.$receivedDamageSensitivity" />
+                        <param name="ignoreBlackListsForAttack" value="$psP.$ignoreBlackListsForAttack" />
+                        <param name="parkInSector" value="$psP.$parkInSector" />
+                        <param name="desiredParkingPosition" value="$psP.$desiredParkingPosition" />
+                        <param name="delayBetweenScans" value="$psP.$delayBetweenScans" />
+                        <param name="ignoreHazardThreat" value="$psP.$ignoreHazardThreat" />
+                        <param name="recordActionsToLogBook" value="$psP.$recordActionsToLogBook" />
+                        <param name="isStartedByPlayer" value="false" />
+                      </create_order>
+                      <set_value name="History.$params.{'$%s'.[$psNew.idcode]}" exact="table[$ship = $psNew, $at = player.age, $p = $psP]" />
+                      <add_to_group groupname="History.$leaders" object="$psNew" />
+                    </do_else>
+
+                    <!-- the record moves to the new leader, merged with its own; the ships the old commander counted losses for count on the new one -->
+                    <do_if value="$psOp != 'skip-oldon' and History.$params?">
+                      <remove_value name="History.$params.{$psOldKey}" />
+                    </do_if>
+                    <set_value name="$psRecOp" exact="'off'" />
+                    <do_if value="@player.entity.$ProtectSectorConfig.$historyDepth gt 0 and $psOp != 'skip-oldon' and $psOp != 'skip-oldoff' and @$psNew.owner == faction.player">
+                      <set_value name="$psRecOp" exact="'none'" />
+                      <do_if value="@player.entity.$ProtectSectorHistory.$fleets.{$psOldKey} != null">
+                        <set_value name="$psNewKey" exact="'$%s'.[$psNew.idcode]" />
+                        <set_value name="$psRec" exact="player.entity.$ProtectSectorHistory.$fleets.{$psOldKey}" />
+                        <set_value name="$psRecOp" exact="'moved'" />
+                        <set_value name="$psMine" exact="@player.entity.$ProtectSectorHistory.$fleets.{$psNewKey}" />
+                        <do_if value="$psMine != null">
+                          <set_value name="$psRecOp" exact="'merged'" />
+                          <do_for_each name="$psB" in="$psMine.$buckets">
+                            <append_to_list name="$psRec.$buckets" exact="$psB" />
+                          </do_for_each>
+                          <sort_list list="$psRec.$buckets" sortbyvalue="loop.element.{1}" />
+                          <do_for_each name="$psSk" valuename="$psSv" in="$psMine.$subs">
+                            <set_value name="$psRec.$subs.{$psSk}" exact="$psSv" />
+                          </do_for_each>
+                        </do_if>
+                        <remove_value name="player.entity.$ProtectSectorHistory.$fleets.{$psOldKey}" />
+                        <set_value name="$pshShip" exact="$psNew" />
+                        <include_actions ref="FleetOf" />
+                        <do_if value="$psF == null">
+                          <set_value name="$psF" exact="table[$ship = $psNew, $assist = false, $cmd = $psNew, $sector = @$psNew.sector]" />
+                        </do_if>
+                        <set_value name="$psInto" exact="$psRec" />
+                        <include_actions ref="FleetIdentity" />
+                        <remove_value name="$psInto" />
+                        <remove_value name="$psRec.$gone" />
+                        <set_value name="$psRec.$lastSeen" exact="player.age" />
+                        <set_value name="player.entity.$ProtectSectorHistory.$fleets.{$psNewKey}" exact="$psRec" />
+                      </do_if>
+                      <do_if value="History.$owners?">
+                        <do_for_each name="$psOk" in="History.$owners.keys.list">
+                          <do_if value="History.$owners.{$psOk} == $psOld">
+                            <set_value name="History.$owners.{$psOk}" exact="$psNew" />
+                          </do_if>
+                        </do_for_each>
+                      </do_if>
+                    </do_if>
+                    <debug_text text="'PS1|%s|%s|%s|%s|promoted|at=2s|old=%s|cmd=%s|dorder=%s|op=%s|rec=%s|buckets=%s'.[player.age, @$psNew.debugname, @$psNew.class, @$psNew.sector.debugname, $psOldName, @$psNew.commander.debugname, @$psNew.defaultorder.id, $psOp, $psRecOp, @$psRec.$buckets.count]"
+                      chance="$debugChance" />
+                    <remove_value name="$psOld" />
+                    <remove_value name="$psOldKey" />
+                    <remove_value name="$psOldName" />
+                    <remove_value name="$psOldDorder" />
+                    <remove_value name="$psNew" />
+                    <remove_value name="$psNewKey" />
+                    <remove_value name="$psP" />
+                    <remove_value name="$psOp" />
+                    <remove_value name="$psRecOp" />
+                    <remove_value name="$psRec" />
+                    <remove_value name="$psMine" />
+                    <remove_value name="$psB" />
+                    <remove_value name="$psSk" />
+                    <remove_value name="$psSv" />
+                    <remove_value name="$psOk" />
+                    <remove_value name="$pshShip" />
+                    <remove_value name="$pshKey" />
+                    <remove_value name="$psF" />
+                    <include_actions ref="md.ProtectSector_Options.ClearDebugChances" />
+                  </actions>
+                </cue>
+              </cues>
+            </cue>
+          </cues>
         </cue>
 
         <!-- a fleet ship destroyed, captured or abandoned: a zero-length bucket 'l=1;' on the record of the ship that counts it, the lost ship's own record marked gone -->

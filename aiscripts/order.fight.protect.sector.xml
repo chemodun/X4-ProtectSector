@@ -1746,7 +1746,6 @@
               @this.$escortgroup.count
             ]"
           chance="$traceChance" />
-        <include_interrupt_actions ref="ProtectSectorPrepareOrderParams" />
         <set_value name="$subsChecked" exact="0" />
         <set_value name="$subsCancelled" exact="0" />
         <set_value name="$subsOrdered" exact="0" />
@@ -1788,7 +1787,6 @@
                 )
                 ]"
                   chance="$traceChance" />
-                <set_value name="$subordinate.aipilot.$protectSectorParams" exact="$protectSectorParams" />
                 <do_if value="@$aggressiveSubordinates == true and this.assignedcontrolled.order.id == 'ProtectSector' and
                   this.assignedcontrolled.sector == @$target.sector and this.assignedcontrolled.sector == $subordinate.sector and
                   @$subordinate.order.id != 'Flee' and @$subordinate.order.id != 'Resupply'
@@ -2153,7 +2151,6 @@
 
     <set_value name="$positionIdleTime" exact="player.age" />
     <include_interrupt_actions ref="PatchToVersion108" />
-    <include_interrupt_actions ref="ProtectSectorPrepareOrderParams" />
     <set_value name="$reScanCount" exact="0" />
     <set_value name="$resupplyCheckLast" exact="0" />
     <set_value name="$stoppingToWorkMessage" exact="null" />
@@ -2260,8 +2257,6 @@
   </patch>
   <patch sinceversion="114">
     <include_interrupt_actions ref="SetVersion" />
-    <set_value name="$isAttackingNow" exact="false" />
-    <include_interrupt_actions ref="ProtectSectorPrepareOrderParams" />
     <set_value name="$reScanCount" exact="0" />
     <set_value name="$resupplyCheckLast" exact="0" />
     <debug_text
@@ -2277,7 +2272,6 @@
     <include_interrupt_actions ref="SetVersion" />
     <set_value name="$stoppingToWorkMessage" exact="null" />
     <set_value name="$blacklistGroup" exact="blacklistgroup.military" />
-    <include_interrupt_actions ref="ProtectSectorPrepareOrderParams" />
     <do_if value="@$parkInSector">
       <set_value name="$parkingPosition" exact="@$desiredParkingPosition.{2}" />
     </do_if>
@@ -2310,7 +2304,6 @@
         ]"
       chance="@$traceChance" />
     <edit_order_param order="this.assignedcontrolled.defaultorder" param="'desiredParkingPosition'" value="$desiredParkingPosition" />
-    <remove_value name="$isAttackingNow" />
   </patch>
   <patch sinceversion="117">
     <include_interrupt_actions ref="SetVersion" />
@@ -2343,6 +2336,38 @@
       <set_value name="$psOpState" exact="if this.assignedcontrolled.sector != $homeSector then 'away' else 'idle'" />
       <set_value name="$psOpWhy" exact="'start'" />
       <include_interrupt_actions ref="PsBoardState" />
+
+      <!-- a subordinate promoted in this commander's place restarts the order with these (md/protect_sector_history.xml Promoted) -->
+      <do_if value="@this.assignedcontrolled.defaultorder.id == 'ProtectSector' and this.assignedcontrolled.order == this.assignedcontrolled.defaultorder">
+        <signal_objects object="player.entity" param="'ProtectSector.Params'" param2="this.assignedcontrolled" param3="table[
+          $homeSector = $homeSector,
+          $attackStations = $attackStations,
+          $attackStationsTactical = $attackStationsTactical,
+          $attackStationsInternal = $attackStationsInternal,
+          $attackShipsXL = $attackShipsXL,
+          $attackShipsL = $attackShipsL,
+          $attackShipsM = $attackShipsM,
+          $attackShipsS = $attackShipsS,
+          $attackShipsOutOfStationsDistance = $attackShipsOutOfStationsDistance,
+          $attackVisibleOnly = $attackVisibleOnly,
+          $attackHostileOnly = $attackHostileOnly,
+          $relationsThreshold = $relationsThreshold,
+          $protectPlayerShipsInSector = $protectPlayerShipsInSector,
+          $protectOnlyNonMilitaryShips = $protectOnlyNonMilitaryShips,
+          $pursueFleeingTarget = $pursueFleeingTarget,
+          $aggressiveSubordinates = $aggressiveSubordinates,
+          $shareTargetsBetweenFleets = $shareTargetsBetweenFleets,
+          $attackDistanceAsPercentageOfRadarRange = $attackDistanceAsPercentageOfRadarRange,
+          $breakOnDestructionPercentage = $breakOnDestructionPercentage,
+          $receivedDamageSensitivity = $receivedDamageSensitivity,
+          $ignoreBlackListsForAttack = $ignoreBlackListsForAttack,
+          $parkInSector = $parkInSector,
+          $desiredParkingPosition = $desiredParkingPosition,
+          $delayBetweenScans = $delayBetweenScans,
+          $ignoreHazardThreat = $ignoreHazardThreat,
+          $recordActionsToLogBook = $recordActionsToLogBook
+        ]" />
+      </do_if>
 
       <set_value name="$flyingToHomeSectorTurnsCount" exact="0" />
 
