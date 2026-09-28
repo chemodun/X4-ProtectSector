@@ -198,6 +198,7 @@
       <t id="1460">Unmark</t>
       <t id="1461">The fleet takes targets again, from its own search and from the coordinator. Fix what made it refuse them first.</t>
       <t id="1462">Marked, takes no targets</t>
+      <t id="1463">The Protect Sector overview shows every fleet on the Protect Sector order: its statistics, its state on the fleet coordinator and its order settings.</t>
       <t id="10001">Útok na stanici</t>
       <t id="10011">Experimentální příkaz k útoku pouze na stanice. K dispozici pouze pro L a XL lodě</t>
       <t id="20001">Inteligentní útok na stanici</t>

@@ -222,7 +222,7 @@ Each combination has its own slider, from `10%` to `100%` in steps of `5%`.
 
 ### Fleet overview
 
-Two sliders for the `Protect Sector overview` screen, opened from the right-click menu of a ship running the order.
+Two sliders for the `Protect Sector overview` screen, opened from the right-click menu of a ship running the order, or from its own icon in the game's top menu row, right after `Map`.
 
 - `History depth` - how many hours of 15-minute samples are kept for the screen, from `3` to `48`, default `24`. `0` turns the history off and drops what was recorded; the screen then shows the totals since the counters started.
 - `Auto-refresh` - how often the open screen fetches fresh numbers, from `30` seconds to `10` minutes in steps of `30` seconds, default `30` seconds. `0` leaves it to the `Refresh` button.

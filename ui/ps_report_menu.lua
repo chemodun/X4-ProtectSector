@@ -1,12 +1,13 @@
 -- Protect Sector - overview menu.
 --
 -- Standalone top-level menu, registered the way the Ships Trade Analyzer registers
--- its own and opened from the interaction menu of a ship on the order. Left: every
+-- its own, opened from the interaction menu of a ship on the order and from its own
+-- entry in vanilla's top-level icon row, right after the map. Left: every
 -- fleet on the order by home sector with one counter of choice over the whole
 -- period, picked in the column header. Right: the
 -- window's counters for the current row, its subordinates and, with coordination off,
 -- the targets it tried (each a scrolling table of seven rows) and a graph over the whole history depth,
--- with the window controls under them. A tab row on top switches to Coordination:
+-- with the window controls under them. A tab row under vanilla's switches to Coordination:
 -- the same tree with each fleet's state on the coordinator's board, and on the
 -- right the board entries of the current row with the targets they involve. Settings:
 -- each fleet's order settings against the values most fleets of its sector hold.
@@ -60,13 +61,16 @@ local config = {
   graphMaxPoints     = 200, -- the widget's limit per data record
   mapSelectRetry     = 0.25, -- seconds between tries to select the ship on the map
   mapSelectTries     = 8,
-  tabInputWidth      = 100, -- the tab-scroll input names either side of the tab icons
+  tabInputWidth      = 100, -- empty cells either side of the tab icons, room for the tab name
   settingsGridFleets = 12, -- a sector of up to this many fleets shows one column per fleet
   gridLabelShare     = 0.3,
   coordShare         = 0.6, -- Coordination tab, All: the settings' share of the right side
 }
 
--- The tab row, modelled on Helper.createTopLevelTab.
+-- Our entry in Helper.topLevelMenus.
+local TOP_LEVEL_ID = "protectsector"
+
+-- Our tabs, a second row under vanilla's top-level row; switched by click only.
 local TABS = {
   { id = "stats", icon = "pi_statistics",  name = function() return ReadText(1001, 2500) end },
   { id = "board", icon = "mapst_fs_fight", name = function() return ReadText(PAGE, 1360) end },
@@ -491,12 +495,14 @@ local function emptySum()
 end
 
 -- Adds every bucket of the fleet that overlaps [from, to); counts go in whole,
--- the covered time is clipped to the window.
+-- the covered time is clipped to the window. A zero-length bucket (a loss) counts where it starts,
+-- so a fleet whose window holds only its losses counts with no covered time.
 local function addFleet(sum, fleet, from, to)
-  local covered = 0.0
+  local covered, hit = 0.0, false
   for _, bucket in ipairs(fleet.buckets) do
     local bucketEnd = bucket.start + bucket.dur
-    if bucket.start < to and bucketEnd > from then
+    if bucket.start < to and (bucketEnd > from or (bucket.dur == 0 and bucket.start >= from)) then
+      hit = true
       for _, key in ipairs(COUNTER_KEYS) do
         sum.c[key] = sum.c[key] + (bucket.c[key] or 0)
       end
@@ -510,7 +516,7 @@ local function addFleet(sum, fleet, from, to)
       end
     end
   end
-  if covered > 0 then
+  if hit then
     sum.fleets = sum.fleets + 1
     sum.covered = sum.covered + covered
     sum.coveredMax = math.max(sum.coveredMax, covered)
@@ -1022,13 +1028,35 @@ end
 
 -- *** registration ***
 
+-- The map is found by id: 8.00's list may differ from 9.00's.
+local function addTopLevelEntry()
+  ---@type table[]
+  local list = Helper.topLevelMenus
+  local pos = #list + 1
+  for i, entry in ipairs(list) do
+    if entry.id == TOP_LEVEL_ID then
+      return
+    end
+    if entry.id == "map" then
+      pos = i + 1
+    end
+  end
+  table.insert(list, pos, {
+    id = TOP_LEVEL_ID, name = ReadText(PAGE, 1300), icon = "tlt_protectsector", shortcut = "",
+    menu = menu.name, helpOverlayID = "toplevel_protectsector", helpOverlayText = ReadText(PAGE, 1463), param = { 0, 0 },
+  })
+  debugLog("top-level entry added at %d of %d.", pos, #list)
+end
+
 local function init()
   if Helper then
     Helper.registerMenu(menu)
+    addTopLevelEntry()
   end
 end
 
 function menu.cleanup()
+  AddUITriggeredEvent("ProtectSector", "viewClosed")
   commitCoordPending()
   menu.sliderActive = nil
   menu.coordFocus = nil
@@ -1095,6 +1123,11 @@ function menu.onShowMenu(state)
     menu.pendingSelectKey = GetComponentData(luaId, "idcode")
     menu.leftTopRow = nil
     traceLog("opened on %s.", tostring(menu.pendingSelectKey))
+  elseif not state then
+    -- From the top-level row.
+    menu.selection = { kind = "all" }
+    menu.leftTopRow = nil
+    traceLog("opened from the top-level row.")
   end
 
   menu.view = nil
@@ -1113,17 +1146,11 @@ function menu.selectTab(id)
   menu.refreshInfoFrame()
 end
 
--- The tab-scroll inputs step through the tabs, no wrap at either end.
 function menu.onTabScroll(direction)
-  local current = 1
-  for i, tab in ipairs(TABS) do
-    if tab.id == menu.tab then
-      current = i
-    end
-  end
-  local target = TABS[current + ((direction == "right") and 1 or -1)]
-  if target then
-    menu.selectTab(target.id)
+  if direction == "right" then
+    Helper.scrollTopLevel(menu, TOP_LEVEL_ID, 1)
+  elseif direction == "left" then
+    Helper.scrollTopLevel(menu, TOP_LEVEL_ID, -1)
   end
 end
 
@@ -1338,7 +1365,8 @@ function menu.createFrame()
   local rightX      = Helper.frameBorder + leftWidth + Helper.borderSize
   local rightWidth  = usableWidth - leftWidth - Helper.borderSize
 
-  menu.panelTop = menu.createTabRow() + Helper.borderSize
+  local topLevelBottom = Helper.createTopLevelTab(menu, TOP_LEVEL_ID, menu.infoFrame, "", nil, true)
+  menu.panelTop = menu.createTabRow(topLevelBottom) + Helper.borderSize
   menu.createLeftPanel(Helper.frameBorder, leftWidth)
   if menu.tab == "board" then
     menu.createBoardPanel(rightX, rightWidth)
@@ -1352,17 +1380,18 @@ function menu.createFrame()
   menu.lastRefreshTime = getElapsedTime()
 end
 
--- Centred tab icons with the tab-scroll input names either side (off on a mouse
--- cursor) and the current tab's name under them; returns the y under the bar.
-function menu.createTabRow()
+-- Centred tab icons, the current tab's name under them, below the top-level row
+-- (nil or 0 without it); returns the y under the bar.
+function menu.createTabRow(topLevelBottom)
   local iconSize  = Helper.scaleX(Helper.sidebarWidth)
   local inputSize = Helper.scaleX(config.tabInputWidth)
   local cols      = #TABS + 2
   local width     = #TABS * iconSize + 2 * inputSize + (#TABS + 1) * Helper.borderSize
   local bgColor   = Color["toplevel_background_default"]
+  local y         = ((topLevelBottom or 0) > 0) and (topLevelBottom + Helper.borderSize) or Helper.frameBorder
 
   local ftable = menu.infoFrame:addTable(cols, {
-    tabOrder = 20, x = Helper.viewWidth / 2 - width / 2, y = Helper.frameBorder,
+    tabOrder = 21, x = Helper.viewWidth / 2 - width / 2, y = y,
     scaling = false, reserveScrollBar = false, skipTabChange = true,
   })
   ftable:setColWidth(1, inputSize)
@@ -1372,12 +1401,7 @@ function menu.createTabRow()
   ftable:setColWidth(cols, inputSize)
   ftable:setDefaultBackgroundColSpan(1, cols)
 
-  local showInputs = GetControllerInfo() ~= "mouseCursor"
-  local inputY = (Helper.sidebarWidth - Helper.titleHeight) / 2
   local row = ftable:addRow(true, { fixed = true, borderBelow = false, bgColor = bgColor })
-  if showInputs then
-    row[1]:createText(ffi.string(C.GetMappedInputName("INPUT_ACTION_WIDGET_TABSCROLL_LEFT")), { scaling = true, fontsize = Helper.titleFontSize, y = inputY, halign = "right" })
-  end
   local currentName = ""
   for i, tab in ipairs(TABS) do
     local current = (tab.id == menu.tab)
@@ -1389,10 +1413,6 @@ function menu.createTabRow()
       row[i + 1].handlers.onClick = function() return menu.selectTab(tab.id) end
     end
   end
-  if showInputs then
-    row[cols]:createText(ffi.string(C.GetMappedInputName("INPUT_ACTION_WIDGET_TABSCROLL_RIGHT")), { scaling = true, fontsize = Helper.titleFontSize, y = inputY })
-  end
-
   row = ftable:addRow(false, { fixed = true, borderBelow = false, bgColor = bgColor, scaling = true })
   row[1]:setColSpan(cols):createText(currentName, { halign = "center", x = 0, font = Helper.standardFontOutlined })
 
@@ -1438,11 +1458,23 @@ local function noticeRow(ftable, cols, textId)
   row[1]:setColSpan(cols):createText(ReadText(PAGE, textId), { halign = "center", wordwrap = true, color = Color["text_inactive"] })
 end
 
+-- A gone fleet's page shows only why it is gone; false for a live fleet.
+local function goneRow(ftable, fleet)
+  local state = stateLabel(fleet)
+  if state == "" then
+    return false
+  end
+  local row = ftable:addRow(false, bandProps())
+  row[1]:setColSpan(2):createText(state, { halign = "left", color = Color["text_warning"] })
+  return true
+end
+
 local function idleShare(sum)
   return (sum.covered > 0) and math.min(100, math.floor(100 * sum.c.i / sum.covered + 0.5)) or 0
 end
 
 -- Counters the left column can show; the header dropdown lists them in this order.
+-- A sampled one reads "-" when the window covers no time.
 local COLUMN_STATS = {
   { id = "kills",     textId = 1312, value = function(sum) return sum.c.ks + sum.c.kb end },
   { id = "killsSelf", textId = 1320, value = function(sum) return sum.c.ks end },
@@ -1456,25 +1488,30 @@ local COLUMN_STATS = {
   { id = "nodps",     textId = 1335, value = function(sum) return sum.c.nd end },
   { id = "fireauth",  textId = 1336, value = function(sum) return sum.c.fa end },
   { id = "fast",      textId = 1327, value = function(sum) return sum.c.b end },
-  { id = "idle",      textId = 1328, value = function(sum) return idleShare(sum) .. " %" end },
+  { id = "idle",      textId = 1328, sampled = true, value = function(sum) return idleShare(sum) .. " %" end },
   { id = "ends",      textId = 1329, value = function(sum) return sum.c.e end },
   { id = "handoff",   textId = 1330, value = function(sum) return sum.c.s end },
-  { id = "hull",      textId = 1331, value = function(sum) return math.floor(sum.hullMin) .. " %" end },
+  { id = "hull",      textId = 1331, sampled = true, value = function(sum) return math.floor(sum.hullMin) .. " %" end },
   { id = "lost",      textId = 1334, value = function(sum) return sum.c.l end },
   { id = "scans",     textId = 1332, value = function(sum) return sum.c.sc .. " (" .. sum.c.se .. ")" end },
-  { id = "covered",   textId = 1314, value = function(sum) return formatDuration(sum.coveredMax) end },
+  { id = "covered",   textId = 1314, sampled = true, value = function(sum) return formatDuration(sum.coveredMax) end },
 }
 
 local function columnValue(sum)
   if sum.fleets == 0 then
     return "-"
   end
+  local chosen = COLUMN_STATS[1]
   for _, stat in ipairs(COLUMN_STATS) do
     if stat.id == menu.columnStat then
-      return tostring(stat.value(sum))
+      chosen = stat
+      break
     end
   end
-  return tostring(COLUMN_STATS[1].value(sum))
+  if chosen.sampled and sum.covered == 0 then
+    return "-"
+  end
+  return tostring(chosen.value(sum))
 end
 
 -- The Coordination column: a sector or All counts its commanders on the board.
@@ -1905,17 +1942,21 @@ function menu.createRightPanel(x, width)
   row = about:addRow(false, bandProps(true))
   row[1]:setColSpan(2):createText(ReadText(PAGE, 1304) .. ": " .. windowLabel(windowWidth), { halign = "left", color = Color["text_inactive"] })
 
-  -- An empty window keeps every row with "-" values, and the sections and graph.
+  -- An empty window keeps every row with "-" values, and the sections and graph;
+  -- a window of losses alone shows its counts, with "-" for what needs covered time.
   local empty = (sum.fleets == 0)
   local function shown(value)
     return empty and "-" or value
+  end
+  local function sampled(value)
+    return (sum.covered == 0) and "-" or value
   end
   local c = sum.c
   local stats = rowBlock(rightTable)
   if fleet == nil then
     statRow(stats, ReadText(PAGE, 1313), sum.fleets .. " / " .. #fleets)
   end
-  statRow(stats, ReadText(PAGE, 1314), shown(formatDuration(sum.coveredMax)))
+  statRow(stats, ReadText(PAGE, 1314), sampled(formatDuration(sum.coveredMax)))
   statRow(stats, ReadText(PAGE, 1320), shown(c.ks))
   statRow(stats, ReadText(PAGE, 1321), shown(c.kb))
   statRow(stats, ReadText(PAGE, 1322), shown(c.ko))
@@ -1927,10 +1968,10 @@ function menu.createRightPanel(x, width)
   statRow(stats, ReadText(PAGE, 1335), shown(c.nd))
   statRow(stats, ReadText(PAGE, 1336), shown(c.fa))
   statRow(stats, ReadText(PAGE, 1327), shown(c.b))
-  statRow(stats, ReadText(PAGE, 1328), shown(idleShare(sum) .. " %"))
+  statRow(stats, ReadText(PAGE, 1328), sampled(idleShare(sum) .. " %"))
   statRow(stats, ReadText(PAGE, 1329), shown(c.e))
   statRow(stats, ReadText(PAGE, 1330), shown(c.s))
-  statRow(stats, ReadText(PAGE, 1331), shown(math.floor(sum.hullMin) .. " %"))
+  statRow(stats, ReadText(PAGE, 1331), sampled(math.floor(sum.hullMin) .. " %"))
   statRow(stats, ReadText(PAGE, 1334), shown(c.l))
   statRow(stats, ReadText(PAGE, 1332), shown(c.sc .. " (" .. c.se .. ")"))
 
@@ -2001,6 +2042,9 @@ end
 -- targets it involves, its own first.
 ---@return table[]
 local function addBoardFleetRows(ftable, board, fleet)
+  if goneRow(ftable, fleet) then
+    return {}
+  end
   if fleet.assist then
     local row = ftable:addRow(false, bandProps())
     row[1]:setColSpan(2):createText(pageText(1384, shipLabel(fleet.cmdName, fleet.cmdIdcode)), { halign = "left", wordwrap = true, color = Color["text_inactive"] })
@@ -2278,6 +2322,9 @@ end
 
 -- A differing value in warning colour with the sector's common value (or its split) after it.
 local function addSettingsFleetRows(ftable, fleet, sector)
+  if goneRow(ftable, fleet) then
+    return
+  end
   if fleet.assist then
     local row = ftable:addRow(false, bandProps())
     row[1]:setColSpan(2):createText(pageText(1419, shipLabel(fleet.cmdName, fleet.cmdIdcode)), { halign = "left", wordwrap = true, color = Color["text_inactive"] })
@@ -2525,7 +2572,6 @@ function menu.onUpdate()
 end
 
 function menu.onCloseElement(dueToClose)
-  AddUITriggeredEvent("ProtectSector", "viewClosed")
   Helper.closeMenu(menu, dueToClose)
   menu.cleanup()
 end
@@ -2539,6 +2585,7 @@ local function Init()
   ps.playerId = ConvertStringTo64Bit(tostring(C.GetPlayerID()))
   -- Vanilla's own cdef (ego_debuglog), read here rather than redeclared.
   ps.isV9 = C.GetGameVersion().major >= 9
+  readConfig()
   init()
   RegisterEvent("ProtectSector.OpenMenu", onOpenMenuEvent)
   RegisterEvent("ProtectSector.HistoryReady", onHistoryReady)

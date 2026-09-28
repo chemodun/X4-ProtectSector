@@ -568,14 +568,11 @@
       <!-- productivity counters live on the pilot (an AI script cannot write a ship variable): they survive an order restart and a reload; the history sampler (md/protect_sector_history.xml) replaces $protectSectorStats with a fresh table of the same shape every 15 min, $protectSectorTargets stays; $attackOpenAt / $idleOpenAt are the open stamps the sampler moves to its tick -->
       <actions name="PsStats">
         <do_if value="not this.$protectSectorStats?">
-          <set_value name="this.$protectSectorStats" exact="table[$since = player.age, $assisted = (@this.assignedcontrolled.order.id == 'Assist'), $attacks = 0, $responses = 0, $lost = 0, $attackTime = 0s, $killsSelf = 0, $killsSubs = 0, $killsOther = 0, $killsBy = table[], $fogBreaks = 0, $hardBreaks = 0, $rangeBreaks = 0, $bailouts = 0, $idleTime = 0s, $scans = 0, $scansEmpty = 0, $outsideEnds = 0, $stationHandoffs = 0, $noDps = 0, $fireAuth = 0, $hullMin = this.assignedcontrolled.hullpercentage]" />
+          <set_value name="this.$protectSectorStats" exact="table[$since = player.age, $assisted = (@this.assignedcontrolled.order.id == 'Assist'), $attacks = 0, $responses = 0, $attackTime = 0s, $killsSelf = 0, $killsSubs = 0, $killsOther = 0, $killsBy = table[], $fogBreaks = 0, $hardBreaks = 0, $rangeBreaks = 0, $bailouts = 0, $idleTime = 0s, $scans = 0, $scansEmpty = 0, $outsideEnds = 0, $stationHandoffs = 0, $noDps = 0, $fireAuth = 0, $hullMin = this.assignedcontrolled.hullpercentage]" />
         </do_if>
         <!-- tables from before these counters lack them -->
         <do_if value="not this.$protectSectorStats.$responses?">
           <set_value name="this.$protectSectorStats.$responses" exact="0" />
-        </do_if>
-        <do_if value="not this.$protectSectorStats.$lost?">
-          <set_value name="this.$protectSectorStats.$lost" exact="0" />
         </do_if>
         <do_if value="not this.$protectSectorStats.$noDps?">
           <set_value name="this.$protectSectorStats.$noDps" exact="0" />
@@ -906,8 +903,8 @@
         <do_for_each name="$psKey" valuename="$psEntry" in="this.$protectSectorTargets">
           <set_value name="$psList" exact="'%s;%s:a%s/h%s/f%s/r%s/b%s/v%s/why%s'.[$psList, @$psKey.debugname, $psEntry.$attempts, $psEntry.$hardBreaks, $psEntry.$fogBreaks, $psEntry.$rangeBreaks, $psEntry.$bailouts, @$psEntry.$speed, @$psEntry.$lastWhy]" />
         </do_for_each>
-        <set_value name="$tel" exact="'stats|since=%s|attacks=%s|resp=%s|lost=%s|atime=%s|kills=%s/%s/%s|fog=%s|hard=%s|range=%s|bail=%s|idle=%s|scans=%s|empty=%s|ends=%s|handoff=%s|hullmin=%s|assisted=%s|targets=%s%s'.[
-          player.age - $psS.$since, $psS.$attacks, @$psS.$responses, @$psS.$lost, $psS.$attackTime, $psS.$killsSelf, $psS.$killsSubs, $psS.$killsOther,
+        <set_value name="$tel" exact="'stats|since=%s|attacks=%s|resp=%s|atime=%s|kills=%s/%s/%s|fog=%s|hard=%s|range=%s|bail=%s|idle=%s|scans=%s|empty=%s|ends=%s|handoff=%s|hullmin=%s|assisted=%s|targets=%s%s'.[
+          player.age - $psS.$since, $psS.$attacks, @$psS.$responses, $psS.$attackTime, $psS.$killsSelf, $psS.$killsSubs, $psS.$killsOther,
           $psS.$fogBreaks, $psS.$hardBreaks, $psS.$rangeBreaks, $psS.$bailouts, $psS.$idleTime, $psS.$scans, $psS.$scansEmpty,
           $psS.$outsideEnds, $psS.$stationHandoffs, $psS.$hullMin, $psS.$assisted, this.$protectSectorTargets.keys.count, $psList
         ]" />
@@ -1371,25 +1368,6 @@
             </do_else>
           </do_else>
         </do_if>
-      </actions>
-    </handler>
-    <handler consume="false">
-      <conditions>
-        <event_object_destroyed group="@$subordinates" check="false" />
-      </conditions>
-      <actions>
-        <!-- counted on the first ship up the chain that runs its own order script -->
-        <set_value name="$psOwner" exact="@event.object.commander" />
-        <do_while value="$psOwner != null and $psOwner != this.assignedcontrolled and @$psOwner.defaultorder.id != 'Assist' and @$psOwner.defaultorder.id != 'ProtectSector'">
-          <set_value name="$psOwner" exact="@$psOwner.commander" />
-        </do_while>
-        <do_if value="$psOwner == this.assignedcontrolled">
-          <include_interrupt_actions ref="PsStats" />
-          <set_value name="this.$protectSectorStats.$lost" operation="add" />
-          <set_value name="$tel" exact="'lost|id=%s|killer=%s'.[@event.object.debugname, @event.param.debugname]" />
-          <include_interrupt_actions ref="Telemetry" />
-        </do_if>
-        <remove_value name="$psOwner" />
       </actions>
     </handler>
     <handler>
@@ -2185,6 +2163,9 @@
     <set_value name="$searchReason" exact="'start'" />
     <include_interrupt_actions ref="PsStats" />
     <set_value name="this.$protectSectorStats.$assisted" exact="@this.assignedcontrolled.order.id == 'Assist'" />
+    <do_if value="this.$protectSectorStats.$endedAt?">
+      <remove_value name="this.$protectSectorStats.$endedAt" />
+    </do_if>
     <include_interrupt_actions ref="TelemetryShip" />
   </init>
   <patch sinceversion="104">
@@ -4031,6 +4012,9 @@
     <do_if value="@this.assignedcontrolled.exists and not @this.assignedcontrolled.iswreck">
       <include_interrupt_actions ref="PsIdleClose" />
       <include_interrupt_actions ref="PsAttackClose" />
+      <!-- the end of the history's final bucket when the order does not come back; init clears it -->
+      <include_interrupt_actions ref="PsStats" />
+      <set_value name="this.$protectSectorStats.$endedAt" exact="player.age" />
       <set_value name="$psOp" exact="'unregister'" />
       <set_value name="$psOpWhy" exact="@event.name" />
       <include_interrupt_actions ref="PsBoardSend" />

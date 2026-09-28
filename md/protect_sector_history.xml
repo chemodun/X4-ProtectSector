@@ -10,34 +10,95 @@
       </actions>
       <cues>
 
-        <!-- $psFleets: table[$ship, $assist, $cmd, $sector] per pilot running the order script; a pilot whose chain does not end on ProtectSector loses its tables -->
+        <!-- $psF: table[$ship, $assist, $cmd, $sector] for ship $pshShip when its Assist chain ends on ProtectSector at $pshKey, else null -->
+        <library name="FleetOf" purpose="include_actions">
+          <actions>
+            <set_value name="$psF" exact="null" />
+            <set_value name="$pshKey" exact="$pshShip" />
+            <do_while value="@$pshKey.defaultorder.id == 'Assist' and @$pshKey.commander != null">
+              <set_value name="$pshKey" exact="$pshKey.commander" />
+            </do_while>
+            <do_if value="@$pshKey.defaultorder.id == 'ProtectSector'">
+              <set_value name="$pshSector" exact="@$pshKey.defaultorder.$homeSector" />
+              <do_if value="not @$pshSector.exists">
+                <set_value name="$pshSector" exact="@$pshKey.sector" />
+              </do_if>
+              <set_value name="$psF" exact="table[$ship = $pshShip, $assist = ($pshShip != $pshKey), $cmd = $pshKey, $sector = $pshSector]" />
+              <remove_value name="$pshSector" />
+            </do_if>
+          </actions>
+        </library>
+
+        <!-- $psFleets: $psF per pilot running the order script; a pilot whose chain does not end on ProtectSector gets a final bucket and loses its tables; History.$owners rebuilt -->
         <library name="FleetWalk" purpose="include_actions">
           <actions>
             <find_ship name="$pshShips" space="player.galaxy" owner="faction.player" multiple="true" />
             <set_value name="$psFleets" exact="[]" />
             <do_for_each name="$pshShip" in="$pshShips">
               <do_if value="@$pshShip.pilot.$protectSectorStats != null">
-                <set_value name="$pshKey" exact="$pshShip" />
-                <do_while value="@$pshKey.defaultorder.id == 'Assist' and @$pshKey.commander != null">
-                  <set_value name="$pshKey" exact="$pshKey.commander" />
-                </do_while>
-                <do_if value="@$pshKey.defaultorder.id == 'ProtectSector'">
-                  <set_value name="$pshSector" exact="@$pshKey.defaultorder.$homeSector" />
-                  <do_if value="not @$pshSector.exists">
-                    <set_value name="$pshSector" exact="@$pshKey.sector" />
-                  </do_if>
-                  <append_to_list name="$psFleets" exact="table[$ship = $pshShip, $assist = ($pshShip != $pshKey), $cmd = $pshKey, $sector = $pshSector]" />
-                </do_if>
-                <do_else>
+                <!-- a pilot that ejected from a lost ship keeps its tables in the suit -->
+                <do_if value="$pshShip.isrealclass.spacesuit">
+                  <debug_text text="'PS1|%s|history|-|-|suit|id=%s'.[player.age, $pshShip.debugname]" chance="$debugChance" />
                   <remove_value name="$pshShip.pilot.$protectSectorStats" />
                   <remove_value name="$pshShip.pilot.$protectSectorTargets" />
+                </do_if>
+                <do_else>
+                  <include_actions ref="FleetOf" />
+                  <do_if value="$psF != null">
+                    <append_to_list name="$psFleets" exact="$psF" />
+                  </do_if>
+                  <do_else>
+                    <!-- the counters since the last tick go into a final bucket first -->
+                    <set_value name="$psS" exact="$pshShip.pilot.$protectSectorStats" />
+                    <set_value name="$psRecKey" exact="'$%s'.[$pshShip.idcode]" />
+                    <set_value name="$psF" exact="table[$ship = $pshShip, $assist = ($pshShip != $pshKey), $cmd = $pshKey, $sector = $pshKey.sector]" />
+                    <set_value name="$psInto" exact="table[]" />
+                    <include_actions ref="FleetIdentity" />
+                    <set_value name="$psId" exact="$psInto" />
+                    <set_value name="$psTo" exact="if @$psS.$endedAt != null then $psS.$endedAt else player.age" />
+                    <include_actions ref="FinalBucket" />
+                    <remove_value name="$pshShip.pilot.$protectSectorStats" />
+                    <remove_value name="$pshShip.pilot.$protectSectorTargets" />
+                  </do_else>
                 </do_else>
               </do_if>
+            </do_for_each>
+            <!-- '$<idcode>' of every ship in a fleet -> the ship whose record counts its loss: a commander itself, any other the first ship up its chain on Assist or ProtectSector -->
+            <set_value name="History.$owners" exact="table[]" />
+            <do_for_each name="$psF" in="$psFleets">
+              <do_if value="not $psF.$assist">
+                <set_value name="History.$owners.{'$%s'.[$psF.$ship.idcode]}" exact="$psF.$ship" />
+              </do_if>
+              <set_value name="$pshQueue" exact="[]" />
+              <do_for_each name="$pshSub" in="$psF.$ship.subordinates">
+                <append_to_list name="$pshQueue" exact="$pshSub" />
+              </do_for_each>
+              <do_while value="$pshQueue.count gt 0">
+                <set_value name="$pshSub" exact="$pshQueue.{1}" />
+                <remove_value name="$pshQueue.{1}" />
+                <do_if value="$pshSub.isrealclass.ship and not $pshSub.isunit">
+                  <set_value name="History.$owners.{'$%s'.[$pshSub.idcode]}" exact="$psF.$ship" />
+                  <!-- an Assist or ProtectSector subordinate is a fleet of its own that maps its subtree -->
+                  <do_if value="@$pshSub.defaultorder.id != 'Assist' and @$pshSub.defaultorder.id != 'ProtectSector'">
+                    <do_for_each name="$pshSub2" in="$pshSub.subordinates">
+                      <append_to_list name="$pshQueue" exact="$pshSub2" />
+                    </do_for_each>
+                  </do_if>
+                </do_if>
+              </do_while>
             </do_for_each>
             <remove_value name="$pshShips" />
             <remove_value name="$pshShip" />
             <remove_value name="$pshKey" />
-            <remove_value name="$pshSector" />
+            <remove_value name="$pshQueue" />
+            <remove_value name="$pshSub" />
+            <remove_value name="$pshSub2" />
+            <remove_value name="$psS" />
+            <remove_value name="$psRecKey" />
+            <remove_value name="$psF" />
+            <remove_value name="$psInto" />
+            <remove_value name="$psId" />
+            <remove_value name="$psTo" />
           </actions>
         </library>
 
@@ -47,7 +108,7 @@
             <set_value name="$pshAttackTime" exact="$psS.$attackTime + (if @$psS.$attackOpenAt != null then player.age - $psS.$attackOpenAt else 0s)" />
             <set_value name="$pshIdleTime" exact="$psS.$idleTime + (if @$psS.$idleOpenAt != null then player.age - $psS.$idleOpenAt else 0s)" />
             <set_value name="$psKv" exact="''" />
-            <do_for_each name="$pshPair" in="[['a', $psS.$attacks], ['rp', @$psS.$responses], ['l', @$psS.$lost], ['t', ($pshAttackTime / 1s)i], ['ks', $psS.$killsSelf], ['kb', $psS.$killsSubs], ['ko', $psS.$killsOther], ['f', $psS.$fogBreaks], ['h', $psS.$hardBreaks], ['r', $psS.$rangeBreaks], ['b', $psS.$bailouts], ['i', ($pshIdleTime / 1s)i], ['e', $psS.$outsideEnds], ['s', $psS.$stationHandoffs], ['sc', $psS.$scans], ['se', $psS.$scansEmpty], ['nd', @$psS.$noDps], ['fa', @$psS.$fireAuth]]">
+            <do_for_each name="$pshPair" in="[['a', $psS.$attacks], ['rp', @$psS.$responses], ['t', ($pshAttackTime / 1s)i], ['ks', $psS.$killsSelf], ['kb', $psS.$killsSubs], ['ko', $psS.$killsOther], ['f', $psS.$fogBreaks], ['h', $psS.$hardBreaks], ['r', $psS.$rangeBreaks], ['b', $psS.$bailouts], ['i', ($pshIdleTime / 1s)i], ['e', $psS.$outsideEnds], ['s', $psS.$stationHandoffs], ['sc', $psS.$scans], ['se', $psS.$scansEmpty], ['nd', @$psS.$noDps], ['fa', @$psS.$fireAuth]]">
               <do_if value="$pshPair.{2} gt 0">
                 <set_value name="$psKv" exact="'%s%s=%s;'.[$psKv, $pshPair.{1}, $pshPair.{2}]" />
               </do_if>
@@ -101,17 +162,165 @@
             <include_actions ref="FleetIdentity" />
             <remove_value name="$psInto" />
             <set_value name="$psRec.$lastSeen" exact="player.age" />
+            <remove_value name="$psRec.$gone" />
           </actions>
         </library>
 
+        <!-- a pilot that left the order: its table $psS up to $psTo as a last bucket of record $psRecKey, created from the identity $psId when missing -->
+        <library name="FinalBucket" purpose="include_actions">
+          <actions>
+            <do_if value="@player.entity.$ProtectSectorConfig.$historyDepth gt 0">
+              <do_if value="@player.entity.$ProtectSectorHistory == null">
+                <set_value name="player.entity.$ProtectSectorHistory" exact="table[$fleets = table[]]" />
+              </do_if>
+              <do_if value="not player.entity.$ProtectSectorHistory.$fleets.{$psRecKey}?">
+                <set_value name="$psId.$buckets" exact="[]" />
+                <set_value name="$psId.$subs" exact="table[]" />
+                <set_value name="player.entity.$ProtectSectorHistory.$fleets.{$psRecKey}" exact="$psId" />
+              </do_if>
+              <set_value name="$psRec" exact="player.entity.$ProtectSectorHistory.$fleets.{$psRecKey}" />
+              <set_value name="$psRec.$lastSeen" exact="player.age" />
+              <include_actions ref="BucketText" />
+              <set_value name="$psFrom" exact="[History.$lastAt, $psS.$since].max" />
+              <set_value name="$psTo" exact="[$psTo, $psFrom].max" />
+              <append_to_list name="$psRec.$buckets" exact="[($psFrom / 1s)i, (($psTo - $psFrom) / 1s)i, $psKv]" />
+              <do_if value="@$psS.$killsBy != null">
+                <do_for_each name="$pshKey" valuename="$pshEntry" in="$psS.$killsBy">
+                  <set_value name="$psRec.$subs.{$pshKey}" exact="$pshEntry.$name" />
+                </do_for_each>
+              </do_if>
+              <debug_text text="'PS1|%s|history|-|-|final|by=order|id=%s (%s)|start=%s|dur=%s|%s'.[player.age, $psRec.$name, $psRec.$idcode, ($psFrom / 1s)i, (($psTo - $psFrom) / 1s)i, $psKv]"
+                chance="$debugChance" />
+              <remove_value name="$psRec" />
+              <remove_value name="$psKv" />
+              <remove_value name="$psFrom" />
+              <remove_value name="$pshKey" />
+              <remove_value name="$pshEntry" />
+            </do_if>
+          </actions>
+        </library>
+
+        <!-- keeps History.$owners current between ticks; a pilot off the order gets its final bucket here too -->
+        <cue name="Walk" instantiate="true" checkinterval="60s">
+          <conditions>
+            <check_value value="@player.entity.$ProtectSectorConfig.$historyDepth gt 0" />
+          </conditions>
+          <actions>
+            <include_actions ref="md.ProtectSector_Options.ReadDebugChances" />
+            <include_actions ref="FleetWalk" />
+            <remove_value name="$psFleets" />
+            <include_actions ref="md.ProtectSector_Options.ClearDebugChances" />
+          </actions>
+        </cue>
+
+        <!-- a fleet ship destroyed, captured or abandoned: a zero-length bucket 'l=1;' on the record of the ship that counts it, the lost ship's own record marked gone -->
+        <cue name="Lost" instantiate="true" version="3">
+          <conditions>
+            <check_any>
+              <event_player_owned_destroyed />
+              <event_contained_object_changed_true_owner space="player.galaxy" previous="faction.player" />
+            </check_any>
+            <check_value value="@player.entity.$ProtectSectorConfig.$historyDepth gt 0" />
+            <check_value value="event.param.isrealclass.ship and not event.param.isunit and not event.param.isrealclass.spacesuit and not event.param.ismasstraffic" />
+            <!-- as vanilla's notifications: a collected or removed ship is no loss, an owner change counts only on an operational ship -->
+            <check_value value="if event.name == 'event_player_owned_destroyed' then event.param3 != killmethod.collected and event.param3 != killmethod.removed else event.param.isoperational" />
+          </conditions>
+          <actions>
+            <include_actions ref="md.ProtectSector_Options.ReadDebugChances" />
+            <set_value name="$psX" exact="event.param" />
+            <set_value name="$psXKey" exact="'$%s'.[$psX.idcode]" />
+            <set_value name="$psWhy" exact="if event.name == 'event_player_owned_destroyed' then 'destroyed' else 'abandoned'" />
+            <set_value name="$psBy" exact="if $psWhy == 'destroyed' then @event.param2.debugname else @event.param2.id" />
+            <!-- a death also fires the owner change to ownerless: a ship counts once, on whichever event comes first -->
+            <set_value name="$psKeep" exact="table[]" />
+            <do_if value="History.$lostKeys?">
+              <do_for_each name="$psLk" valuename="$psLv" in="History.$lostKeys">
+                <do_if value="$psLv.{1} ge player.age - 60s">
+                  <set_value name="$psKeep.{$psLk}" exact="$psLv" />
+                </do_if>
+              </do_for_each>
+            </do_if>
+            <set_value name="History.$lostKeys" exact="$psKeep" />
+            <set_value name="$psDup" exact="@History.$lostKeys.{$psXKey}.{2}" />
+            <do_if value="$psDup == null">
+              <set_value name="History.$lostKeys.{$psXKey}" exact="[player.age, $psWhy]" />
+            </do_if>
+            <!-- a commander counts itself, any other ship the first one up its chain on Assist or ProtectSector; vanilla's pilot ejection clears the commander, then the map -->
+            <set_value name="$psVia" exact="'self'" />
+            <set_value name="$psOwner" exact="$psX" />
+            <do_if value="@$psX.defaultorder.id != 'ProtectSector'">
+              <set_value name="$psVia" exact="'climb'" />
+              <set_value name="$psOwner" exact="@$psX.commander" />
+              <do_while value="$psOwner != null and @$psOwner.defaultorder.id != 'Assist' and @$psOwner.defaultorder.id != 'ProtectSector'">
+                <set_value name="$psOwner" exact="@$psOwner.commander" />
+              </do_while>
+              <do_if value="$psOwner == null">
+                <set_value name="$psOwner" exact="@History.$owners.{$psXKey}" />
+                <set_value name="$psVia" exact="'map'" />
+              </do_if>
+            </do_if>
+            <set_value name="$psRec" exact="null" />
+            <do_if value="$psOwner != null">
+              <set_value name="$pshShip" exact="$psOwner" />
+              <include_actions ref="FleetOf" />
+              <!-- a commander whose default order went with its pilot -->
+              <do_if value="$psF == null and $psOwner == $psX">
+                <set_value name="$psF" exact="table[$ship = $psX, $assist = false, $cmd = $psX, $sector = @$psX.sector]" />
+              </do_if>
+              <do_if value="@player.entity.$ProtectSectorHistory == null">
+                <set_value name="player.entity.$ProtectSectorHistory" exact="table[$fleets = table[]]" />
+              </do_if>
+              <set_value name="$psRecKey" exact="'$%s'.[$psOwner.idcode]" />
+              <set_value name="$psRec" exact="@player.entity.$ProtectSectorHistory.$fleets.{$psRecKey}" />
+              <do_if value="$psRec == null and $psF != null and $psDup == null">
+                <set_value name="$psRec" exact="table[$buckets = [], $subs = table[]]" />
+                <set_value name="$psInto" exact="$psRec" />
+                <include_actions ref="FleetIdentity" />
+                <remove_value name="$psInto" />
+                <set_value name="player.entity.$ProtectSectorHistory.$fleets.{$psRecKey}" exact="$psRec" />
+              </do_if>
+              <!-- a record whose ship lives on off the order is no fleet any more -->
+              <do_elseif value="$psF == null and @$psOwner.isoperational">
+                <set_value name="$psRec" exact="null" />
+              </do_elseif>
+              <do_if value="$psRec != null and $psDup == null">
+                <append_to_list name="$psRec.$buckets" exact="[(player.age / 1s)i, 0, 'l=1;']" />
+                <set_value name="$psRec.$lastSeen" exact="player.age" />
+              </do_if>
+            </do_if>
+            <do_if value="@player.entity.$ProtectSectorHistory.$fleets.{$psXKey} != null and @player.entity.$ProtectSectorHistory.$fleets.{$psXKey}.$gone != 'destroyed'">
+              <set_value name="player.entity.$ProtectSectorHistory.$fleets.{$psXKey}.$gone" exact="$psWhy" />
+            </do_if>
+            <do_if value="$psRec != null or @History.$owners.{$psXKey} != null">
+              <debug_text text="'PS1|%s|%s|%s|%s|lost|why=%s|by=%s|owner=%s|via=%s|counted=%s|dup=%s|cmd=%s|dorder=%s|pilot=%s'.[player.age, $psX.debugname, @$psX.class, @$psX.sector.debugname, $psWhy, $psBy, @$psOwner.debugname, $psVia, $psRec != null and $psDup == null, $psDup,@$psX.commander.debugname, @$psX.defaultorder.id, @$psX.pilot.exists]"
+                chance="$debugChance" />
+            </do_if>
+            <remove_value name="$psX" />
+            <remove_value name="$psXKey" />
+            <remove_value name="$psWhy" />
+            <remove_value name="$psBy" />
+            <remove_value name="$psKeep" />
+            <remove_value name="$psLk" />
+            <remove_value name="$psLv" />
+            <remove_value name="$psDup" />
+            <remove_value name="$psVia" />
+            <remove_value name="$psOwner" />
+            <remove_value name="$pshShip" />
+            <remove_value name="$pshKey" />
+            <remove_value name="$psF" />
+            <remove_value name="$psRecKey" />
+            <remove_value name="$psRec" />
+            <include_actions ref="md.ProtectSector_Options.ClearDebugChances" />
+          </actions>
+        </cue>
+
         <!-- every 15 min: one bucket per live fleet, the pilot table restarted, old buckets and orphaned records pruned -->
-        <cue name="Tick" instantiate="true" checkinterval="60s" version="3">
+        <cue name="Tick" instantiate="true" checkinterval="60s" version="5">
           <conditions>
             <check_value value="@player.entity.$ProtectSectorConfig.$historyDepth gt 0 and player.age ge History.$lastAt + 900s" />
           </conditions>
           <actions>
             <set_value name="$psStart" exact="History.$lastAt" />
-            <set_value name="History.$lastAt" exact="player.age" />
             <include_actions ref="md.ProtectSector_Options.ReadDebugChances" />
             <do_if value="@player.entity.$ProtectSectorHistory == null">
               <set_value name="player.entity.$ProtectSectorHistory" exact="table[$fleets = table[]]" />
@@ -121,7 +330,9 @@
             </do_if>
             <set_value name="$psCutoff" exact="((player.age - (player.entity.$ProtectSectorConfig.$historyDepth)h) / 1s)i" />
 
+            <!-- a final bucket in the walk starts at the previous tick -->
             <include_actions ref="FleetWalk" />
+            <set_value name="History.$lastAt" exact="player.age" />
             <set_value name="$psLive" exact="table[]" />
             <do_for_each name="$psF" in="$psFleets">
               <include_actions ref="RecordOf" />
@@ -137,7 +348,7 @@
                 </do_for_each>
               </do_if>
               <!-- same shape as PsStats in the order script; an open attack or idle restarts at the tick -->
-              <set_value name="$psF.$ship.pilot.$protectSectorStats" exact="table[$since = player.age, $assisted = @$psS.$assisted, $attacks = 0, $responses = 0, $lost = 0, $attackTime = 0s, $killsSelf = 0, $killsSubs = 0, $killsOther = 0, $killsBy = table[], $fogBreaks = 0, $hardBreaks = 0, $rangeBreaks = 0, $bailouts = 0, $idleTime = 0s, $scans = 0, $scansEmpty = 0, $outsideEnds = 0, $stationHandoffs = 0, $noDps = 0, $fireAuth = 0, $hullMin = $psF.$ship.hullpercentage]" />
+              <set_value name="$psF.$ship.pilot.$protectSectorStats" exact="table[$since = player.age, $assisted = @$psS.$assisted, $attacks = 0, $responses = 0, $attackTime = 0s, $killsSelf = 0, $killsSubs = 0, $killsOther = 0, $killsBy = table[], $fogBreaks = 0, $hardBreaks = 0, $rangeBreaks = 0, $bailouts = 0, $idleTime = 0s, $scans = 0, $scansEmpty = 0, $outsideEnds = 0, $stationHandoffs = 0, $noDps = 0, $fireAuth = 0, $hullMin = $psF.$ship.hullpercentage]" />
               <do_if value="@$psS.$attackOpenAt != null">
                 <set_value name="$psF.$ship.pilot.$protectSectorStats.$attackOpenAt" exact="player.age" />
               </do_if>
@@ -184,7 +395,7 @@
         </cue>
 
         <!-- the menu's snapshot: every live fleet with its current partial bucket, subordinates, targets and its history when there is one; then the records of fleets that are gone -->
-        <cue name="Request" instantiate="true" version="9">
+        <cue name="Request" instantiate="true" version="11">
           <conditions>
             <event_ui_triggered screen="'ProtectSector'" control="'requestHistory'" />
           </conditions>
@@ -192,8 +403,9 @@
             <!-- also reads the debug chances -->
             <include_actions ref="md.ProtectSector_Coordinator.Consts" />
             <set_value name="$psView" exact="table[$now = (player.age / 1s)i, $lastAt = (History.$lastAt / 1s)i, $depth = @player.entity.$ProtectSectorConfig.$historyDepth, $fleets = []]" />
-            <set_value name="$psRecords" exact="if @player.entity.$ProtectSectorHistory.$fleets != null then player.entity.$ProtectSectorHistory.$fleets else table[]" />
+            <!-- the walk can add a final bucket -->
             <include_actions ref="FleetWalk" />
+            <set_value name="$psRecords" exact="if @player.entity.$ProtectSectorHistory.$fleets != null then player.entity.$ProtectSectorHistory.$fleets else table[]" />
             <set_value name="$psLiveKeys" exact="table[]" />
             <do_for_each name="$psF" in="$psFleets">
               <set_value name="$psRecKey" exact="'$%s'.[$psF.$ship.idcode]" />
@@ -257,7 +469,7 @@
             </do_for_each>
             <do_for_each name="$psRecKey" valuename="$psRec" in="$psRecords">
               <do_if value="not $psLiveKeys.{$psRecKey}?">
-                <set_value name="$psEntry" exact="table[$key = $psRecKey, $name = $psRec.$name, $idcode = $psRec.$idcode, $size = $psRec.$size, $fleetName = $psRec.$fleetName, $assist = $psRec.$assist, $cmdName = $psRec.$cmdName, $cmdIdcode = $psRec.$cmdIdcode, $cmdKey = $psRec.$cmdKey, $sectorName = $psRec.$sectorName, $sectorKey = $psRec.$sectorKey, $sectorOwner = @$psRec.$sectorOwner, $state = (if @$psRec.$ship.exists then 'off' else 'destroyed'), $buckets = $psRec.$buckets, $subs = [], $targets = []]" />
+                <set_value name="$psEntry" exact="table[$key = $psRecKey, $name = $psRec.$name, $idcode = $psRec.$idcode, $size = $psRec.$size, $fleetName = $psRec.$fleetName, $assist = $psRec.$assist, $cmdName = $psRec.$cmdName, $cmdIdcode = $psRec.$cmdIdcode, $cmdKey = $psRec.$cmdKey, $sectorName = $psRec.$sectorName, $sectorKey = $psRec.$sectorKey, $sectorOwner = @$psRec.$sectorOwner, $state = (if @$psRec.$gone != 'destroyed' and @$psRec.$ship.exists and not @$psRec.$ship.iswreck then 'off' else 'destroyed'), $buckets = $psRec.$buckets, $subs = [], $targets = []]" />
                 <do_for_each name="$pshSubKey" valuename="$pshSubName" in="$psRec.$subs">
                   <append_to_list name="$psEntry.$subs" exact="table[$key = $pshSubKey, $name = $pshSubName, $idcode = '', $alive = false]" />
                 </do_for_each>
