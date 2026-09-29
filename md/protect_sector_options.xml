@@ -29,13 +29,14 @@
         </library>
 
         <!-- hull keys: $hull_<class>_<state>_<sensitivity>, read by lib.protect.sector CheckAndSignalForDamage -->
-        <!-- $historyDepth in hours, 0 = no history; $overviewRefresh in seconds, 0 = no auto-refresh; $coordination: read by the coordinator MD at every decision, on it coordinates the fleets of a sector, off each fleet takes its own targets -->
-        <library name="Defaults" purpose="include_actions" version="5">
+        <!-- $historyDepth in hours, 0 = no history; $overviewRefresh in seconds, 0 = no auto-refresh; $coordination: read by the coordinator MD at every decision, on it coordinates the fleets of a sector, off each fleet takes its own targets; $topMenuIcon: the overview's entry in vanilla's top menu row -->
+        <library name="Defaults" purpose="include_actions" version="6">
           <actions>
             <set_value name="$cfg" exact="table[
               $debugLevel = 'none',
               $historyDepth = 24,
               $overviewRefresh = 30,
+              $topMenuIcon = true,
               $coordination = true,
               $respPriority = true,
               $hull_ship_s_idle_1 = 80, $hull_ship_s_idle_2 = 90, $hull_ship_s_idle_3 = 100,
@@ -193,7 +194,7 @@
           </actions>
         </cue>
 
-        <cue name="Options_Menu" instantiate="true" version="7">
+        <cue name="Options_Menu" instantiate="true" version="8">
           <conditions>
             <event_cue_signalled />
           </conditions>
@@ -260,6 +261,14 @@
                 <param name="suffix" value="' %s'.[{1001, 100}]" />
                 <param name="data" value="$cfg" />
                 <param name="handle" value="Handle_Slider_Changed" />
+              </run_actions>
+              <run_actions ref="md.Options_Helper.Add_Checkbox">
+                <param name="id" value="'topMenuIcon'" />
+                <param name="col" value="1" />
+                <param name="textColSpan" value="11" />
+                <param name="text" value="{1972092401, 90103}" />
+                <param name="data" value="$cfg" />
+                <param name="handle" value="Handle_Checkbox_Changed" />
               </run_actions>
 
               <run_actions ref="md.Options_Helper.Add_Title_Row">
@@ -335,7 +344,7 @@
           </actions>
         </cue>
 
-        <cue name="Handle_Checkbox_Changed" instantiate="true">
+        <cue name="Handle_Checkbox_Changed" instantiate="true" version="2">
           <conditions>
             <event_cue_signalled />
           </conditions>
@@ -343,6 +352,9 @@
             <set_value name="$resultTable" exact="player.entity.$ProtectSectorConfig" />
             <include_actions ref="md.Options_Helper.Process_Checkbox_Changed" />
             <remove_value name="$resultTable" />
+            <do_if value="event.param.$echo.$valueId == '$topMenuIcon'">
+              <raise_lua_event name="'ProtectSector.TopMenuIcon'" />
+            </do_if>
             <include_actions ref="ReadDebugChances" />
             <debug_text text="'ProtectSector: Options: %s set to %s'.[event.param.$echo.$valueId, @event.param.$checked]" chance="$debugChance" />
             <include_actions ref="ClearDebugChances" />

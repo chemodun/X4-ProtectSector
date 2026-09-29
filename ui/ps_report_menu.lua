@@ -1051,10 +1051,40 @@ local function addTopLevelEntry()
   debugLog("top-level entry added at %d of %d.", pos, #list)
 end
 
+local function removeTopLevelEntry()
+  ---@type table[]
+  local list = Helper.topLevelMenus
+  for i, entry in ipairs(list) do
+    if entry.id == TOP_LEVEL_ID then
+      table.remove(list, i)
+      debugLog("top-level entry removed.")
+      return
+    end
+  end
+end
+
+-- Unset counts as on: the first load reads the config before the MD creates it.
+local function topMenuIconOn()
+  return ps.cfg.topMenuIcon == nil or toBool(ps.cfg.topMenuIcon)
+end
+
+local function syncTopLevelEntry()
+  if topMenuIconOn() then
+    addTopLevelEntry()
+  else
+    removeTopLevelEntry()
+  end
+end
+
+local function onTopMenuIconChanged()
+  readConfig()
+  syncTopLevelEntry()
+end
+
 local function init()
   if Helper then
     Helper.registerMenu(menu)
-    addTopLevelEntry()
+    syncTopLevelEntry()
   end
 end
 
@@ -1162,6 +1192,7 @@ end
 function menu.onShowMenu(state)
   menu.open = true
   readConfig()
+  syncTopLevelEntry()
   if menu.widthIndex == nil then
     resetState()
   end
@@ -1195,11 +1226,21 @@ function menu.selectTab(id)
   menu.refreshInfoFrame()
 end
 
+-- Q/E: the top-level row, or our own tabs without it.
 function menu.onTabScroll(direction)
-  if direction == "right" then
-    Helper.scrollTopLevel(menu, TOP_LEVEL_ID, 1)
-  elseif direction == "left" then
-    Helper.scrollTopLevel(menu, TOP_LEVEL_ID, -1)
+  local step = (direction == "right") and 1 or ((direction == "left") and -1 or 0)
+  if step == 0 then
+    return
+  end
+  if topMenuIconOn() then
+    Helper.scrollTopLevel(menu, TOP_LEVEL_ID, step)
+    return
+  end
+  for i, tab in ipairs(TABS) do
+    if tab.id == menu.tab then
+      menu.selectTab(TABS[(i - 1 + step) % #TABS + 1].id)
+      return
+    end
   end
 end
 
@@ -1425,7 +1466,7 @@ function menu.createFrame()
   local rightX      = Helper.frameBorder + leftWidth + Helper.borderSize
   local rightWidth  = usableWidth - leftWidth - Helper.borderSize
 
-  local topLevelBottom = Helper.createTopLevelTab(menu, TOP_LEVEL_ID, menu.infoFrame, "", nil, true)
+  local topLevelBottom = topMenuIconOn() and Helper.createTopLevelTab(menu, TOP_LEVEL_ID, menu.infoFrame, "", nil, true) or nil
   menu.panelTop = menu.createTabRow(topLevelBottom) + Helper.borderSize
   menu.createLeftPanel(Helper.frameBorder, leftWidth)
   if menu.tab == "board" then
@@ -2759,6 +2800,7 @@ local function Init()
   RegisterEvent("ProtectSector.HistoryReady", onHistoryReady)
   RegisterEvent("ProtectSector.PromotedFrom", onPromotedFrom)
   RegisterEvent("ProtectSector.PromotedTo", onPromotedTo)
+  RegisterEvent("ProtectSector.TopMenuIcon", onTopMenuIconChanged)
   lsrScanLoop()
 end
 

@@ -219,6 +219,7 @@
       <t id="90100">Fleet overview</t>
       <t id="90101">History depth, 0 = off</t>
       <t id="90102">Auto-refresh, 0 = off</t>
+      <t id="90103">Show the overview icon in the top menu</t>
       <t id="90200">Fleet coordination</t>
       <t id="90201">Coordinate the fleets in a sector</t>
       <t id="90202">The fleets on the order in one sector pick their targets together: a target another fleet already handles is left to it, one out of reach or too fast is skipped, a group too strong for one fleet is taken on together or held off. Every fleet reports to the coordinator whether this is on or off; off, each fleet takes its own targets. A fleet with "Share target with other fleets" off keeps its target to itself either way.</t>
