@@ -100,6 +100,8 @@ local COORD_SLIDERS = {
   { key = "coordReach",        textId = 1430, step = 10, unit = "km" },
   { key = "coordSpeedShare",   textId = 1432, step = 5,  unit = "%" },
   { key = "coordHandoff",      textId = 1435, step = 1,  unit = "km" },
+  { key = "coordSwarmSperL",   textId = 1466, step = 1 },
+  { key = "coordSwarmMperXL",  textId = 1468, step = 1 },
   { key = "coordHelpWait",     textId = 1437, step = 15, unit = "s", titleId = 1434 },
   { key = "coordRequestTtl",   textId = 1439, step = 1,  unit = "min" },
   { key = "coordRespCooldown", textId = 1441, step = 5,  unit = "s" },

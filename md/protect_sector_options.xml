@@ -56,6 +56,7 @@
             <set_value name="$coordSpec" exact="table[
               $coordKsolo = [1.5, 1.0, 3.0], $coordKmin = [0.7, 0.3, 1.5], $coordKbreak = [0.4, 0.1, 1.0],
               $coordRadius = [10, 2, 30], $coordReach = [100, 20, 300], $coordSpeedShare = [90, 50, 150], $coordHandoff = [5, 1, 20],
+              $coordSwarmSperL = [10, 3, 50], $coordSwarmMperXL = [20, 5, 60],
               $coordHelpWait = [60, 15, 300], $coordRequestTtl = [10, 2, 60], $coordRespCooldown = [30, 5, 120], $coordDeclineTtl = [5, 1, 30],
               $coordRefusedSkip = [30, 10, 300], $coordHoldNotify = [60, 10, 240], $coordBoardKeep = [60, 15, 300],
               $coordAssignTtl = [20, 5, 60], $coordResendTtl = [10, 5, 60], $coordGroupCache = [5, 1, 30], $coordPowerCache = [10, 1, 60],

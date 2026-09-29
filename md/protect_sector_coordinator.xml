@@ -41,6 +41,8 @@
             <set_value name="$declineTtl" exact="$psC.$coordDeclineTtl * 1min" />
             <set_value name="$holdNotify" exact="$psC.$coordHoldNotify * 1min" />
             <set_value name="$boardKeep" exact="$psC.$coordBoardKeep * 1s" />
+            <set_value name="$swarmSperL" exact="$psC.$coordSwarmSperL" />
+            <set_value name="$swarmMperXL" exact="$psC.$coordSwarmMperXL" />
             <remove_value name="$psC" />
             <remove_value name="$psCk" />
             <remove_value name="$psCs" />
@@ -54,6 +56,11 @@
             <set_value name="$markRefusals" exact="5" />
             <!-- decline reasons that mark at once and clear themselves once the ship can fire -->
             <set_value name="$noDpsWhys" exact="['noweapons', 'noammo']" />
+            <!-- a fleet (its commander's class) and a group (its biggest ship's class) this many classes apart (S, M, L, XL) never meet by coordination -->
+            <set_value name="$sizeNever" exact="3" />
+            <!-- two classes apart, a fleet fits by its subordinates with this many armed ships of a class next to the group's, and at least this share of the group's ship count -->
+            <set_value name="$subFitMin" exact="3" />
+            <set_value name="$subFitShare" exact="0.5" />
             <include_actions ref="md.ProtectSector_Options.ReadDebugChances" />
           </actions>
         </library>
@@ -210,37 +217,53 @@
           </actions>
         </library>
 
-        <!-- $psPwF a commander, $psPwE its entry: $psPower = dps x hit points of it and its subordinates in its sector, cached -->
+        <!-- $psPwF a commander, $psPwE its entry: $psPower = dps x hit points of it and its subordinates in its sector, and $psPwE.$armed their armed ships per class [S, M, L, XL]; cached -->
         <library name="FleetPower" purpose="include_actions">
           <actions>
-            <do_if value="@$psPwE.$powerAt == null or player.age - $psPwE.$powerAt gt $powerCache">
+            <do_if value="@$psPwE.$powerAt == null or @$psPwE.$armed == null or player.age - $psPwE.$powerAt gt $powerCache">
               <set_value name="$psPwDps" exact="0.0" />
               <set_value name="$psPwHp" exact="0" />
+              <set_value name="$psPwN" exact="[0, 0, 0, 0]" />
               <do_if value="$psPwF.exists and $psPwF.isoperational and not $psPwF.iswreck">
-                <set_value name="$psPwDps" exact="$psPwF.dps.all" />
-                <set_value name="$psPwHp" exact="$psPwF.hull + $psPwF.shield" />
+                <set_value name="$psPwList" exact="[$psPwF]" />
                 <do_for_each name="$psPwS" in="$psPwF.allsubordinates">
                   <do_if value="$psPwS.exists and $psPwS.isoperational and not $psPwS.iswreck and $psPwS.sector == $psPwF.sector">
-                    <set_value name="$psPwDps" operation="add" exact="$psPwS.dps.all" />
-                    <set_value name="$psPwHp" operation="add" exact="$psPwS.hull + $psPwS.shield" />
+                    <append_to_list name="$psPwList" exact="$psPwS" />
                   </do_if>
                 </do_for_each>
+                <do_for_each name="$psPwS" in="$psPwList">
+                  <set_value name="$psPwDps" operation="add" exact="$psPwS.dps.all" />
+                  <set_value name="$psPwHp" operation="add" exact="$psPwS.hull + $psPwS.shield" />
+                  <do_if value="$psPwS.dps.all gt 0">
+                    <set_value name="$psPwR" exact="if $psPwS.isclass.ship_xl then 4 else (if $psPwS.isclass.ship_l then 3 else (if $psPwS.isclass.ship_m then 2 else (if $psPwS.isclass.ship_s then 1 else 0)))" />
+                    <do_if value="$psPwR gt 0">
+                      <set_value name="$psPwN.{$psPwR}" exact="$psPwN.{$psPwR} + 1" />
+                    </do_if>
+                  </do_if>
+                </do_for_each>
+                <remove_value name="$psPwList" />
+                <remove_value name="$psPwS" />
+                <remove_value name="$psPwR" />
               </do_if>
               <set_value name="$psPwE.$power" exact="$psPwDps * $psPwHp" />
+              <set_value name="$psPwE.$armed" exact="$psPwN" />
               <set_value name="$psPwE.$powerAt" exact="player.age" />
+              <remove_value name="$psPwN" />
             </do_if>
             <set_value name="$psPower" exact="$psPwE.$power" />
           </actions>
         </library>
 
-        <!-- $psT, $psTE: the target's faction within $radius of it as $psGroup (dps x hit points), $psFoes, $psFast; cached on the entry -->
+        <!-- $psT, $psTE: the target's faction within $radius of it as $psGroup (dps x hit points), $psFoes, $psFast, $psTE.$rank its biggest class (1 S .. 4 XL) and $psTE.$rankN its ships of that class; cached on the entry -->
         <library name="GroupEval" purpose="include_actions">
           <actions>
-            <do_if value="@$psTE.$groupAt == null or player.age - $psTE.$groupAt gt $groupCache">
+            <do_if value="@$psTE.$groupAt == null or @$psTE.$rankN == null or player.age - $psTE.$groupAt gt $groupCache">
               <set_value name="$psGeDps" exact="0.0" />
               <set_value name="$psGeHp" exact="0" />
               <set_value name="$psGeN" exact="0" />
               <set_value name="$psGeFast" exact="@$psT.maxspeed" />
+              <set_value name="$psGeRank" exact="if @$psT.isclass.ship_xl then 4 else (if @$psT.isclass.ship_l then 3 else (if @$psT.isclass.ship_m then 2 else (if @$psT.isclass.ship_s then 1 else 0)))" />
+              <set_value name="$psGeRankN" exact="0" />
               <do_if value="@$psT.sector != null">
                 <find_ship name="$psGeList" space="$psT.sector" trueowner="$psT.trueowner" class="[class.ship_xs, class.ship_s, class.ship_m, class.ship_l, class.ship_xl]"
                   multiple="true" recursive="true" checkoperational="true" docked="false" sortbydistanceto="$psT" sortdescending="false">
@@ -256,14 +279,26 @@
                   <do_if value="$psGeF.maxspeed gt $psGeFast">
                     <set_value name="$psGeFast" exact="$psGeF.maxspeed" />
                   </do_if>
+                  <set_value name="$psGeR" exact="if $psGeF.isclass.ship_xl then 4 else (if $psGeF.isclass.ship_l then 3 else (if $psGeF.isclass.ship_m then 2 else (if $psGeF.isclass.ship_s then 1 else 0)))" />
+                  <do_if value="$psGeR gt $psGeRank">
+                    <set_value name="$psGeRank" exact="$psGeR" />
+                    <set_value name="$psGeRankN" exact="1" />
+                  </do_if>
+                  <do_elseif value="$psGeR gt 0 and $psGeR == $psGeRank">
+                    <set_value name="$psGeRankN" operation="add" />
+                  </do_elseif>
                 </do_for_each>
               </do_if>
               <set_value name="$psTE.$group" exact="$psGeDps * $psGeHp" />
               <set_value name="$psTE.$foes" exact="$psGeN" />
               <set_value name="$psTE.$fast" exact="$psGeFast" />
+              <set_value name="$psTE.$rank" exact="$psGeRank" />
+              <!-- the target itself may be missing from the list (docked or not operational) -->
+              <set_value name="$psTE.$rankN" exact="if $psGeRank gt 0 and $psGeRankN lt 1 then 1 else $psGeRankN" />
               <set_value name="$psTE.$groupAt" exact="player.age" />
               <remove_value name="$psGeList" />
               <remove_value name="$psGeF" />
+              <remove_value name="$psGeR" />
             </do_if>
             <set_value name="$psGroup" exact="$psTE.$group" />
             <set_value name="$psFoes" exact="$psTE.$foes" />
@@ -271,15 +306,63 @@
           </actions>
         </library>
 
-        <!-- $psH a fleet, $psHE its entry, $psT, $psTE, $psMulti, $psPreempt: $psOk when it may take $psT now, by its own settings; $psHD its distance, $psNo the first rule it failed -->
+        <!-- $psSgF a registered fleet, $psT, $psTE: $psSgTier by its commander's class against the group's biggest (switch on only, else 0):
+             0 fits (within one class), 1 fits by its subordinates, 2 fits nothing but may go alone while no better fit is free, 3 only beside a fleet already on the target, 4 never.
+             $psSgFit and $psSgCount the armed ships counted for tiers 1 and 2; $psPower is kept -->
+        <library name="SizeTier" purpose="include_actions">
+          <actions>
+            <set_value name="$psSgTier" exact="0" />
+            <set_value name="$psSgFit" exact="null" />
+            <set_value name="$psSgCount" exact="null" />
+            <do_if value="$psPolicy and @$psSgF.exists and $psB.$fleets.{$psSgF}?">
+              <include_actions ref="GroupEval" />
+              <set_value name="$psSgG" exact="@$psTE.$rank" />
+              <do_if value="$psSgG gt 0">
+                <set_value name="$psSgD" exact="(if $psSgF.isclass.ship_xl then 4 else (if $psSgF.isclass.ship_l then 3 else (if $psSgF.isclass.ship_m then 2 else 1))) - $psSgG" />
+                <do_if value="$psSgD ge $sizeNever or $psSgD le -$sizeNever">
+                  <set_value name="$psSgTier" exact="4" />
+                </do_if>
+                <do_elseif value="$psSgD ge 2 or $psSgD le -2">
+                  <set_value name="$psSgPower" exact="@$psPower" />
+                  <set_value name="$psPwF" exact="$psSgF" />
+                  <set_value name="$psPwE" exact="$psB.$fleets.{$psSgF}" />
+                  <include_actions ref="FleetPower" />
+                  <set_value name="$psPower" exact="$psSgPower" />
+                  <set_value name="$psSgA" exact="$psPwE.$armed" />
+                  <!-- armed ships within one class of the group's biggest -->
+                  <set_value name="$psSgFit" exact="(if $psSgG le 2 then $psSgA.{1} else 0) + (if $psSgG le 3 then $psSgA.{2} else 0) + (if $psSgG ge 2 then $psSgA.{3} else 0) + (if $psSgG ge 3 then $psSgA.{4} else 0)" />
+                  <do_if value="$psSgFit ge $subFitMin and $psSgFit ge $subFitShare * @$psTE.$foes">
+                    <set_value name="$psSgTier" exact="1" />
+                  </do_if>
+                  <do_elseif value="$psSgD gt 0">
+                    <set_value name="$psSgTier" exact="2" />
+                  </do_elseif>
+                  <do_else>
+                    <!-- smaller against bigger by numbers: armed ships not $sizeNever classes below the group's biggest, per ship of that class -->
+                    <set_value name="$psSgCount" exact="(if $psSgG le 3 then $psSgA.{1} else 0) + $psSgA.{2} + $psSgA.{3} + $psSgA.{4}" />
+                    <set_value name="$psSgTier" exact="if $psSgCount ge (if $psSgG == 3 then $swarmSperL else $swarmMperXL) * @$psTE.$rankN then 2 else 3" />
+                  </do_else>
+                  <remove_value name="$psSgPower" />
+                  <remove_value name="$psSgA" />
+                </do_elseif>
+                <remove_value name="$psSgD" />
+              </do_if>
+              <remove_value name="$psSgG" />
+            </do_if>
+          </actions>
+        </library>
+
+        <!-- $psH a fleet, $psHE its entry, $psT, $psTE, $psMulti, $psPreempt: $psOk when it may take $psT now, by its own settings; $psHD its distance, $psNo the first rule it failed, $psHTier its SizeTier once the settings passed -->
         <library name="Eligible" purpose="include_actions">
           <actions>
             <set_value name="$psHD" exact="null" />
             <set_value name="$psNo" exact="null" />
+            <set_value name="$psHTier" exact="null" />
             <do_if value="not $psH.exists or not $psH.isoperational or $psH.iswreck or @$psH.defaultorder.id != 'ProtectSector'">
               <set_value name="$psNo" exact="'gone'" />
             </do_if>
-            <do_elseif value="$psB.$marked.{$psH}?">
+            <!-- coordination off: only a mark for no weapons or ammo holds the fleet back -->
+            <do_elseif value="$psB.$marked.{$psH}? and ($psPolicy or $noDpsWhys.indexof.{$psB.$marked.{$psH}.$why})">
               <set_value name="$psNo" exact="'marked'" />
             </do_elseif>
             <do_elseif value="$psH.order != $psH.defaultorder">
@@ -324,12 +407,19 @@
               <set_value name="$psNo" exact="'share'" />
             </do_elseif>
             <do_else>
+              <set_value name="$psSgF" exact="$psH" />
+              <include_actions ref="SizeTier" />
+              <set_value name="$psHTier" exact="$psSgTier" />
               <set_value name="$psHD" exact="$psH.distanceto.{$psT}" />
               <set_value name="$psHS" exact="if $psV900 and @$psH.unboostedmaxspeed != null then @$psH.unboostedmaxspeed else @$psH.maxspeed" />
               <set_value name="$psTS" exact="if $psV900 and @$psT.unboostedmaxspeed != null then @$psT.unboostedmaxspeed else @$psT.maxspeed" />
-              <do_if value="$psHD gt $reach">
-                <set_value name="$psNo" exact="'reach'" />
+              <!-- tiers 1 to 3 are the caller's to weigh -->
+              <do_if value="$psHTier == 4">
+                <set_value name="$psNo" exact="'size'" />
               </do_if>
+              <do_elseif value="$psHD gt $reach">
+                <set_value name="$psNo" exact="'reach'" />
+              </do_elseif>
               <do_elseif value="$psHD gt $radius and @$psTS != null and @$psHS != null and $psHS lt $psTS * $speedFactor">
                 <set_value name="$psNo" exact="'speed'" />
               </do_elseif>
@@ -338,7 +428,7 @@
           </actions>
         </library>
 
-        <!-- $psF the asker (or null), $psT, $psTE, $psDist: the fleets already on the target other than the asker -->
+        <!-- $psF the asker (or null), $psT, $psTE, $psDist: the fleets already on the target other than the asker; $psAnchor when one of them may hold it alone (SizeTier up to 2) -->
         <library name="Peers" purpose="include_actions">
           <actions>
             <set_value name="$psCommitted" exact="0.0" />
@@ -347,6 +437,7 @@
             <set_value name="$psOthers" exact="0" />
             <set_value name="$psExcl" exact="false" />
             <set_value name="$psAllShare" exact="true" />
+            <set_value name="$psAnchor" exact="false" />
             <set_value name="$psPrList" exact="$psTE.$engaged.clone" />
             <do_for_each name="$psPr" in="$psTE.$assigned">
               <do_if value="not $psPrList.indexof.{$psPr}">
@@ -372,6 +463,11 @@
                   <set_value name="$psExcl" exact="true" />
                   <set_value name="$psAllShare" exact="false" />
                 </do_if>
+                <do_if value="not $psAnchor">
+                  <set_value name="$psSgF" exact="$psPr" />
+                  <include_actions ref="SizeTier" />
+                  <set_value name="$psAnchor" exact="$psSgTier le 2" />
+                </do_if>
               </do_if>
             </do_for_each>
             <remove_value name="$psPrList" />
@@ -380,12 +476,21 @@
           </actions>
         </library>
 
-        <!-- $psF the asker (or null), $psT, $psTE: the registered fleets in the target's sector; $psHelpers the sharing idle ones that may take it, $psNearestIdle the nearest idle one whatever its share flag -->
+        <!-- $psF the asker (or null), $psT, $psTE: the registered fleets in the target's sector; $psHelpers the sharing idle ones that may take it (SizeTier 3 only with $psHelpAnchor),
+             $psNearestIdle the nearest idle one whatever its share flag and no worse a fit than the asker's $psHoTier, with $psHoStrong only one at Ksolo alone ($psHoRatio);
+             $psLowIdle the nearest idle one a better fit than the asker, $psLowStrong the same at Ksolo alone ($psLowRatio) -->
         <library name="Helpers" purpose="include_actions">
           <actions>
             <set_value name="$psHelpers" exact="[]" />
             <set_value name="$psNearestIdle" exact="null" />
             <set_value name="$psNearestIdleDist" exact="null" />
+            <set_value name="$psHoRatio" exact="null" />
+            <set_value name="$psLowIdle" exact="null" />
+            <set_value name="$psLowIdleDist" exact="null" />
+            <set_value name="$psLowStrong" exact="null" />
+            <set_value name="$psLowStrongDist" exact="null" />
+            <set_value name="$psLowRatio" exact="null" />
+            <set_value name="$psHoTierV" exact="if @$psHoTier != null then $psHoTier else 0" />
             <set_value name="$psPeersN" exact="0" />
             <set_value name="$psIdleN" exact="0" />
             <set_value name="$psBusyN" exact="0" />
@@ -406,11 +511,33 @@
                 <set_value name="$psMulti" exact="false" />
                 <include_actions ref="Eligible" />
                 <do_if value="$psOk">
-                  <do_if value="$psNearestIdle == null or $psHD lt $psNearestIdleDist">
+                  <set_value name="$psHTierV" exact="if @$psHTier != null then $psHTier else 0" />
+                  <set_value name="$psHoOk" exact="true" />
+                  <set_value name="$psHoR" exact="null" />
+                  <do_if value="@$psHoStrong and $psHTierV le 2 and $psHTierV le $psHoTierV">
+                    <set_value name="$psPwF" exact="$psH" />
+                    <set_value name="$psPwE" exact="$psHE" />
+                    <include_actions ref="FleetPower" />
+                    <set_value name="$psHoOk" exact="$psPower ge $ksolo * $psGroup" />
+                    <set_value name="$psHoR" exact="$psPower / $psGroup" />
+                  </do_if>
+                  <do_if value="$psHoOk and $psHTierV le 2 and $psHTierV le $psHoTierV and ($psNearestIdle == null or $psHD lt $psNearestIdleDist)">
                     <set_value name="$psNearestIdle" exact="$psH" />
                     <set_value name="$psNearestIdleDist" exact="$psHD" />
+                    <set_value name="$psHoRatio" exact="$psHoR" />
                   </do_if>
-                  <do_if value="$psHE.$share">
+                  <do_if value="$psHTierV lt $psHoTierV and $psHTierV le 2">
+                    <do_if value="$psLowIdle == null or $psHD lt $psLowIdleDist">
+                      <set_value name="$psLowIdle" exact="$psH" />
+                      <set_value name="$psLowIdleDist" exact="$psHD" />
+                    </do_if>
+                    <do_if value="$psHoOk and ($psLowStrong == null or $psHD lt $psLowStrongDist)">
+                      <set_value name="$psLowStrong" exact="$psH" />
+                      <set_value name="$psLowStrongDist" exact="$psHD" />
+                      <set_value name="$psLowRatio" exact="$psHoR" />
+                    </do_if>
+                  </do_if>
+                  <do_if value="$psHE.$share and ($psHTierV le 2 or @$psHelpAnchor)">
                     <append_to_list name="$psHelpers" exact="$psH" />
                   </do_if>
                 </do_if>
@@ -419,6 +546,10 @@
             <remove_value name="$psH" />
             <remove_value name="$psHE" />
             <remove_value name="$psHD0" />
+            <remove_value name="$psHTierV" />
+            <remove_value name="$psHoTierV" />
+            <remove_value name="$psHoOk" />
+            <remove_value name="$psHoR" />
           </actions>
         </library>
 
@@ -449,24 +580,45 @@
           </actions>
         </library>
 
-        <!-- $psT, $psTE: releases the pledged fleets together once their power with the committed one reaches Kmin x group; $psReleased; the asker $psF gets $psSkips with its answer -->
+        <!-- $psT, $psTE: releases the pledged fleets together once their power with the committed one reaches Kmin x group; $psReleased; the asker $psF gets $psSkips with its answer.
+             A SizeTier 4 pledge is dropped; a tier 3 one goes only with an engaged fleet or a released one of a lower tier -->
         <library name="Release" purpose="include_actions">
           <actions>
             <set_value name="$psReleased" exact="false" />
             <do_if value="$psTE.$pledged.count gt 0">
               <include_actions ref="GroupEval" />
               <set_value name="$psRlPower" exact="0.0" />
+              <set_value name="$psRlUpPower" exact="0.0" />
               <set_value name="$psRlKeep" exact="[]" />
+              <set_value name="$psRlUp" exact="[]" />
               <do_for_each name="$psRl" in="$psTE.$pledged">
                 <do_if value="$psB.$fleets.{$psRl}? and $psRl.exists and $psRl.isoperational and @$psB.$fleets.{$psRl}.$state == 'idle' and $psRl.sector == $psT.sector">
-                  <set_value name="$psPwF" exact="$psRl" />
-                  <set_value name="$psPwE" exact="$psB.$fleets.{$psRl}" />
-                  <include_actions ref="FleetPower" />
-                  <set_value name="$psRlPower" operation="add" exact="$psPower" />
-                  <append_to_list name="$psRlKeep" exact="$psRl" />
+                  <set_value name="$psSgF" exact="$psRl" />
+                  <include_actions ref="SizeTier" />
+                  <do_if value="$psSgTier lt 4">
+                    <set_value name="$psPwF" exact="$psRl" />
+                    <set_value name="$psPwE" exact="$psB.$fleets.{$psRl}" />
+                    <include_actions ref="FleetPower" />
+                    <do_if value="$psSgTier == 3">
+                      <set_value name="$psRlUpPower" operation="add" exact="$psPower" />
+                      <append_to_list name="$psRlUp" exact="$psRl" />
+                    </do_if>
+                    <do_else>
+                      <set_value name="$psRlPower" operation="add" exact="$psPower" />
+                      <append_to_list name="$psRlKeep" exact="$psRl" />
+                    </do_else>
+                  </do_if>
                 </do_if>
               </do_for_each>
-              <set_value name="$psTE.$pledged" exact="$psRlKeep" />
+              <set_value name="$psRlAll" exact="$psRlKeep.clone" />
+              <do_for_each name="$psRl" in="$psRlUp">
+                <append_to_list name="$psRlAll" exact="$psRl" />
+              </do_for_each>
+              <set_value name="$psTE.$pledged" exact="$psRlAll" />
+              <do_if value="$psTE.$engaged.count gt 0 or $psRlKeep.count gt 0">
+                <set_value name="$psRlKeep" exact="$psRlAll" />
+                <set_value name="$psRlPower" operation="add" exact="$psRlUpPower" />
+              </do_if>
               <do_for_each name="$psRl" in="$psTE.$engaged">
                 <do_if value="$psB.$fleets.{$psRl}? and $psRl.exists">
                   <set_value name="$psPwF" exact="$psRl" />
@@ -490,7 +642,10 @@
                 <set_value name="$psReleased" exact="true" />
               </do_if>
               <remove_value name="$psRlPower" />
+              <remove_value name="$psRlUpPower" />
               <remove_value name="$psRlKeep" />
+              <remove_value name="$psRlUp" />
+              <remove_value name="$psRlAll" />
               <remove_value name="$psRl" />
             </do_if>
           </actions>
@@ -513,7 +668,7 @@
           </actions>
         </library>
 
-        <!-- $psF the asker, $psFE, $psT, $psTE: $psWhy in yield, solo, handoff, join, help, hold and $psRule; fills the numbers the coord line prints -->
+        <!-- $psF the asker, $psFE, $psT, $psTE: $psWhy in size, yield, solo, handoff, join, help, hold and $psRule, the asker's SizeTier as $psVdTier; fills the numbers the coord line prints -->
         <library name="Verdict" purpose="include_actions">
           <actions>
             <set_value name="$psRule" exact="''" />
@@ -535,17 +690,30 @@
             <set_value name="$psTakeover" exact="false" />
             <set_value name="$psVdFS" exact="if $psV900 and @$psF.unboostedmaxspeed != null then @$psF.unboostedmaxspeed else @$psF.maxspeed" />
             <set_value name="$psVdTS" exact="if $psV900 and @$psT.unboostedmaxspeed != null then @$psT.unboostedmaxspeed else @$psT.maxspeed" />
+            <set_value name="$psSgF" exact="$psF" />
+            <include_actions ref="SizeTier" />
+            <set_value name="$psVdTier" exact="$psSgTier" />
+            <set_value name="$psVdFit" exact="$psSgFit" />
+            <set_value name="$psVdCount" exact="$psSgCount" />
+            <do_if value="$psVdTier == 4">
+              <set_value name="$psWhy" exact="'size'" />
+              <set_value name="$psRule" exact="'gap'" />
+            </do_if>
+            <do_elseif value="$psVdTier == 3 and not $psAnchor">
+              <set_value name="$psWhy" exact="'size'" />
+              <set_value name="$psRule" exact="'anchor'" />
+            </do_elseif>
             <!-- the scan's busy pre-filter again: the target may have turned busy after the ship filtered -->
-            <do_if value="$psPolicy and $psOthers gt 0 and $psDist gt $reach">
+            <do_elseif value="$psPolicy and $psOthers gt 0 and $psDist gt $reach">
               <set_value name="$psWhy" exact="'yield'" />
               <set_value name="$psRule" exact="'reach'" />
-            </do_if>
+            </do_elseif>
             <do_elseif value="$psPolicy and $psOthers gt 0 and $psDist gt $radius and @$psVdTS != null and @$psVdFS != null and $psVdFS lt $psVdTS * $speedFactor">
               <set_value name="$psWhy" exact="'yield'" />
               <set_value name="$psRule" exact="'speed'" />
             </do_elseif>
-            <!-- an exclusive target stays with the nearest fleet: a farther one on it is released, else vanilla's self-defence takes it from the asker -->
-            <do_elseif value="$psOthers gt 0 and ($psExcl or not $psFE.$share) and $psDist lt $psSameNear - $handoffMargin">
+            <!-- an exclusive target stays with the nearest fleet: a farther one on it is released, else vanilla's self-defence takes it from the asker; only a fleet that fits takes one over -->
+            <do_elseif value="$psOthers gt 0 and ($psExcl or not $psFE.$share) and $psVdTier == 0 and $psDist lt $psSameNear - $handoffMargin">
               <set_value name="$psWhy" exact="'solo'" />
               <set_value name="$psRule" exact="'nearer'" />
               <set_value name="$psTakeover" exact="true" />
@@ -565,18 +733,44 @@
               <include_actions ref="FleetPower" />
               <set_value name="$psRatio" exact="if $psGroup gt 0 then $psPower / $psGroup else -1" />
               <set_value name="$psRatioAll" exact="if $psGroup gt 0 then ($psPower + $psCommitted) / $psGroup else -1" />
+              <!-- a hand-off goes only to a fleet strong enough alone, as the asker is, and no worse a fit -->
+              <set_value name="$psHoStrong" exact="$psGroup gt 0" />
+              <set_value name="$psHoPower" exact="$psPower" />
+              <set_value name="$psHoTier" exact="$psVdTier" />
+              <set_value name="$psHelpAnchor" exact="true" />
               <include_actions ref="Helpers" />
+              <set_value name="$psPower" exact="$psHoPower" />
+              <set_value name="$psHoStrong" exact="false" />
+              <set_value name="$psHoTier" exact="null" />
+              <set_value name="$psHelpAnchor" exact="false" />
               <!-- a yield to a farther peer would leak a close target to vanilla's attacked response -->
               <do_if value="$psOthers gt 0 and $psSameNear lt $psDist and $psCommittedNear ge $ksolo * $psGroup">
                 <set_value name="$psWhy" exact="'yield'" />
               </do_if>
+              <!-- a better fit gets the target first when strong enough alone; a tier 2 asker leaves it to any free better fit -->
+              <do_elseif value="$psVdTier gt 0 and $psLowStrong != null">
+                <set_value name="$psWhy" exact="'handoff'" />
+                <set_value name="$psRule" exact="'tier'" />
+                <set_value name="$psNearestIdle" exact="$psLowStrong" />
+                <set_value name="$psNearestIdleDist" exact="$psLowStrongDist" />
+                <set_value name="$psHoRatio" exact="$psLowRatio" />
+              </do_elseif>
+              <do_elseif value="$psVdTier == 2 and $psLowIdle != null">
+                <set_value name="$psWhy" exact="'size'" />
+                <set_value name="$psRule" exact="'tier'" />
+              </do_elseif>
               <do_elseif value="$psGroup le 0 or $psRatio ge $ksolo">
                 <set_value name="$psWhy" exact="if $psNearestIdle != null and $psNearestIdleDist lt $psDist - $handoffMargin then 'handoff' else 'solo'" />
+                <!-- tier 3 goes only beside the fleet already on it -->
+                <do_if value="$psWhy == 'solo' and $psVdTier == 3">
+                  <set_value name="$psWhy" exact="'join'" />
+                  <set_value name="$psRule" exact="'anchor'" />
+                </do_if>
                 <!-- enough alone and nearer than every fleet on it: those are released, as on an exclusive target -->
-                <do_if value="$psWhy == 'solo' and $psOthers gt 0 and $psDist lt $psSameNear - $handoffMargin">
+                <do_elseif value="$psWhy == 'solo' and $psVdTier == 0 and $psOthers gt 0 and $psDist lt $psSameNear - $handoffMargin">
                   <set_value name="$psRule" exact="'nearer'" />
                   <set_value name="$psTakeover" exact="true" />
-                </do_if>
+                </do_elseif>
               </do_elseif>
               <do_elseif value="$psOthers gt 0 and $psRatioAll ge $ksolo and $psFE.$share and $psAllShare">
                 <set_value name="$psWhy" exact="'join'" />
@@ -634,7 +828,7 @@
         <!-- the calibration line, in the ship's column so the scanner attributes it to the fleet -->
         <library name="CoordLine" purpose="include_actions">
           <actions>
-            <debug_text text="'PS1|%s|%s|%s|%s|coord|id=%s|tclass=%s|tdist=%s|tspeed=%s|foes=%s|ffast=%s|group=%s|power=%s|ospeed=%s|ratio=%s|peers=%s|pidle=%s|pbusy=%s|psame=%s|pnear=%s|why=%s|rule=%s|cratio=%s|helpers=%s|snear=%s|ncratio=%s|policy=%s|src=%s|rall=%s|go=%s|rej=%s|far=%s'.[
+            <debug_text text="'PS1|%s|%s|%s|%s|coord|id=%s|tclass=%s|tdist=%s|tspeed=%s|foes=%s|ffast=%s|group=%s|power=%s|ospeed=%s|ratio=%s|peers=%s|pidle=%s|pbusy=%s|psame=%s|pnear=%s|why=%s|rule=%s|cratio=%s|helpers=%s|snear=%s|ncratio=%s|policy=%s|src=%s|rall=%s|go=%s|rej=%s|far=%s|gmax=%s|hto=%s|hratio=%s|gtopn=%s|tier=%s|fit=%s|swarm=%s'.[
               player.age, $psF.debugname, $psF.class, @$psF.sector.debugname,
               $psT.debugname, $psT.class, @$psDist,
               if $psV900 and @$psT.unboostedmaxspeed != null then @$psT.unboostedmaxspeed else @$psT.maxspeed,
@@ -643,12 +837,17 @@
               @$psRatio, @$psPeersN, @$psIdleN, @$psBusyN, @$psOthers, @$psNearAny, @$psWhy, @$psRule,
               if @$psGroup gt 0 then $psCommitted / $psGroup else -1, @$psHelpers.count, @$psSameNear,
               if @$psGroup gt 0 then $psCommittedNear / $psGroup else -1,
-              if $psPolicy then 'on' else 'off', @$psSrc, @$psRatioAll, @$psGo.count, @$psRej, if @$psFarUsed then 1 else 0
+              if $psPolicy then 'on' else 'off', @$psSrc, @$psRatioAll, @$psGo.count, @$psRej, if @$psFarUsed then 1 else 0,
+              @$psTE.$rank, if @$psWhy == 'handoff' then @$psNearestIdle.idcode else '', if @$psWhy == 'handoff' then @$psHoRatio else '',
+              @$psTE.$rankN, @$psVdTier, @$psVdFit, @$psVdCount
             ]" chance="$debugChance" />
             <!-- response-only fields: the next ask or tick line must not repeat them -->
             <remove_value name="$psGo" />
             <remove_value name="$psRej" />
             <remove_value name="$psFarUsed" />
+            <remove_value name="$psVdTier" />
+            <remove_value name="$psVdFit" />
+            <remove_value name="$psVdCount" />
           </actions>
         </library>
 
@@ -673,7 +872,7 @@
         </library>
 
         <!-- every message from an order script -->
-        <cue name="Board" instantiate="true" version="8">
+        <cue name="Board" instantiate="true" version="12">
           <conditions>
             <event_object_signalled object="player.entity" param="'ProtectSector.Board'" />
             <check_value value="@event.param2.exists and @event.param3.$op != null" />
@@ -700,7 +899,8 @@
                 <set_value name="$psRebreak" exact="(@$psP.$state == 'engaged' or $psOp == 'hb') and @$psT.exists and @$psFE.$brokeOff == $psT and player.age - @$psFE.$brokeOffAt le $resendTtl and $psB.$targets.{$psT}? and ($psB.$targets.{$psT}.$engaged.count gt 0 or $psB.$targets.{$psT}.$assigned.count gt 0)" />
                 <do_if value="$psRebreak">
                   <set_value name="$psFE.$brokeOff" exact="null" />
-                  <signal_objects object="$psF" param="'ProtectSector.BreakOff'" param2="$psT" param3="'nearer'" />
+                  <!-- delayed: a reply to a heartbeat sent now lands inside the fleet's own handler and is lost -->
+                  <signal_objects object="$psF" param="'ProtectSector.BreakOff'" param2="$psT" param3="'nearer'" delay="10ms" />
                   <debug_text text="'PS1|%s|%s|%s|%s|resend|kind=breakoff|target=%s|why=nearer|op=%s|age=%s'.[player.age, $psF.debugname, $psF.class, @$psF.sector.debugname, $psT.debugname, $psOp, player.age - $psFE.$brokeOffAt]" chance="$debugChance" />
                 </do_if>
                 <!-- a marked fleet's own fight holds no target for the others -->
@@ -729,13 +929,33 @@
                     <include_actions ref="CoordLine" />
                     <set_value name="$psFuYield" exact="$psWhy == 'yield'" />
                   </do_if>
-                  <do_if value="$psFuYield">
+                  <!-- a class gap takes the fleet off whatever brought it there: a follow-up never asks, and the group or the fleets beside it may have changed since the pick -->
+                  <set_value name="$psSizeOff" exact="false" />
+                  <set_value name="$psSgTier" exact="null" />
+                  <do_if value="not $psFuYield">
+                    <set_value name="$psSgF" exact="$psF" />
+                    <include_actions ref="SizeTier" />
+                    <set_value name="$psSizeOff" exact="$psSgTier == 4" />
+                    <do_if value="$psSgTier == 3">
+                      <set_value name="$psOffTier" exact="$psSgTier" />
+                      <include_actions ref="Peers" />
+                      <set_value name="$psSgTier" exact="$psOffTier" />
+                      <set_value name="$psSizeOff" exact="not $psAnchor" />
+                      <remove_value name="$psOffTier" />
+                    </do_if>
+                  </do_if>
+                  <do_if value="$psFuYield or $psSizeOff">
                     <set_value name="$psFE.$state" exact="'idle'" />
                     <set_value name="$psFE.$target" exact="null" />
                     <set_value name="$psFE.$since" exact="player.age" />
-                    <set_value name="$psFE.$brokeOff" exact="$psT" />
-                    <set_value name="$psFE.$brokeOffAt" exact="player.age" />
-                    <signal_objects object="$psF" param="'ProtectSector.BreakOff'" param2="$psT" param3="'nearer'" />
+                    <do_if value="$psFuYield">
+                      <set_value name="$psFE.$brokeOff" exact="$psT" />
+                      <set_value name="$psFE.$brokeOffAt" exact="player.age" />
+                    </do_if>
+                    <signal_objects object="$psF" param="'ProtectSector.BreakOff'" param2="$psT" param3="if $psSizeOff then 'size' else 'nearer'" delay="10ms" />
+                    <do_if value="$psSizeOff">
+                      <debug_text text="'PS1|%s|%s|%s|%s|sizeoff|target=%s|tclass=%s|gmax=%s|op=%s|why=%s|tier=%s|gtopn=%s'.[player.age, $psF.debugname, $psF.class, @$psF.sector.debugname, $psT.debugname, $psT.class, @$psTE.$rank, $psOp, @$psP.$why, $psSgTier, @$psTE.$rankN]" chance="$debugChance" />
+                    </do_if>
                   </do_if>
                   <do_else>
                     <do_if value="not $psTE.$engaged.indexof.{$psF}">
@@ -782,7 +1002,8 @@
                         <set_value name="$psHE" exact="$psFE" />
                         <set_value name="$psMulti" exact="true" />
                         <include_actions ref="Eligible" />
-                        <do_if value="$psOk">
+                        <!-- SizeTier 3 only beside a fleet already fighting it -->
+                        <do_if value="$psOk and ($psHTier != 3 or $psTE.$engaged.count gt 0)">
                           <set_value name="$psHelpers" exact="[$psF]" />
                           <set_value name="$psF" exact="null" />
                           <include_actions ref="OfferHelp" />
@@ -831,8 +1052,8 @@
                 </do_elseif>
               </do_elseif>
 
-              <!-- a marked fleet gets no target, not even from its own search; the candidates go back as skips -->
-              <do_elseif value="$psOp == 'ask' and $psB.$marked.{$psF}?">
+              <!-- a marked fleet gets no target, not even from its own search; with coordination off only a no weapons or ammo mark counts; the candidates go back as skips -->
+              <do_elseif value="$psOp == 'ask' and $psB.$marked.{$psF}? and ($psPolicy or $noDpsWhys.indexof.{$psB.$marked.{$psF}.$why})">
                 <include_actions ref="Detach" />
                 <set_value name="$psFE.$state" exact="'idle'" />
                 <set_value name="$psFE.$target" exact="null" />
@@ -913,12 +1134,13 @@
                         <set_value name="$psAnF" exact="$psNearestIdle" />
                         <set_value name="$psAnT" exact="$psT" />
                         <set_value name="$psAnWhy" exact="'assign'" />
-                        <set_value name="$psAnRule" exact="'nearer'" />
+                        <set_value name="$psAnRule" exact="if $psRule == 'tier' then 'tier' else 'nearer'" />
                         <set_value name="$psAnFrom" exact="$psF" />
                         <set_value name="$psAnVictim" exact="null" />
                         <set_value name="$psAnSkips" exact="[]" />
                         <include_actions ref="Answer" />
-                        <append_to_list name="$psSkips" exact="[$psT, 'yield']" />
+                        <!-- a tier hand-off keeps the asker off the target for the size stamp, not the yield one -->
+                        <append_to_list name="$psSkips" exact="[$psT, if $psRule == 'tier' then 'size' else 'yield']" />
                       </do_elseif>
                       <do_elseif value="$psWhy == 'hold'">
                         <do_if value="$psFE.$share and not $psTE.$pledged.indexof.{$psF}">
@@ -950,7 +1172,7 @@
         </cue>
 
         <!-- the protect response: one evaluation per hit, the responders chosen by their own settings -->
-        <cue name="Attacked" instantiate="true" version="5">
+        <cue name="Attacked" instantiate="true" version="6">
           <conditions>
             <event_player_owned_attacked />
             <check_value value="@player.entity.$ProtectSectorBoard.$fleets.keys.count gt 0" />
@@ -980,11 +1202,10 @@
             <set_value name="$psHere" exact="0" />
             <set_value name="$psRej" exact="''" />
             <set_value name="$psFar" exact="[]" />
-            <set_value name="$psFarNearest" exact="null" />
-            <set_value name="$psFarNearestD" exact="null" />
             <set_value name="$psFarUsed" exact="false" />
             <set_value name="$psPreempt" exact="$psPreemptOn" />
             <set_value name="$psPreN" exact="0" />
+            <set_value name="$psRespTier" exact="table[]" />
             <do_for_each name="$psH" valuename="$psHE" in="$psB.$fleets">
               <do_if value="not $psHE.$protect">
                 <set_value name="$psNo" exact="'noprotect'" />
@@ -995,24 +1216,21 @@
               <do_else>
                 <set_value name="$psMulti" exact="false" />
                 <include_actions ref="Eligible" />
+                <!-- SizeTier 3 goes only beside a fleet on the target, and a response target has none -->
+                <do_if value="$psHTier == 3">
+                  <set_value name="$psNo" exact="'anchor'" />
+                </do_if>
+                <!-- not $psHTier != null: tier 0 compares equal to null -->
+                <do_elseif value="$psNo == null or $psNo == 'reach' or $psNo == 'speed'">
+                  <set_value name="$psRespTier.{$psH}" exact="$psHTier" />
+                </do_elseif>
               </do_else>
               <do_if value="$psNo == null">
                 <append_to_list name="$psResp" exact="$psH" />
-                <!-- a fleet taken off its own pick goes only when nearer than every idle one by the hand-off margin -->
-                <set_value name="$psHR" exact="if $psHE.$state == 'engaged' then $psHD + $handoffMargin else $psHD" />
-                <do_if value="$psNearest == null or $psHR lt $psNearestR">
-                  <set_value name="$psNearest" exact="$psH" />
-                  <set_value name="$psNearestD" exact="$psHD" />
-                  <set_value name="$psNearestR" exact="$psHR" />
-                </do_if>
               </do_if>
               <do_elseif value="($psNo == 'reach' or $psNo == 'speed') and $psHE.$state == 'idle'">
                 <!-- past reach or too slow only ranks a fleet: it goes when no other can -->
                 <append_to_list name="$psFar" exact="$psH" />
-                <do_if value="$psFarNearest == null or $psHD lt $psFarNearestD">
-                  <set_value name="$psFarNearest" exact="$psH" />
-                  <set_value name="$psFarNearestD" exact="$psHD" />
-                </do_if>
               </do_elseif>
               <!-- the fleets in the target's sector that stayed out, with the first rule each failed -->
               <do_if value="@$psH.sector == $psT.sector">
@@ -1025,10 +1243,37 @@
             <set_value name="$psPreempt" exact="false" />
             <do_if value="$psResp.count == 0 and $psFar.count gt 0">
               <set_value name="$psResp" exact="$psFar" />
-              <set_value name="$psNearest" exact="$psFarNearest" />
-              <set_value name="$psNearestD" exact="$psFarNearestD" />
               <set_value name="$psFarUsed" exact="true" />
             </do_if>
+            <!-- only the best fitting SizeTier present responds; the nearest of those leads -->
+            <set_value name="$psRespMin" exact="5" />
+            <do_for_each name="$psRp" in="$psResp">
+              <do_if value="$psRespTier.{$psRp} lt $psRespMin">
+                <set_value name="$psRespMin" exact="$psRespTier.{$psRp}" />
+              </do_if>
+            </do_for_each>
+            <set_value name="$psRespKeep" exact="[]" />
+            <do_for_each name="$psRp" in="$psResp">
+              <do_if value="$psRespTier.{$psRp} == $psRespMin">
+                <append_to_list name="$psRespKeep" exact="$psRp" />
+                <!-- a fleet taken off its own pick goes only when nearer than every idle one by the hand-off margin -->
+                <set_value name="$psHD" exact="$psRp.distanceto.{$psT}" />
+                <set_value name="$psHR" exact="if $psB.$fleets.{$psRp}.$state == 'engaged' then $psHD + $handoffMargin else $psHD" />
+                <do_if value="$psNearest == null or $psHR lt $psNearestR">
+                  <set_value name="$psNearest" exact="$psRp" />
+                  <set_value name="$psNearestD" exact="$psHD" />
+                  <set_value name="$psNearestR" exact="$psHR" />
+                </do_if>
+              </do_if>
+              <do_elseif value="not $psFarUsed">
+                <set_value name="$psRej" exact="'%s%s%s:tier'.[$psRej, if $psRej == '' then '' else ',', @$psRp.idcode]" />
+              </do_elseif>
+            </do_for_each>
+            <set_value name="$psResp" exact="$psRespKeep" />
+            <set_value name="$psVdTier" exact="if $psResp.count gt 0 then $psRespMin else null" />
+            <remove_value name="$psRespKeep" />
+            <remove_value name="$psRespTier" />
+            <remove_value name="$psRespMin" />
             <set_value name="$psSrc" exact="'resp'" />
             <set_value name="$psWhy" exact="'none'" />
             <set_value name="$psRule" exact="''" />
@@ -1150,7 +1395,7 @@
         </cue>
 
         <!-- the board's own clock: prune, the group of every engaged target, help and break-off, pledges, open requests -->
-        <cue name="Tick" instantiate="true" checkinterval="30s" version="3">
+        <cue name="Tick" instantiate="true" checkinterval="30s" version="4">
           <conditions>
             <check_value value="@player.entity.$ProtectSectorBoard.$fleets.keys.count gt 0" />
           </conditions>
@@ -1197,10 +1442,11 @@
                   <set_value name="$psFE" exact="$psB.$fleets.{$psF}" />
                   <set_value name="$psDist" exact="$psF.distanceto.{$psT}" />
                   <include_actions ref="GroupEval" />
+                  <!-- Peers first: its own FleetPower calls overwrite $psPower -->
+                  <include_actions ref="Peers" />
                   <set_value name="$psPwF" exact="$psF" />
                   <set_value name="$psPwE" exact="$psFE" />
                   <include_actions ref="FleetPower" />
-                  <include_actions ref="Peers" />
                   <set_value name="$psRatio" exact="if $psGroup gt 0 then $psPower / $psGroup else -1" />
                   <set_value name="$psRatioAll" exact="if $psGroup gt 0 then ($psPower + $psCommitted) / $psGroup else -1" />
                   <set_value name="$psTE.$ratio" exact="$psRatioAll" />
@@ -1208,7 +1454,9 @@
                     <do_if value="$psTE.$help == null">
                       <set_value name="$psWhy" exact="'hbhelp'" />
                       <set_value name="$psRule" exact="''" />
+                      <set_value name="$psHelpAnchor" exact="true" />
                       <include_actions ref="Helpers" />
+                      <set_value name="$psHelpAnchor" exact="false" />
                       <include_actions ref="OfferHelp" />
                       <include_actions ref="CoordLine" />
                     </do_if>

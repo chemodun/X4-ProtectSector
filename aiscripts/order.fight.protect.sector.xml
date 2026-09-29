@@ -381,6 +381,7 @@
         <set_value name="$coordSkipped" exact="0" />
         <set_value name="$coordDistSkipped" exact="0" />
         <set_value name="$coordSpeedSkipped" exact="0" />
+        <set_value name="$classSkipped" exact="0" />
         <do_if value="@$targetSkip.keys.count gt 0">
           <do_for_each name="$fogShip" in="$targetSkip.keys.list">
             <do_if value="not @$fogShip.exists or $targetSkip.{$fogShip} le player.age">
@@ -880,8 +881,28 @@
         </do_else>
         <remove_value name="$psBoardForce" />
       </actions>
-      <!-- a candidate the coordinator refused stays out of the rescan and the search for 30 s; the follow-up and the response do not use it -->
+      <!-- a candidate the coordinator refused stays out of the rescan and the search for its stamp; the follow-up and the response do not use it -->
       <actions name="PsCoordSkipFilter">
+        <!-- a ship the scan climbs from to a commander of a class not attacked stays out; the same climb as the scan's -->
+        <do_for_each name="$fogShip" in="$ships.clone">
+          <set_value name="$csT" exact="$fogShip" />
+          <set_value name="$csOk" exact="true" />
+          <do_while value="$csOk and $csT.commander? and $csT.commander.canbeattacked and ($csT.commander.sector == $csT.sector) and $csT.commander.isclass.ship">
+            <do_if value="$csT.commander.isclass.{$classesAcceptableForAttack}">
+              <set_value name="$csT" exact="$csT.commander" />
+            </do_if>
+            <do_else>
+              <set_value name="$csOk" exact="false" />
+            </do_else>
+          </do_while>
+          <do_if value="not $csOk">
+            <remove_from_list name="$ships" exact="$fogShip" />
+            <set_value name="$classSkipped" operation="add" />
+          </do_if>
+        </do_for_each>
+        <remove_value name="$csT" />
+        <remove_value name="$csOk" />
+        <remove_value name="$fogShip" />
         <do_if value="@$coordSkip.keys.count gt 0">
           <do_for_each name="$fogShip" in="$coordSkip.keys.list">
             <do_if value="not @$fogShip.exists or $coordSkip.{$fogShip} le player.age">
@@ -892,6 +913,20 @@
               <set_value name="$coordSkipped" operation="add" />
             </do_elseif>
           </do_for_each>
+          <!-- a ship the scan climbs from to a refused commander stays out too; the same climb as the scan's -->
+          <do_if value="$coordSkip.keys.count gt 0">
+            <do_for_each name="$fogShip" in="$ships.clone">
+              <set_value name="$csT" exact="$fogShip" />
+              <do_while value="$csT.commander? and $csT.commander.canbeattacked and ($csT.commander.sector == $csT.sector) and $csT.commander.isclass.ship and $csT.commander.isclass.{$classesAcceptableForAttack}">
+                <set_value name="$csT" exact="$csT.commander" />
+              </do_while>
+              <do_if value="$csT != $fogShip and $coordSkip.{$csT}?">
+                <remove_from_list name="$ships" exact="$fogShip" />
+                <set_value name="$coordSkipped" operation="add" />
+              </do_if>
+            </do_for_each>
+            <remove_value name="$csT" />
+          </do_if>
           <remove_value name="$fogShip" />
         </do_if>
         <!-- a commander's candidate past reach, or uncatchable past the foe radius, is left to the fleet already on it; an unattended one still goes to the coordinator -->
@@ -1139,12 +1174,15 @@
           <do_if value="not $coordSkip?">
             <set_value name="$coordSkip" exact="table[]" />
           </do_if>
+          <set_value name="$psSkipS" exact="if @player.entity.$ProtectSectorConfig.$coordRefusedSkip gt 0 then player.entity.$ProtectSectorConfig.$coordRefusedSkip else 30" />
           <do_for_each name="$psSkip" in="event.param3.$skips">
             <do_if value="@$psSkip.{1}.exists">
-              <set_value name="$coordSkip.{$psSkip.{1}}" exact="player.age + (if @player.entity.$ProtectSectorConfig.$coordRefusedSkip gt 0 then player.entity.$ProtectSectorConfig.$coordRefusedSkip else 30) * 1s" />
+              <!-- a class refusal holds at least 120 s: the group's class seldom changes sooner -->
+              <set_value name="$coordSkip.{$psSkip.{1}}" exact="player.age + (if @$psSkip.{2} == 'size' and $psSkipS lt 120 then 120 else $psSkipS) * 1s" />
             </do_if>
           </do_for_each>
           <remove_value name="$psSkip" />
+          <remove_value name="$psSkipS" />
         </do_if>
         <do_if value="@event.param2 != null">
           <set_value name="$psAnswer" exact="event.param2" />
@@ -1445,7 +1483,7 @@
         <do_if value="$ships.count == 0">
           <set_value name="this.$protectSectorStats.$scansEmpty" operation="add" />
         </do_if>
-        <set_value name="$tel" exact="'rescan|count=%s|n=%s|top=%s|left=%s|cskip=%s|dskip=%s|sskip=%s'.[@$reScanCount, $ships.count, @$ships.{1}.debugname, @$idleTill - player.age, @$coordSkipped, @$coordDistSkipped, @$coordSpeedSkipped]" />
+        <set_value name="$tel" exact="'rescan|count=%s|n=%s|top=%s|left=%s|cskip=%s|dskip=%s|sskip=%s|clskip=%s'.[@$reScanCount, $ships.count, @$ships.{1}.debugname, @$idleTill - player.age, @$coordSkipped, @$coordDistSkipped, @$coordSpeedSkipped, @$classSkipped]" />
         <do_if value="@$reScanCount == 0">
           <include_interrupt_actions ref="Telemetry" />
         </do_if>
@@ -1713,24 +1751,26 @@
         <signal_objects object="this.assignedcontrolled" param="'ProtectSector.AttackHeartbeat'" param2="$attackHeartbeat" delay="60s" />
       </actions>
     </handler>
-    <!-- the coordinator breaks the fleet off a group grown past it, or (param3 'nearer') off a target a nearer fleet took or holds; the same exit as the heartbeat watchdog's -->
+    <!-- the coordinator breaks the fleet off a group grown past it, or (param3 'nearer') off a target a nearer fleet took or holds, or ('size') off a group out of its class range; the same exit as the heartbeat watchdog's -->
     <handler>
       <conditions>
         <event_object_signalled object="this.assignedcontrolled" param="'ProtectSector.BreakOff'" />
         <check_value value="@this.assignedcontrolled.order.id == 'ProtectSector'" />
-        <check_value value="@$isAttackingTarget or @event.param3 == 'nearer'" />
+        <check_value value="@$isAttackingTarget or @event.param3 == 'nearer' or @event.param3 == 'size'" />
         <check_value value="@$target != null and event.param2 == $target" />
       </conditions>
       <actions>
-        <set_value name="$psBoNearer" exact="@event.param3 == 'nearer'" />
+        <set_value name="$psBoNearer" exact="@event.param3 == 'nearer' or @event.param3 == 'size'" />
         <set_value name="$isAttackingTarget" exact="false" />
         <set_value name="$keepSubsTarget" exact="null" />
         <do_if value="$psBoNearer">
-          <!-- handed to a nearer fleet: no outcome on this record, and off the rescan like a refused candidate -->
+          <!-- handed to a nearer fleet or out of class range: no outcome on this record, and off the rescan like a refused candidate -->
           <do_if value="not $coordSkip?">
             <set_value name="$coordSkip" exact="table[]" />
           </do_if>
-          <set_value name="$coordSkip.{$target}" exact="player.age + (if @player.entity.$ProtectSectorConfig.$coordRefusedSkip gt 0 then player.entity.$ProtectSectorConfig.$coordRefusedSkip else 30) * 1s" />
+          <set_value name="$psSkipS" exact="if @player.entity.$ProtectSectorConfig.$coordRefusedSkip gt 0 then player.entity.$ProtectSectorConfig.$coordRefusedSkip else 30" />
+          <set_value name="$coordSkip.{$target}" exact="player.age + (if event.param3 == 'size' and $psSkipS lt 120 then 120 else $psSkipS) * 1s" />
+          <remove_value name="$psSkipS" />
           <include_interrupt_actions ref="PsStats" />
           <include_interrupt_actions ref="PsAttackClose" />
           <set_value name="$psField" exact="null" />
@@ -1745,9 +1785,9 @@
           <set_value name="$psField" exact="'$rangeBreaks'" />
           <include_interrupt_actions ref="PsTargetBreak" />
         </do_else>
-        <set_value name="$tel" exact="'watchdog|id=%s|why=%s|trigger=coordinator|dur=%s|to=search'.[@$target.debugname, if $psBoNearer then 'nearer' else 'grow', player.age - @$attackStartedAt]" />
+        <set_value name="$tel" exact="'watchdog|id=%s|why=%s|trigger=coordinator|dur=%s|to=search'.[@$target.debugname, if $psBoNearer then event.param3 else 'grow', player.age - @$attackStartedAt]" />
         <include_interrupt_actions ref="Telemetry" />
-        <set_value name="$searchReason" exact="if $psBoNearer then 'nearer' else 'grow'" />
+        <set_value name="$searchReason" exact="if $psBoNearer then event.param3 else 'grow'" />
         <remove_value name="$psBoNearer" />
         <abort_called_scripts resume="targetSearching" />
       </actions>
@@ -2607,6 +2647,7 @@
           <set_value name="$coordSkipped" exact="0" />
           <set_value name="$coordDistSkipped" exact="0" />
           <set_value name="$coordSpeedSkipped" exact="0" />
+          <set_value name="$classSkipped" exact="0" />
           <debug_text
             text="'ProtectSector [%s at %s, %s]: Response on attack by: %s. List of ships: %s. Target: %s'.
               [
@@ -2806,7 +2847,7 @@
           <set_value name="$psOpWhy" exact="if $faSkipped gt 0 then 'fireauth' else (if $homeSkipped gt 0 then 'sector' else 'scan')" />
           <include_interrupt_actions ref="PsBoardSend" />
         </do_if>
-        <set_value name="$tel" exact="'scan|src=%s|n=%s|checked=%s|top=%s|dist=%s|rel=%s|picked=%s|asked=%s|fogskip=%s|hardskip=%s|vskip=%s|cskip=%s|dskip=%s|sskip=%s|faskip=%s|homeskip=%s'.[if @$targetOnResponse then 'response' else (if @$scanSrc != null then $scanSrc else 'scan'), $ships.count, $indexShips - 1, @$ships.{1}.debugname, @$ships.{1}.distanceto.{this.assignedcontrolled}, @$ships.{1}.relationto.{this.owner}, @$target.debugname, $psCands.count, @$fogSkipped, @$hardSkipped, @$targetSkipped, @$coordSkipped, @$coordDistSkipped, @$coordSpeedSkipped, $faSkipped, $homeSkipped]" />
+        <set_value name="$tel" exact="'scan|src=%s|n=%s|checked=%s|top=%s|dist=%s|rel=%s|picked=%s|asked=%s|fogskip=%s|hardskip=%s|vskip=%s|cskip=%s|dskip=%s|sskip=%s|faskip=%s|homeskip=%s|clskip=%s'.[if @$targetOnResponse then 'response' else (if @$scanSrc != null then $scanSrc else 'scan'), $ships.count, $indexShips - 1, @$ships.{1}.debugname, @$ships.{1}.distanceto.{this.assignedcontrolled}, @$ships.{1}.relationto.{this.owner}, @$target.debugname, $psCands.count, @$fogSkipped, @$hardSkipped, @$targetSkipped, @$coordSkipped, @$coordDistSkipped, @$coordSpeedSkipped, $faSkipped, $homeSkipped, @$classSkipped]" />
         <include_interrupt_actions ref="Telemetry" />
         <clear_list list="$ships" />
         <remove_value name="$psCands" />

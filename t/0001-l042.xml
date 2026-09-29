@@ -201,6 +201,10 @@
       <t id="1463">The Protect Sector overview shows every fleet on the Protect Sector order: its statistics, its state on the fleet coordinator and its order settings.</t>
       <t id="1464">LSR</t>
       <t id="1465">Lost Ship Replacement</t>
+      <t id="1466">Ships per enemy L ship</t>
+      <t id="1467">A fleet led by an S ship joins a fight against a group with L ships only beside a fleet already on it, unless it brings at least this many armed ships for each L ship in the group. Used only while fleet coordination is on.</t>
+      <t id="1468">Ships per enemy XL ship</t>
+      <t id="1469">A fleet led by an M ship joins a fight against a group with XL ships only beside a fleet already on it, unless it brings at least this many armed M or bigger ships for each XL ship in the group. Used only while fleet coordination is on.</t>
       <t id="10001">Útok na stanici</t>
       <t id="10011">Experimentální příkaz k útoku pouze na stanice. K dispozici pouze pro L a XL lodě</t>
       <t id="20001">Inteligentní útok na stanici</t>
