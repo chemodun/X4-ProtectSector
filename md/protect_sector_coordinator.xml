@@ -50,7 +50,7 @@
             <!-- engagements an attack response never takes a fleet off -->
             <set_value name="$preemptKeep" exact="['resp', 'help', 'release']" />
             <!-- decline reasons that are the fleet's own, and how many in one order run mark it -->
-            <set_value name="$refusalWhys" exact="['skip', 'fog', 'scan']" />
+            <set_value name="$refusalWhys" exact="['skip', 'scan']" />
             <set_value name="$markRefusals" exact="5" />
             <!-- decline reasons that mark at once and clear themselves once the ship can fire -->
             <set_value name="$noDpsWhys" exact="['noweapons', 'noammo']" />
