@@ -2793,6 +2793,8 @@
         <do_if value="$target == null and $psCands.count == 0">
           <set_value name="this.$protectSectorStats.$scansEmpty" operation="add" />
         </do_if>
+        <!-- the station branch waits for this ask's answer -->
+        <set_value name="$psAskWait" exact="$psCands.count gt 0 and $target == null and @this.assignedcontrolled.order.id == 'ProtectSector'" />
         <do_if value="$psCands.count gt 0">
           <set_value name="$psOp" exact="'ask'" />
           <include_interrupt_actions ref="PsBoardSend" />
@@ -2930,6 +2932,14 @@
 
       <label name="checkForEnemyStations" />
       <include_interrupt_actions ref="PsIdleClose" />
+
+      <!-- the coordinator answers within a frame: a ship it assigns wakes the fleet here, a refusal lets the wait run out -->
+      <do_if value="@$psAskWait and $attackStations">
+        <set_value name="$psAskWait" exact="false" />
+        <wait exact="1s" sinceversion="200" />
+        <set_value name="$tel" exact="'askwait|to=stations'" />
+        <include_interrupt_actions ref="Telemetry" />
+      </do_if>
 
       <do_if value="$attackStations">
 
