@@ -21,10 +21,14 @@ Compatible with `X4: Foundations 8.00` and upper. For `7.50` and `7.60` use the 
 
 ## Features
 
-- Always the closest possible target will be selected to attack.
+- Always the closest possible target will be selected to attack. After a kill, the rest of the same group comes first, see `Choosing targets`.
 - Several ships/fleets with one order can work in one sector or crossed sectors.
+- `Fleet coordination`: the fleets on the order in one sector pick their targets together, take on a group too strong for one fleet together, call for help and break off together.
+- The `Protect Sector overview` screen: the statistics of every fleet on the order with a history of up to 48 hours, its state on the fleet coordinator and its order settings.
 - `Mimic` order in a fleet is fully supported. But, again, not set single ship to mimic mode - use the fleet instead.
-- The `Lost Ship Replacement` feature is fully supported.
+- The `Lost Ship Replacement` feature is fully supported. When the fleet leader is lost, the subordinate the game promotes takes over the order and the fleet's `Lost Ship Replacement`.
+- The fire authorisation override from `Global Orders` is respected.
+- A ship without working weapons or ammunition does not fly at targets; it is reported instead.
 - The own (`Experimental`) order for station attacks is available.
 - The workaround for player ships repairing/restocking not only in current sector is implemented based on received damage sensitivity levels.
 
@@ -55,12 +59,16 @@ If you select not current sector, the ship will fly to the selected sector to so
 
 If enabled, hostile stations in the protected sector will be attacked by ship and fleet.
 
+A station the ship stopped attacking without destroying it is skipped for 30 minutes.
+
 #### Use "Coordinate attack"
 
 `Enabled` by default.
 
 If enabled, the ship will use the "Coordinate Attack" order to attack the stations. It will be used for the stations only, not for the ships.
 If disabled, the ship will use the usual "Attack" order to attack the stations.
+
+A ship with no subordinates able to join attacks the station with the usual "Attack" order anyway: the game's coordinated attack waits for the subordinates to take their positions, and without them it would never fire.
 
 #### Use experimental "Attack Station"
 
@@ -70,6 +78,8 @@ If enabled, the ship will use the Experimental "Attack Station" order to attack 
 Will work only if the ships in a fleet contains only `L` or `XL` classes only. Otherwise it will be de-selected together with "Attack stations" checkbox.
 
 For `L` only - four and more ships are recommended.
+
+When both station attack modes are selected, `Use "Coordinate attack"` is unchecked on order start and the experimental one is used.
 
 #### Common warning for station attacks
 
@@ -121,7 +131,7 @@ Please take in account -  when previous parameter is enabled, you can set this o
 If the `Attack only hostile targets` is disabled - the value can be set in between 0 and 30 (0 and -30 relation).
 **Use it carefully.**
 
-In that mode a target above `-25` relation is made hostile to the attacking ship only, and this is stronger than the fire authorisation override in `Global Orders`: the override does not stop such an attack. A target at `-25` and lower is attacked only when the override allows it.
+In that mode a target above `-25` relation is made hostile to the attacking ship only, and this is stronger than the fire authorisation override in `Global Orders`: the override does not stop such an attack. A target at `-25` and lower is attacked only when the override allows it, see `Fire authorisation override`.
 
 ### Protect our ships and stations in sector
 
@@ -181,7 +191,7 @@ If enabled, the ship will ignore blacklists when going to and protecting the `Ho
 
 `Disabled` by default.
 
-If enabled, the ship will try to park at position, set by next parameter.
+If enabled, the ship flies to the position set by the next parameter and stays there while idle. After a fight it returns there.
 
 ### Park exactly there
 
@@ -224,10 +234,11 @@ Each combination has its own slider, from `10%` to `100%` in steps of `5%`.
 
 ### Fleet overview
 
-Two sliders for the `Protect Sector overview` screen, opened from the right-click menu of a ship running the order, or from its own icon in the game's top menu row, right after `Map`.
+Settings for the `Protect Sector overview` screen, opened from the right-click menu of a ship running the order, or from its own icon in the game's top menu row, right after `Map`. The screen itself is described in `Protect Sector overview` below.
 
 - `History depth` - how many hours of 15-minute samples are kept for the screen, from `3` to `48`, default `24`. `0` turns the history off and drops what was recorded; the screen then shows the totals since the counters started.
 - `Auto-refresh` - how often the open screen fetches fresh numbers, from `30` seconds to `10` minutes in steps of `30` seconds, default `30` seconds. `0` leaves it to the `Refresh` button.
+- `Show the overview icon in the top menu` - on by default. Off, the icon leaves the top menu row and the screen opens from the right-click menu only.
 
 ### Fleet coordination
 
@@ -238,10 +249,18 @@ Every fleet running `Protect Sector` reports to one coordinator: what it is doin
 - a target that fleets nearer to it already handle with enough force is left to them; a fleet farther away than the leader does not count, so the leader attacks a close target itself rather than wait for it;
 - a target too far away, or too fast for the leader to catch, is left to the fleet already on it instead of being chased across the sector; a target no fleet is on is still taken;
 - a target a nearer idle fleet can take is handed to that fleet;
-- a fleet that does not share its target keeps it only while no other fleet is much nearer: the nearer fleet takes it over and the farther one is released;
+- a fleet that does not share its target keeps it only while no other fleet is much nearer: the nearer fleet takes it over and the farther one is released; a shared target is taken over the same way by a much nearer fleet strong enough to take it alone;
 - a group too strong for one fleet is taken on together: the leader goes and the idle fleets nearby are called in, or, when none can help, the fleets hold off and pledge their strength to the group; they are released together once enough of them have gathered, with one logbook entry and one notification per group per hour;
 - a fight that turns against the fleets on it calls for help once and, if none comes within a minute, they break off together;
 - when one of your ships or stations is attacked, the coordinator sends the nearest fleet that is strong enough, or two together, instead of waking every idle fleet in the sector; distance and speed only choose between the fleets, so a far or slower fleet still goes when no other can.
+
+Fleets are also matched to the size class (S, M, L, XL) of the biggest ship in a group, by the class of the fleet leader:
+
+- a leader within one class of it fits;
+- a leader three classes from it is never sent: an S fleet never goes to a group with an XL ship, an XL fleet never to S ships only;
+- a leader two classes from it fits when at least three of the fleet's armed ships, and at least half as many as the group has, are within one class of the group's biggest ship. Otherwise a bigger fleet goes only while no better fitting fleet in the sector is free, and a smaller one only beside a fleet already on the target, or when it brings enough armed ships for each enemy ship of the top class (`Ships per enemy L ship` and `Ships per enemy XL ship` below).
+
+A better fitting fleet strong enough alone gets the target first, and an attack response sends only the best fitting fleets. A fleet already fighting breaks off when its group changes so that it would no longer be sent there, for example when an XL ship joins the group an S fleet fights.
 
 With the option off, every fleet takes its own targets as before, and every idle fleet in the sector responds to an attack on your ships. `Share target with other fleets` keeps its meaning in both cases. The option applies at once, on every running order, without a restart.
 
@@ -255,6 +274,8 @@ The coordinator's own settings are on the `Protect Sector overview` screen, `Coo
 - `Max. distance to a target another fleet has` - default `100 km`: a fleet farther away leaves such a target to the fleet on it.
 - `Min. speed against a target another fleet has` - default `90 %` of the target's speed: past the group radius, a slower fleet leaves such a target to the fleet on it.
 - `Handoff margin` - default `5 km`: how much nearer a fleet must be to take a target over from another, or for a target to go to an idle fleet instead of the one asking.
+- `Ships per enemy L ship` - default `10`: a fleet led by an S ship joins a fight against a group with L ships only beside a fleet already on it, unless it brings at least this many armed ships for each L ship in the group. Coordination on only.
+- `Ships per enemy XL ship` - default `20`: the same for a fleet led by an M ship against a group with XL ships, counting its armed M or bigger ships. Coordination on only.
 - `Timers` - how long the coordinator waits for help before a break-off (`60 s`), keeps a call for help open (`10 min`), ignores further attacks by an attacker it already sent a fleet to (`30 s`), does not offer a declined target again (`5 min`), keeps a refused target out of a fleet's search (`30 s`), between two holding notifications for a target (`60 min`), keeps an unattended target on its board (`60 s`), holds a target for a fleet awaiting its confirmation (`20 s`), resends a break-off (`10 s`), and reuses a measured group or fleet strength (`5 s`, `10 s`).
 
 The three strengths keep their order: `break off` is never above `with help`, which is never above `alone`. `Restore Defaults` under the list puts every one of them back. Each load checks them and puts a missing or invalid value back to its default.
@@ -264,8 +285,82 @@ The three strengths keep their order: `break off` is never above `with help`, wh
 Sets how much the order writes to the game's debug log:
 
 - `None` - nothing, the default.
-- `Debug` - one compact line per state change of the order: target search, target selected, attack started and finished, going idle, re-scan, and similar. Please use this level for a log attached to a problem report.
-- `Trace` - in addition, the detailed step-by-step output.
+- `Debug` - one compact line per state change of the order: its settings at start and after a load (and any setting the order had to correct), target search, target selected, attack started and finished, going idle, re-scan, flight home, the coordinator's decisions, subordinates sent for repair or lost, and similar. Please use this level for a log attached to a problem report.
+- `Trace` - in addition, the reason every candidate ship and station in a scan was taken or skipped, every subordinate's attack check, and the details of each approach.
+
+## Protect Sector overview
+
+The screen shows every fleet on the order: its statistics, its state on the fleet coordinator and its order settings. Open it from the right-click menu of a ship running the order or assisting one, or from its own icon in the game's top menu row (the row of `Map`, `Player Information` and `Options`), right after `Map`. The icon can be hidden in `Extension options`.
+
+The list on the left holds every fleet on the order under its home sector, the sector's name coloured by its owner, with `All fleets` on top. A double-click on a fleet opens the map on its ship. A tab row on top switches between `Statistics`, `Coordination` and `Settings`.
+
+The screen refreshes itself every 30 seconds by default (`Auto-refresh` in `Extension options`). `Refresh` fetches the numbers at once, `Show on Map` shows the selected fleet.
+
+### Statistics
+
+![Protect Sector overview, Statistics](docs/images/overview_statistics.png)
+
+For `All fleets`, a sector or one fleet, the right side shows its kills (by the ship, by its subordinates, and targets destroyed by others), attacks and the reactions to attacks on your ships among them, time in combat, broken-off attacks by reason, attacks that could not start, idle share, lowest hull and `Ships lost`; for one fleet also its subordinates with their own kills. The header of the list's number column is a dropdown that picks the counter the list shows.
+
+`Targets tried` lists the targets the fleets tried and could not catch or kept losing. A double-click on one narrows the list on the left to the sector, then to the fleet, that tried it most.
+
+With the history on (`History depth` in `Extension options`), the numbers cover a window of 15 minutes to 24 hours, picked in the dropdown under them; the arrows move it back and forth over the history, and `Now` brings it back to the present. A graph under the numbers shows kills, targets destroyed by others, attacks and broken-off attacks per 15 minutes over the whole history: a click on a point moves the window to end there, and the boxes in its legend show or hide each line. With the history off, the numbers are the totals since the counters started.
+
+With the history on, a fleet that is destroyed or leaves the order stays listed, greyed out, with its numbers (a destroyed fleet's up to its last 15-minute sample) until they fall out of the history. `Ships lost` counts every ship of a fleet that is destroyed, captured or abandoned by its crew, the leader included.
+
+### Coordination
+
+![Protect Sector overview, Coordination](docs/images/overview_coordination.png)
+
+The list shows each fleet's state: engaged, idle, away from home, holding or assigned. The right side shows the coordination state of the sector or fleet: the targets it involves with their strength ratio, the fleets on them or holding for them, and any open call for help. For one fleet it also shows why it is on its target, how the target was found, and for how long it has been in its state. `Show on Map` shows the fleet and `Show Target on Map` its target, as does a double-click on the target.
+
+With `All fleets` selected, the coordinator's own settings are at the top of the right side, see `Fleet coordination`.
+
+### Settings
+
+![Protect Sector overview, Settings](docs/images/overview_settings.png)
+
+The order settings of the fleets. For a sector of up to 12 fleets, a grid with one column per fleet, where a value other than the one most of the sector's fleets use is highlighted; for a larger sector, how its fleets split on each setting and which fleets differ. The list on the left counts the differing settings per fleet and per sector. A fleet assisting a commander follows the commander's settings and shows only a note.
+
+The `LSR` column in the list shows each fleet's `Lost Ship Replacement` setting, and a click turns it on or off, as the right-click menu does. The box of `All fleets` or a sector sets every fleet under it and is ticked only when all of them have it on. A fleet assisting a commander shows its commander's setting, greyed out. The column is hidden while the game does not allow lost ship replacement.
+
+### Problematic fleets
+
+A fleet that takes no targets because of a problem is listed under `Problematic fleets` on the `Statistics` and `Coordination` tabs, for `All fleets` or its sector, and its state in the list on `Coordination` is shown in red.
+
+- A fleet that keeps refusing the targets the coordinator gives it (five times, because its own attacks on them failed or its own settings rule them out; a target lost in the fog does not count) is marked, with a logbook entry and a notification, and takes no targets until you unmark it with the `Unmark` button there, or on that fleet's own page on `Coordination`. The mark stays through reloads and order restarts, so fix the fleet's loadout or settings first. With `Fleet coordination` off, this mark does not hold the fleet back.
+- A ship with no working weapons or no ammunition for them does not fly at a target only to break off at once. It skips the attack, is marked with a logbook entry and a notification, takes no targets, and clears the mark by itself once it can fire again. Losing them while idle or on the way to a target is caught too: the ship stops its approach, and the fleet is marked within 30 seconds. The fleet's page shows `No weapons.` or `No ammunition.`, its name in the list is red, and the statistics count such attacks as `Could not attack: no weapons or ammunition`, whether `Fleet coordination` is on or off.
+
+## Choosing targets
+
+The ship takes the closest target in its home sector that passes its settings; a target that leaves the sector is dropped. With `Fleet coordination` on, the coordinator may still leave it to another fleet, see above.
+
+When a target is destroyed, lost or the attack on it ends, the ship first looks for its next target among the rest of that target's fleet as it stood at the start of the attack, then among the targets its own subordinates are already fighting, and only then searches the whole sector again. The usual filters apply, and an attack on another of your ships does not interrupt that choice.
+
+Some targets are left alone for a while:
+
+- a station the ship stopped attacking without destroying it: 30 minutes;
+- a target the ship could not see and broke off from: 5 minutes, also across an order restart or a save reload, unless it attacks one of your ships;
+- a target that docked or entered a highway: 1 minute; one the game's attack drops within 3 seconds, three times in a row: 2 minutes;
+- a target the fire authorisation override forbids: 2 minutes, see below.
+
+While the ship approaches or attacks its target, the game's own reaction to being attacked (the ship's `When attacked` setting) does not replace the order with a short attack on the attacker, which would drop the current fight. While the ship has no target, the setting works as usual.
+
+## Fire authorisation override
+
+The order respects the fire authorisation override of `Global Orders`, for the whole faction or per ship:
+
+- a target the override does not allow the ship to attack is never picked, neither by the ship's own search nor by the coordinator for it;
+- a target the override starts forbidding during the approach or the attack is left alone for 2 minutes, and a subordinate it forbids is called off the target;
+- a station the ship may not fire on is skipped for 2 minutes.
+
+The one exception is `By negative relation` with `Attack only hostile targets` off: a target above `-25` relation is made hostile to the attacking ship only, which is stronger than the override. The overview counts attacks the override stopped as `Could not attack: Fire Authorisation Override`.
+
+## When the fleet leader is lost
+
+When a fleet leader running `Protect Sector` is lost and the game promotes one of its subordinates to lead the fleet, the new leader takes over the order with the same settings. With the history on, the fleet keeps its record on the overview, now listed under the new leader. A leader already moved to another order before it was lost is left alone.
+
+The new leader also gets back the fleet's `Lost Ship Replacement`, which the game drops with the old leader. The old leader itself, and any replacement still waiting to be built for the fleet, are not rebuilt, as the game keeps no record of them after the loss.
 
 ## Situation when nothing to attack
 

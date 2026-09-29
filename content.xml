@@ -37,6 +37,8 @@
   <text language="88" name="保護區域" description="保護區域免受敵對船隻的侵害"></text>
   <!-- Turkish -->
   <text language="90" name="Sektörü Koru" description="Sektörü düşman gemilerden koru"></text>
+  <!-- Bulgarian -->
+  <text language="359" name="Защита на сектора" description="Защита на сектора от враждебни кораби"></text>
   <!-- Ukrainian -->
   <text language="380" name="Захист сектора" description="Захистити сектор від ворожих кораблів"></text>
   <dependency version="800"></dependency>

@@ -121,14 +121,6 @@
           <set_value name="$subordinatesToBeUpdatedAfter" exact="player.age - 1" />
         </do_if>
         <do_if value="player.gameversion ge 750 and $subordinatesToBeUpdatedAfter lt player.age">
-          <debug_text
-            text="'ProtectSector [%s at %s, %s]: SubordinatesRefresh: refreshing the Subordinates group.'.
-            [
-              @this.assignedcontrolled.debugname,
-              @this.assignedcontrolled.sector.knownname,
-              @this.assignedcontrolled.fleet.name
-            ]"
-            chance="@$traceChance" />
           <clear_group group="$subordinates" />
           <do_if value="not this.assignedcontrolled.commander">
             <add_to_group groupname="$subordinates" list="this.assignedcontrolled.allsubordinates" />
@@ -143,27 +135,21 @@
       </actions>
       <actions name="SubordinatesResetOrders">
         <set_value name="$subsCancelled" exact="0" />
+        <set_value name="$subsCancelledNames" exact="''" />
         <do_for_each name="$subordinate" in="this.assignedcontrolled.allsubordinates">
           <!-- after an unseen break that keeps the target, subordinates already attacking it keep at it -->
           <do_if value="@$subordinate.order.id == 'Attack' and not (@$keepSubsTarget != null and @$keepSubsTarget == @$target and @$subordinate.order.$primarytarget == $keepSubsTarget)">
+            <set_value name="$subsCancelledNames" exact="if $subsCancelledNames == '' then $subordinate.debugname else '%s,%s'.[$subsCancelledNames, $subordinate.debugname]" />
             <cancel_all_orders object="$subordinate" />
             <set_value name="$subsCancelled" operation="add" />
-            <debug_text
-              text="'ProtectSector [%s at %s, %s]: Canceling Attack order for %s'
-                .[
-                  this.assignedcontrolled.debugname,
-                  this.assignedcontrolled.sector.knownname,
-                  this.assignedcontrolled.fleet.name,
-                  @$subordinate.debugname
-                ]"
-              chance="$traceChance" />
           </do_if>
         </do_for_each>
         <do_if value="$subsCancelled gt 0">
-          <set_value name="$tel" exact="'subsreset|cancelled=%s'.[$subsCancelled]" />
+          <set_value name="$tel" exact="'subsreset|cancelled=%s|subs=%s'.[$subsCancelled, $subsCancelledNames]" />
           <include_interrupt_actions ref="Telemetry" />
         </do_if>
         <remove_value name="$subsCancelled" />
+        <remove_value name="$subsCancelledNames" />
       </actions>
       <actions name="RelationsConversionList">
         <set_value name="$relationsConversionList"
@@ -243,18 +229,6 @@
       </actions>
       <actions name="ResupplyWorkaroundRefresh">
         <set_value name="$isDamaged" exact="false" />
-        <debug_text
-          text="'ProtectSector [%s at %s, %s]: Resupply check. Last check time: %s, delta: %s, Ship class: %s, Hull: %s.'
-          .[
-            this.assignedcontrolled.debugname,
-            this.assignedcontrolled.sector.knownname,
-            this.assignedcontrolled.fleet.name,
-            @$resupplyCheckLast,
-            player.age - @$resupplyCheckLast,
-            this.assignedcontrolled.class,
-            this.assignedcontrolled.hullpercentage
-          ]"
-          chance="$traceChance" />
         <do_if value="(player.age - @$resupplyCheckLast) gt 3s">
           <do_for_each name="$subordinate" in="@this.assignedcontrolled.allsubordinates">
             <set_value name="$shipForDamageCheck" exact="$subordinate" />
@@ -511,15 +485,6 @@
       <actions name="HazardInSector">
         <do_if value="$homeSector.hashazardousregion and @$ignoreHazardThreat != true">
           <set_value name="$stoppingToWorkMessage" exact="{1972092401, 1101}.[$textUnit, $textHomeSector]" />
-          <debug_text
-            text="'ProtectSector [%s at %s, %s]: HazardInSector: Hazard in sector %s. Stopping to work...'.
-            [
-              this.assignedcontrolled.debugname,
-              this.assignedcontrolled.sector.knownname,
-              this.assignedcontrolled.fleet.name,
-              $homeSector.knownname
-            ]"
-            chance="@$traceChance" />
         </do_if>
         <do_else>
           <remove_value name="$stoppingToWorkMessage" />
@@ -535,14 +500,6 @@
         <set_value name="$idleTill" exact="0" />
         <set_value name="$lastStationScan" exact="player.age" />
         <include_interrupt_actions ref="HazardInSector" />
-        <debug_text
-          text="'ProtectSector [%s at %s, %s]: Patched for version 108.'
-            .[
-              this.assignedcontrolled.debugname,
-              this.assignedcontrolled.sector.knownname,
-              this.assignedcontrolled.fleet.name
-            ]"
-          chance="@$traceChance" />
       </actions>
       <actions name="SetVersion">
         <set_value name="$scriptVersion" exact="200" />
@@ -565,6 +522,20 @@
         <debug_text text="'PS1|%s|%s|%s|%s|%s'.[player.age, @this.assignedcontrolled.debugname, @this.assignedcontrolled.class, @this.assignedcontrolled.sector.debugname, @$tel]"
           chance="@$traceChance" />
         <remove_value name="$tel" />
+      </actions>
+      <!-- one scan candidate's verdict; top = the commander climbed to, near = the hostile station that vetoed it -->
+      <actions name="PsCandTrace">
+        <do_if value="@$traceChance gt 0 and @$psCandWhy != null">
+          <set_value name="$tel" exact="'cand|i=%s|id=%s|class=%s|dist=%s|rel=%s|top=%s|near=%s|why=%s'.[$indexShips, @$ship.debugname, @$ship.class, @this.assignedcontrolled.distanceto.{$ship}, @$ship.relationto.{this.owner}, @$psCandTop.debugname, @$psCandNear.debugname, $psCandWhy]" />
+          <include_interrupt_actions ref="TelemetryTrace" />
+        </do_if>
+        <set_value name="$psCandWhy" exact="null" />
+      </actions>
+      <actions name="PsStCandTrace">
+        <do_if value="@$traceChance gt 0">
+          <set_value name="$tel" exact="'stcand|i=%s|id=%s|class=%s|dist=%s|rel=%s|why=%s'.[$stationIndex, @$station.debugname, @$station.class, @$stationDistanceTo, @$station.relationto.{this.owner}, $psStWhy]" />
+          <include_interrupt_actions ref="TelemetryTrace" />
+        </do_if>
       </actions>
       <!-- productivity counters live on the pilot (an AI script cannot write a ship variable): they survive an order restart and a reload; the history sampler (md/protect_sector_history.xml) replaces $protectSectorStats with a fresh table of the same shape every 15 min, $protectSectorTargets stays; $attackOpenAt / $idleOpenAt are the open stamps the sampler moves to its tick -->
       <actions name="PsStats">
@@ -961,7 +932,7 @@
           <remove_value name="$csBusy" />
         </do_if>
       </actions>
-      <!-- TEMP phase 1 check, remove with phase 2: the counters as the report will read them -->
+      <!-- trace only: the counters as the overview reads them, to compare a user's screen against the log -->
       <actions name="PsStatsLine">
         <include_interrupt_actions ref="PsStats" />
         <set_value name="$psS" exact="this.$protectSectorStats" />
@@ -969,12 +940,12 @@
         <do_for_each name="$psKey" valuename="$psEntry" in="this.$protectSectorTargets">
           <set_value name="$psList" exact="'%s;%s:a%s/h%s/f%s/r%s/b%s/v%s/why%s'.[$psList, @$psKey.debugname, $psEntry.$attempts, $psEntry.$hardBreaks, $psEntry.$fogBreaks, $psEntry.$rangeBreaks, $psEntry.$bailouts, @$psEntry.$speed, @$psEntry.$lastWhy]" />
         </do_for_each>
-        <set_value name="$tel" exact="'stats|since=%s|attacks=%s|resp=%s|atime=%s|kills=%s/%s/%s|fog=%s|hard=%s|range=%s|bail=%s|idle=%s|scans=%s|empty=%s|ends=%s|handoff=%s|hullmin=%s|assisted=%s|targets=%s%s'.[
+        <set_value name="$tel" exact="'stats|since=%s|attacks=%s|resp=%s|atime=%s|kills=%s/%s/%s|fog=%s|hard=%s|range=%s|bail=%s|idle=%s|scans=%s|empty=%s|ends=%s|handoff=%s|nodps=%s|fireauth=%s|hullmin=%s|assisted=%s|targets=%s%s'.[
           player.age - $psS.$since, $psS.$attacks, @$psS.$responses, $psS.$attackTime, $psS.$killsSelf, $psS.$killsSubs, $psS.$killsOther,
           $psS.$fogBreaks, $psS.$hardBreaks, $psS.$rangeBreaks, $psS.$bailouts, $psS.$idleTime, $psS.$scans, $psS.$scansEmpty,
-          $psS.$outsideEnds, $psS.$stationHandoffs, $psS.$hullMin, $psS.$assisted, this.$protectSectorTargets.keys.count, $psList
+          $psS.$outsideEnds, $psS.$stationHandoffs, @$psS.$noDps, @$psS.$fireAuth, $psS.$hullMin, $psS.$assisted, this.$protectSectorTargets.keys.count, $psList
         ]" />
-        <include_interrupt_actions ref="Telemetry" />
+        <include_interrupt_actions ref="TelemetryTrace" />
         <remove_value name="$psList" />
         <remove_value name="$psS" />
       </actions>
@@ -1005,7 +976,7 @@
       </actions>
       <actions name="TelemetryShip">
         <set_value name="$tel"
-          exact="'ship|fleet=%s|home=%s|ver=%s|subs=%s|opts=xl:%s,l:%s,m:%s,s:%s,stations:%s,visible:%s,hostile:%s,rel:%s,protect:%s,nonmil:%s,pursue:%s,aggr:%s,share:%s,radar:%s,break:%s,sens:%s,ignbl:%s,park:%s,scan:%s,hazard:%s|noresp=%s|coord=%s'.[
+          exact="'ship|fleet=%s|home=%s|ver=%s|subs=%s|opts=xl:%s,l:%s,m:%s,s:%s,stations:%s,visible:%s,hostile:%s,rel:%s,protect:%s,nonmil:%s,pursue:%s,aggr:%s,share:%s,radar:%s,break:%s,sens:%s,ignbl:%s,park:%s,scan:%s,hazard:%s,sttac:%s,stint:%s,stdist:%s,log:%s|thr=%s|noresp=%s|coord=%s|cmd=%s|order=%s|kuda=%s'.[
             @this.assignedcontrolled.fleet.name,
             @$homeSector.debugname,
             @$scriptVersion,
@@ -1030,8 +1001,16 @@
             @$parkInSector,
             @$delayBetweenScans,
             @$ignoreHazardThreat,
+            @$attackStationsTactical,
+            @$attackStationsInternal,
+            @$attackShipsOutOfStationsDistance,
+            @$recordActionsToLogBook,
+            @$relationsThresholdInternal,
             @this.$noattackresponse,
-            @player.entity.$ProtectSectorConfig.$coordination == true
+            @player.entity.$ProtectSectorConfig.$coordination == true,
+            @this.assignedcontrolled.commander.debugname,
+            @this.assignedcontrolled.order.id,
+            @global.$kAAIT_Data != null
           ]" />
         <include_interrupt_actions ref="Telemetry" />
       </actions>
@@ -1054,41 +1033,12 @@
       <conditions>
         <check_all>
           <event_game_loaded />
-          <debug_text
-            text="'ProtectSector [%s at %s, %s]: Game loaded at player age: %s with script version %s. Classes: %s, Classes possible: %s. Station attack: %s. Relation threshold: %s. Protect: %s. Target: %s. Response on: %s. Ships: %s. IdleTill: %s. Last station scan: %s'.
-            [
-              this.assignedcontrolled.debugname,
-              this.assignedcontrolled.sector.knownname,
-              this.assignedcontrolled.fleet.name,
-              player.age,
-              @$scriptVersion,
-              @$classesForAttack,
-              @$classesAcceptableForAttack,
-              @$attackStations,
-              @$protectPlayerShipsInSector,
-              @$relationsThresholdInternal,
-              @$target,
-              @$targetOnResponse,
-              @$ships,
-              @$idleTill,
-              @$lastStationScan
-            ]"
-            debugchance="@$traceChance" />
           <check_any>
             <check_value value="@$scriptVersion lt 101" />
           </check_any>
         </check_all>
       </conditions>
       <actions>
-        <debug_text
-          text="'ProtectSector [%s at %s, %s]: Re-init for versions %s prior to 1.01'
-          .[
-            this.assignedcontrolled.debugname,
-            this.assignedcontrolled.sector.knownname,
-            this.assignedcontrolled.fleet.name,
-            @$scriptVersion,
-          ]"
-          chance="$traceChance" />
         <do_if value="@$scriptVersion lt 101">
           <include_interrupt_actions ref="CreateParkingPosition" />
           <create_order object="this.assignedcontrolled" id="'ProtectSector'" default="true">
@@ -1129,6 +1079,8 @@
       </conditions>
       <actions>
         <include_interrupt_actions ref="TelemetryShip" />
+        <set_value name="$tel" exact="'loaded|attacking=%s|target=%s|resp=%s|idleleft=%s|ships=%s|stations=%s'.[@$isAttackingTarget, @$target.debugname, @$targetOnResponse.debugname, if @$idleTill gt 0 then $idleTill - player.age else 0, @$ships.count, @$stations.count]" />
+        <include_interrupt_actions ref="Telemetry" />
         <do_if value="@$isAttackingTarget">
           <include_interrupt_actions ref="AttackHeartbeatArm" />
         </do_if>
@@ -1147,16 +1099,7 @@
       </conditions>
       <actions>
         <include_interrupt_actions ref="ProtectSectorGlobalApply" />
-        <debug_text
-          text="'ProtectSector [%s at %s, %s]: Restarting the default order %s on load.'
-            .[
-              this.assignedcontrolled.debugname,
-              this.assignedcontrolled.sector.knownname,
-              this.assignedcontrolled.fleet.name,
-              @this.assignedcontrolled.order.id
-            ]"
-          chance="@$traceChance" />
-        <set_value name="$tel" exact="'restart|why=load'" />
+        <set_value name="$tel" exact="'restart|why=load|order=%s'.[@this.assignedcontrolled.order.id]" />
         <include_interrupt_actions ref="Telemetry" />
         <!-- the default order (Assist after its wait) re-runs this script from init; the flag skips init's "started" logbook entry -->
         <set_value name="this.assignedcontrolled.pilot.$protectSectorAbortedAt" exact="player.age" />
@@ -1367,24 +1310,8 @@
           <remove_value name="$psField" />
         </do_if>
         <set_value name="$searchReason" exact="if event.name == 'event_object_changed_sector' then 'lost' else 'kill'" />
-        <debug_text
-          text="'ProtectSector [%s at %s, %s]: Event: %s : %s{%s} status: iswreck: %s, isoperational: %s,  pilot: %s (%s), param: %s {%s}, target info - %s'
-            .[
-              this.assignedcontrolled.debugname,
-              this.assignedcontrolled.sector.knownname,
-              this.assignedcontrolled.fleet.name,
-              @event.name,
-              @event.object.debugname,
-              @event.object.class,
-              @event.object.iswreck,
-              @event.object.isoperational,
-              @event.object.pilot,
-              event.object.pilot?,
-              @event.param.debugname,
-              @event.param.class,
-              @$targetInfo
-            ]"
-          chance="$traceChance" />
+        <set_value name="$tel" exact="'tevent|ev=%s|id=%s|class=%s|param=%s|sector=%s'.[event.name, @event.object.debugname, @event.object.class, @event.param.debugname, @event.object.sector.debugname]" />
+        <include_interrupt_actions ref="Telemetry" />
         <do_if value="$targetInfo? and $targetInfo != null and $targetInfo.$name? and @$targetInfo.$isShip">
           <set_value name="$textUnit" exact="{1972092401, 1011}.[this.assignedcontrolled.name, this.assignedcontrolled.idcode]" />
           <do_if
@@ -1448,15 +1375,8 @@
         <check_value value="player.gameversion ge 750" />
       </conditions>
       <actions>
-        <debug_text
-          text="'ProtectSector [%s at %s, %s]: SubordinateLostHandler: requesting fleet replacements for %s units.'.
-            [
-              @this.assignedcontrolled.debugname,
-              @this.assignedcontrolled.sector.knownname,
-              @this.assignedcontrolled.fleet.name,
-              @this.assignedcontrolled.fleetunits.count
-            ]"
-          chance="$traceChance" />
+        <set_value name="$tel" exact="'reconstitute|units=%s|lost=%s'.[@this.assignedcontrolled.fleetunits.count, @event.object.debugname]" />
+        <include_interrupt_actions ref="Telemetry" />
         <!-- prepare group of subordinates to request fleet reinstate -->
         <include_interrupt_actions ref="SubordinatesRefresh" />
         <signal_objects object="player.entity" param="'reconstitute_fleet'" param2="this.assignedcontrolled" param3="this.assignedcontrolled.fleetunits" />
@@ -1483,7 +1403,7 @@
         <do_if value="$ships.count == 0">
           <set_value name="this.$protectSectorStats.$scansEmpty" operation="add" />
         </do_if>
-        <set_value name="$tel" exact="'rescan|count=%s|n=%s|top=%s|left=%s|cskip=%s|dskip=%s|sskip=%s|clskip=%s'.[@$reScanCount, $ships.count, @$ships.{1}.debugname, @$idleTill - player.age, @$coordSkipped, @$coordDistSkipped, @$coordSpeedSkipped, @$classSkipped]" />
+        <set_value name="$tel" exact="'rescan|count=%s|n=%s|top=%s|trel=%s|tdist=%s|thr=%s|left=%s|cskip=%s|dskip=%s|sskip=%s|clskip=%s'.[@$reScanCount, $ships.count, @$ships.{1}.debugname, @$ships.{1}.relationto.{this.owner}, @$ships.{1}.distanceto.{this.assignedcontrolled}, $relationsThresholdInternal, @$idleTill - player.age, @$coordSkipped, @$coordDistSkipped, @$coordSpeedSkipped, @$classSkipped]" />
         <do_if value="@$reScanCount == 0">
           <include_interrupt_actions ref="Telemetry" />
         </do_if>
@@ -1493,19 +1413,6 @@
         <set_value name="$reScanCount" operation="add" />
         <do_if
           value="@$ships.count gt 0 and @$ships.{1}.relationto.{this.owner} le $relationsThresholdInternal">
-          <debug_text
-            text="'ProtectSector [%s at %s, %s]: ReScan result. Target found: %s. Relation: %s. Threshold: %s. Distance: %s. Idle till: %s'.
-            [
-              @this.assignedcontrolled.debugname,
-              @this.assignedcontrolled.sector.knownname,
-              @this.assignedcontrolled.fleet.name,
-              @$ships.{1}.debugname,
-              @$ships.{1}.relationto.{this.owner},
-              $relationsThresholdInternal,
-              @$ships.{1}.distanceto.{this.assignedcontrolled},
-              $idleTill
-            ]"
-            chance="$traceChance" />
           <do_if value="@$idleTill gt 0">
             <set_value name="$idleTill" exact="0" />
             <set_value name="$tel" exact="'wake|src=rescan|to=ships|top=%s'.[@$ships.{1}.debugname]" />
@@ -1541,21 +1448,9 @@
             </do_for_each>
             <remove_value name="$reScanStation" />
             <do_if value="$reScanStationPick != null">
-              <debug_text
-                text="'ProtectSector [%s at %s, %s]: ReScan stations result. Target found: %s. Relation: %s. Threshold: %s. Distance: %s.'.
-                  [
-                    @this.assignedcontrolled.debugname,
-                    @this.assignedcontrolled.sector.knownname,
-                    @this.assignedcontrolled.fleet.name,
-                    @$reScanStationPick.debugname,
-                    @$reScanStationPick.relationto.{this.owner},
-                    $relationsThresholdInternal,
-                    @$reScanStationPick.distanceto.{this.assignedcontrolled}
-                  ]"
-                chance="$traceChance" />
               <do_if value="@$idleTill gt 0">
                 <set_value name="$idleTill" exact="0" />
-                <set_value name="$tel" exact="'wake|src=rescan|to=stations|top=%s'.[@$reScanStationPick.debugname]" />
+                <set_value name="$tel" exact="'wake|src=rescan|to=stations|top=%s|trel=%s|tdist=%s'.[@$reScanStationPick.debugname, @$reScanStationPick.relationto.{this.owner}, @$reScanStationPick.distanceto.{this.assignedcontrolled}]" />
                 <include_interrupt_actions ref="Telemetry" />
                 <abort_called_scripts resume="checkForEnemyStations" />
               </do_if>
@@ -1609,19 +1504,6 @@
       <actions>
         <!-- two events in one tick both pass the conditions before the first run clears $isAttackingTarget -->
         <do_if value="@$isAttackingTarget">
-          <debug_text
-            text="'ProtectSector [%s at %s, %s]: target %s {%s} lost or out of engage range while attacking (cansee: %s, distance: %s, limit: %s). Breaking off. Pursue fleeing target: %s.'.
-            [
-              @this.assignedcontrolled.debugname,
-              @this.assignedcontrolled.sector.knownname,
-              @this.assignedcontrolled.fleet.name,
-              @$target.debugname,
-              @$target.class,
-              this.assignedcontrolled.cansee.{$target},
-              this.assignedcontrolled.distanceto.{$target},
-              $targetOptimalDistanceForAttack,
-              $pursueFleeingTarget
-            ]" chance="$traceChance" />
           <set_value name="$isAttackingTarget" exact="false" />
           <set_value name="$watchWhy" exact="if @$target.dock != null then 'dock' else (if @$target.zone.isclass.highway then 'highway' else (if not this.assignedcontrolled.cansee.{$target} then 'fog' else 'range'))" />
           <!-- unseen by this ship but on the player's map: within radar range relaunch the attack, within twice that re-approach (the approach bails out if it cannot close in); subordinates on it keep attacking -->
@@ -1815,16 +1697,6 @@
         <check_value value="@this.assignedcontrolled.subordinates.count gt 0" />
       </conditions>
       <actions>
-        <debug_text
-          text="'ProtectSector [%s at %s, %s]: CheckSubordinatesAttack: Checking subordinates (count) %s in escort group (count) %s for attack orders and targets.'.
-            [
-              @this.assignedcontrolled.debugname,
-              @this.assignedcontrolled.sector.knownname,
-              @this.assignedcontrolled.fleet.name,
-              @this.assignedcontrolled.subordinates.count,
-              @this.$escortgroup.count
-            ]"
-          chance="$traceChance" />
         <set_value name="$subsChecked" exact="0" />
         <set_value name="$subsCancelled" exact="0" />
         <set_value name="$subsOrdered" exact="0" />
@@ -1835,37 +1707,24 @@
           <do_if value="@$shipIsDamaged != true and $subordinate.commander == this.assignedcontrolled">
             <do_if value="@$subordinate.pilot != null and @$subordinate.exists and not @$subordinate.iswreck and @$subordinate.isoperational">
               <do_if value="@$subordinate.defaultorder.id == 'Escort' and @$subordinate.defaultorder.$target == this.assignedcontrolled and not $subordinate.subordinategroupdockoverride">
-                <debug_text text="'ProtectSector [%s at %s, %s]: CheckSubordinatesAttack: Checking subordinate %s in sector %s with default order %s and target %s and with order %s on distance %s to target %s and to us %s. Aggressive: %s. Target is ok: %s.Checks: %s, %s, %s, %s, %s, %s : %s.'.
-                [
-                  @this.assignedcontrolled.debugname,
-                  @this.assignedcontrolled.sector.knownname,
-                  @this.assignedcontrolled.fleet.name,
-                  @$subordinate.debugname,
-                  @$subordinate.sector.knownname,
-                  @$subordinate.defaultorder.id,
-                  @$subordinate.defaultorder.$target.debugname,
-                  @$subordinate.order.id,
-                  @$subordinate.distanceto.{@$target},
-                  @$target.debugname,
-                  $subordinate.distanceto.{this.assignedcontrolled},
-                  @$aggressiveSubordinates,
-                  @$target.exists and not @$target.iswreck and @$target.isoperational,
-                  @$aggressiveSubordinates == true and this.assignedcontrolled.order.id == 'ProtectSector',
-                  this.assignedcontrolled.sector == @$target.sector and this.assignedcontrolled.sector == $subordinate.sector,
-                  @$subordinate.order.id != 'Flee' and @$subordinate.order.id != 'Resupply',
-                  @$subordinate.order.id != 'Attack',
-                  @$target != @$subordinate.order.$primarytarget,
-                  $subordinate.distanceto.{this.assignedcontrolled} gt this.assignedcontrolled.maxradarrange * 0.6,
-                  @$aggressiveSubordinates == true and this.assignedcontrolled.order.id == 'ProtectSector' and
-                  this.assignedcontrolled.sector == @$target.sector and this.assignedcontrolled.sector == $subordinate.sector and
-                  @$subordinate.order.id != 'Flee' and @$subordinate.order.id != 'Resupply'
-                  and (
-                    @$subordinate.order.id != 'Attack' or
-                    (@$target != @$subordinate.order.$primarytarget and ($subordinate.distanceto.{this.assignedcontrolled} gt this.assignedcontrolled.maxradarrange * 0.6)
-                  )
-                )
-                ]"
-                  chance="$traceChance" />
+                <!-- why: the first failing clause of the order condition below; noattack and otherfar order the attack -->
+                <do_if value="$traceChance gt 0">
+                  <set_value name="$tel" exact="'subchk|sub=%s|sector=%s|order=%s|otarget=%s|dt=%s|dus=%s|why=%s'.[
+                    $subordinate.debugname,
+                    @$subordinate.sector.debugname,
+                    @$subordinate.order.id,
+                    @$subordinate.order.$primarytarget.debugname,
+                    @$subordinate.distanceto.{@$target},
+                    $subordinate.distanceto.{this.assignedcontrolled},
+                    if not (@$aggressiveSubordinates == true and this.assignedcontrolled.order.id == 'ProtectSector') then 'noaggr'
+                    else (if not (this.assignedcontrolled.sector == @$target.sector and this.assignedcontrolled.sector == $subordinate.sector) then 'sector'
+                    else (if @$subordinate.order.id == 'Flee' or @$subordinate.order.id == 'Resupply' then 'busy'
+                    else (if @$subordinate.order.id != 'Attack' then 'noattack'
+                    else (if @$target == @$subordinate.order.$primarytarget then 'same'
+                    else (if $subordinate.distanceto.{this.assignedcontrolled} gt this.assignedcontrolled.maxradarrange * 0.6 then 'otherfar' else 'othernear')))))
+                  ]" />
+                  <include_interrupt_actions ref="TelemetryTrace" />
+                </do_if>
                 <do_if value="@$aggressiveSubordinates == true and this.assignedcontrolled.order.id == 'ProtectSector' and
                   this.assignedcontrolled.sector == @$target.sector and this.assignedcontrolled.sector == $subordinate.sector and
                   @$subordinate.order.id != 'Flee' and @$subordinate.order.id != 'Resupply'
@@ -1887,27 +1746,7 @@
                   <do_if value="@$subordinate.order.id != 'Escort'">
                     <cancel_all_orders object="$subordinate" />
                     <set_value name="$subsCancelled" operation="add" />
-                    <debug_text
-                      text="'ProtectSector [%s at %s, %s]: CheckSubordinatesAttack: Canceling order %s for %s '.
-                          [
-                            this.assignedcontrolled.debugname,
-                            this.assignedcontrolled.sector.knownname,
-                            this.assignedcontrolled.fleet.name,
-                            @$subordinate.order.id,
-                            @$subordinate.debugname
-                          ]"
-                      chance="$traceChance" />
                   </do_if>
-                  <debug_text
-                    text="'ProtectSector [%s at %s, %s]: CheckSubordinatesAttack: Restarting the attack order for %s with target %s.'.
-                      [
-                        this.assignedcontrolled.debugname,
-                        this.assignedcontrolled.sector.knownname,
-                        this.assignedcontrolled.fleet.name,
-                        @$subordinate.debugname,
-                        @$target.debugname
-                      ]"
-                    chance="$traceChance" />
                   <set_value name="$subsOrdered" operation="add" />
                   <do_if value="@global.$kAAIT_Data != null">
                     <create_order object="$subordinate" id="'Attack'">
@@ -1976,15 +1815,6 @@
         <do_if value="this.assignedcontrolled.order.id == 'ProtectSector'">
           <set_value name="$signalDelay" min="20s" max="50s" />
           <signal_objects object="this.assignedcontrolled" param="'ProtectSector.CheckSubordinatesAttack'" param2="event.param2" delay="$signalDelay" />
-          <debug_text
-            text="'ProtectSector [%s at %s, %s]: CheckSubordinatesAttack: New signal scheduled in %s.'.
-              [
-                @this.assignedcontrolled.debugname,
-                @this.assignedcontrolled.sector.knownname,
-                @this.assignedcontrolled.fleet.name,
-                $signalDelay
-              ]"
-            chance="$traceChance" />
         </do_if>
       </actions>
     </handler>
@@ -2000,42 +1830,8 @@
 
     <include_interrupt_actions ref="RelationsConversionList" />
 
-    <debug_text
-      text="'ProtectSector [%s at %s, %s]: Version: %s. Home Sector: %s. Attack Stations: %s (Tactical: %s, Internal: %s). Attack Ships XL: %s. Attack Ships L: %s. Attack Ships M: %s. Attack Ships S: %s. Attack Ships Out Of Stations Distance: %s. Attack Visible Only: %s. Attack Hostile Only: %s. Relation Threshold: %s. Protect Player Ships In Sector: %s. Protect Only Non Military Ships: %s. Pursue Fleeing Target: %s. Aggressive subordinates: %s. Share Targets Between Fleets: %s. Break On Destruction Percentage: %s. Park In Sector: %s (Old: %s). Desired Parking Position: %s at %s. Delay Between Scans: %s, in seconds: %s. Ignore Hazard Threat: %s. Record Actions To Log Book: %s. By Player: %s.'
-        .[
-          this.assignedcontrolled.debugname,
-          this.assignedcontrolled.sector.knownname,
-          this.assignedcontrolled.fleet.name,
-          @$scriptVersion,
-          $homeSector.knownname,
-          $attackStations,
-          $attackStationsTactical,
-          $attackStationsInternal,
-          $attackShipsXL,
-          $attackShipsL,
-          $attackShipsM,
-          $attackShipsS,
-          $attackShipsOutOfStationsDistance,
-          $attackVisibleOnly,
-          $attackHostileOnly,
-          $relationsThreshold,
-          $protectPlayerShipsInSector,
-          $protectOnlyNonMilitaryShips,
-          $pursueFleeingTarget,
-          $aggressiveSubordinates,
-          $shareTargetsBetweenFleets,
-          $breakOnDestructionPercentage,
-          @$parkInSector,
-          @$parkInCenterOfSector,
-          @$desiredParkingPosition.{2},
-          @$desiredParkingPosition.{1}.name,
-          $delayBetweenScans,
-          $delayBetweenScansInSeconds,
-          $ignoreHazardThreat,
-          $recordActionsToLogBook,
-          $isStartedByPlayer
-        ]"
-      chance="$traceChance" />
+    <set_value name="$tel" exact="'init|byplayer=%s|top=%s'.[$isStartedByPlayer, @this.assignedcontrolled.toplevelcommander.debugname]" />
+    <include_interrupt_actions ref="Telemetry" />
 
     <set_value name="$textTitle" exact="{1972092401, 1000}" />
     <set_value name="$textShip" exact="{1972092401, 1001}" />
@@ -2046,18 +1842,8 @@
       <set_value name="$targetInfo" exact="this.assignedcontrolled.aipilot.$targetInfo" />
       <set_value name="$target" exact="@$targetInfo.$target" />
       <set_value name="$isStartedByPlayer" exact="false" />
-      <debug_text
-        text="'ProtectSector [%s at %s, %s]: Station after attack : %s {%s}, iswreck: %s, targetInfo: %s'
-              .[
-                this.assignedcontrolled.debugname,
-                this.assignedcontrolled.sector.knownname,
-                this.assignedcontrolled.fleet.name,
-                $target.debugname,
-                $target.class,
-                $target.iswreck,
-                $targetInfo
-              ]"
-        chance="$traceChance" />
+      <set_value name="$tel" exact="'stationend|id=%s|class=%s|exists=%s|wreck=%s|ship=%s|held=%s'.[@$target.debugname, @$target.class, @$target.exists, @$target.iswreck, @$targetInfo.$isShip, if @$targetInfo.$psAt != null then player.age - $targetInfo.$psAt else -1]" />
+      <include_interrupt_actions ref="Telemetry" />
 
 
       <do_if value="$target.iswreck">
@@ -2122,18 +1908,6 @@
       <set_value name="$parkingPosition" exact="@$desiredParkingPosition.{2}" />
     </do_if>
 
-    <debug_text
-      text="'ProtectSector [%s at %s, %s]: Parking position set. Park in sector: %s, desired parking position: %s at %s.'
-        .[
-          this.assignedcontrolled.debugname,
-          this.assignedcontrolled.sector.knownname,
-          this.assignedcontrolled.fleet.name,
-          @$parkInSector,
-          @$desiredParkingPosition.{2},
-          @$desiredParkingPosition.{1}.name
-        ]"
-      chance="$traceChance" />
-
 
     <do_if value="@$attackStationsInternal == true">
       <set_value name="$attackStationsInternalAcceptable"
@@ -2165,15 +1939,8 @@
           </do_if>
         </do_if>
         <set_value name="$attackStations" exact="false" />
-        <debug_text
-          text="'ProtectSector [%s at %s, %s]: Attack stations internal mode can not be used. Reset to : %s.'
-            .[
-              this.assignedcontrolled.debugname,
-              this.assignedcontrolled.sector.knownname,
-              this.assignedcontrolled.fleet.name,
-              $attackStationsInternalAcceptable
-            ]"
-          chance="$traceChance" />
+        <set_value name="$tel" exact="'paramfix|param=stint,stations|to=false|why=%s'.[if this.assignedcontrolled.iscapitalship and this.assignedcontrolled.type != shiptype.carrier then 'subs' else 'ship']" />
+        <include_interrupt_actions ref="Telemetry" />
       </do_if>
       <do_elseif value="@$attackStationsTactical">
         <set_value name="$attackStationsTactical" exact="false" />
@@ -2181,14 +1948,8 @@
           <edit_order_param order="this.assignedcontrolled.order" param="'attackStationsTactical'" value="false" />
           <set_value name="$orderParamsEdited" exact="true" />
         </do_if>
-        <debug_text
-          text="'ProtectSector [%s at %s, %s]: Both station attack modes selected, the experimental one is kept.'
-            .[
-              this.assignedcontrolled.debugname,
-              this.assignedcontrolled.sector.knownname,
-              this.assignedcontrolled.fleet.name
-            ]"
-          chance="$traceChance" />
+        <set_value name="$tel" exact="'paramfix|param=sttac|to=false|why=both'" />
+        <include_interrupt_actions ref="Telemetry" />
       </do_elseif>
       <remove_value name="$attackStationsInternalAcceptable" />
       <remove_value name="$incompatibleAssignments" />
@@ -2197,25 +1958,13 @@
     <set_command_action commandaction="commandaction.scanningto" param="$homeSector" />
 
     <do_if value="$attackHostileOnly and $relationsThreshold lt 25">
+      <set_value name="$tel" exact="'paramfix|param=rel|from=%s|to=25|why=hostile'.[$relationsThreshold]" />
+      <include_interrupt_actions ref="Telemetry" />
       <set_value name="$relationsThreshold" exact="25" />
       <edit_order_param order="this.assignedcontrolled.order" param="'relationsThreshold'" value="25" />
       <set_value name="$orderParamsEdited" exact="true" />
     </do_if>
     <set_value name="$relationsThresholdInternal" exact="$relationsConversionList.{$relationsThreshold}" />
-
-    <debug_text
-      text="'ProtectSector [%s at %s, %s]: Started (by player: %s) with %s subordinates and %s as top commander. Relation Threshold: %s (%s).'
-        .[
-          this.assignedcontrolled.debugname,
-          this.assignedcontrolled.sector.knownname,
-          this.assignedcontrolled.fleet.name,
-          $isStartedByPlayer,
-          @this.assignedcontrolled.subordinates.count,
-          @this.assignedcontrolled.toplevelcommander.debugname,
-          $relationsThresholdInternal,
-          $relationsThreshold
-        ]"
-      chance="$traceChance" />
 
     <set_value name="$textUnit" exact="{1972092401, 1011}.[this.assignedcontrolled.name, this.assignedcontrolled.idcode]" />
     <do_if
@@ -2285,27 +2034,10 @@
   </init>
   <patch sinceversion="104">
     <set_value name="$idleDelay" exact="$delayBetweenScansInSeconds" />
-    <debug_text
-      text="'ProtectSector [%s at %s, %s]: Patched for version 104. Idle delay: %s.'
-        .[
-          this.assignedcontrolled.debugname,
-          this.assignedcontrolled.sector.knownname,
-          this.assignedcontrolled.fleet.name,
-          $idleDelay
-        ]"
-      chance="@$traceChance" />
   </patch>
   <patch sinceversion="106">
     <include_interrupt_actions ref="SubordinatesRefresh" />
     <set_value name="$scriptVersion" exact="106" />
-    <debug_text
-      text="'ProtectSector [%s at %s, %s]: Patched for version 106.'
-        .[
-          this.assignedcontrolled.debugname,
-          this.assignedcontrolled.sector.knownname,
-          this.assignedcontrolled.fleet.name
-        ]"
-      chance="@$traceChance" />
   </patch>
   <patch sinceversion="107">
     <include_interrupt_actions ref="RelationsConversionList" />
@@ -2325,66 +2057,26 @@
     </do_else>
     <set_value name="$positionIdleTime" exact="player.age" />
     <set_value name="$scriptVersion" exact="107" />
-    <debug_text
-      text="'ProtectSector [%s at %s, %s]: Patched for version 107.'
-        .[
-          this.assignedcontrolled.debugname,
-          this.assignedcontrolled.sector.knownname,
-          this.assignedcontrolled.fleet.name
-        ]"
-      chance="@$traceChance" />
   </patch>
   <patch sinceversion="108">
     <include_interrupt_actions ref="PatchToVersion108" />
   </patch>
   <patch sinceversion="109">
     <set_value name="$scriptVersion" exact="109" />
-    <debug_text
-      text="'ProtectSector [%s at %s, %s]: Patched for version 109.'
-        .[
-          this.assignedcontrolled.debugname,
-          this.assignedcontrolled.sector.knownname,
-          this.assignedcontrolled.fleet.name
-        ]"
-      chance="@$traceChance" />
   </patch>
   <patch sinceversion="112">
     <include_interrupt_actions ref="SetVersion" />
-    <debug_text
-      text="'ProtectSector [%s at %s, %s]: Patched for version 112.'
-        .[
-          this.assignedcontrolled.debugname,
-          this.assignedcontrolled.sector.knownname,
-          this.assignedcontrolled.fleet.name
-        ]"
-      chance="@$traceChance" />
   </patch>
   <patch sinceversion="113">
     <include_interrupt_actions ref="SetVersion" />
     <set_value name="$oneSecond" exact="1s" />
     <set_value name="$delayBetweenScansInSeconds" exact="if @$delayBetweenScans != null then $oneSecond * $delayBetweenScans else 4s" />
     <set_value name="$macrosToSkip" exact="[macro.asteroid_turret_m_01_macro]" />
-    <debug_text
-      text="'ProtectSector [%s at %s, %s]: Patched for version 113.'
-        .[
-          this.assignedcontrolled.debugname,
-          this.assignedcontrolled.sector.knownname,
-          this.assignedcontrolled.fleet.name
-        ]"
-      chance="@$traceChance" />
   </patch>
   <patch sinceversion="114">
     <include_interrupt_actions ref="SetVersion" />
     <set_value name="$reScanCount" exact="0" />
     <set_value name="$resupplyCheckLast" exact="0" />
-    <debug_text
-      text="'ProtectSector [%s at %s, %s]: Patched for version 114.'
-        .[
-          this.assignedcontrolled.debugname,
-          this.assignedcontrolled.sector.knownname,
-          this.assignedcontrolled.fleet.name
-        ]"
-      chance="@$traceChance" />
   </patch>
   <patch sinceversion="115">
     <include_interrupt_actions ref="SetVersion" />
@@ -2396,31 +2088,10 @@
     <set_value name="$receivedDamageSensitivity" exact="2" />
     <set_value name="$ignoreBlackListsForAttack" exact="true" />
     <set_value name="$flyingToHomeSectorTurnsCount" exact="0" />
-    <debug_text
-      text="'ProtectSector [%s at %s, %s]: Patched for version 115. Damage sensitivity: %s. Ignore blacklists for attack: %s. Parking position: %s.'
-        .[
-          this.assignedcontrolled.debugname,
-          this.assignedcontrolled.sector.knownname,
-          this.assignedcontrolled.fleet.name,
-          $receivedDamageSensitivity,
-          $ignoreBlackListsForAttack,
-          $desiredParkingPosition
-        ]"
-      chance="@$traceChance" />
   </patch>
   <patch sinceversion="116">
     <include_interrupt_actions ref="SetVersion" />
     <set_value name="$aggressiveSubordinates" exact="false" />
-    <debug_text
-      text="'ProtectSector [%s at %s, %s]: Patched for version 116. Aggressive subordinates: %s. Parking position: %s.'
-        .[
-          this.assignedcontrolled.debugname,
-          this.assignedcontrolled.sector.knownname,
-          this.assignedcontrolled.fleet.name,
-          $aggressiveSubordinates,
-          $desiredParkingPosition
-        ]"
-      chance="@$traceChance" />
     <edit_order_param order="this.assignedcontrolled.defaultorder" param="'desiredParkingPosition'" value="$desiredParkingPosition" />
   </patch>
   <patch sinceversion="117">
@@ -2430,16 +2101,8 @@
   <patch sinceversion="200">
     <!-- resume and abort_called_scripts are not allowed in a patch; init sets everything on the restart -->
     <include_interrupt_actions ref="ProtectSectorGlobalApply" />
-    <debug_text
-      text="'ProtectSector [%s at %s, %s]: Patched for version 200. Order: %s, default: %s. Signalling a restart.'
-        .[
-          this.assignedcontrolled.debugname,
-          this.assignedcontrolled.sector.knownname,
-          this.assignedcontrolled.fleet.name,
-          @this.assignedcontrolled.order.id,
-          this.assignedcontrolled.order == this.assignedcontrolled.defaultorder
-        ]"
-      chance="@$traceChance" />
+    <set_value name="$tel" exact="'patch|to=200|order=%s|isdefault=%s'.[@this.assignedcontrolled.order.id, this.assignedcontrolled.order == this.assignedcontrolled.defaultorder]" />
+    <include_interrupt_actions ref="Telemetry" />
     <signal_objects object="this.assignedcontrolled" param="'ProtectSectorRestart'" />
   </patch>
   <attention min="unknown">
@@ -2519,19 +2182,10 @@
       <include_interrupt_actions ref="PsAttackClose" />
       <include_interrupt_actions ref="RestoreAttackResponse" />
       <set_value name="$isAttackingTarget" exact="false" />
-      <debug_text text="'ProtectSector [%s at %s, %s]: Starting target search. Shield: %s. Hull: %s.'.
-        [
-          this.assignedcontrolled.debugname,
-          this.assignedcontrolled.sector.knownname,
-          this.assignedcontrolled.fleet.name,
-          this.assignedcontrolled.shieldpercentage,
-          this.assignedcontrolled.hullpercentage
-        ]" chance="$traceChance" />
       <set_value name="$tel" exact="'search|reason=%s|shield=%s|hull=%s'.[if $searchReason? then $searchReason else 'loop', this.assignedcontrolled.shieldpercentage, this.assignedcontrolled.hullpercentage]" />
       <include_interrupt_actions ref="Telemetry" />
       <include_interrupt_actions ref="PsHull" />
-      <!-- TEMP phase 1 check, remove with phase 2 -->
-      <do_if value="@$searchReason == 'start' or @$searchReason == 'kill' or @$searchReason == 'lost' or @$searchReason == 'watchdog' or @$searchReason == 'bailout'">
+      <do_if value="@$traceChance gt 0 and (@$searchReason == 'start' or @$searchReason == 'kill' or @$searchReason == 'lost' or @$searchReason == 'watchdog' or @$searchReason == 'bailout')">
         <include_interrupt_actions ref="PsStatsLine" />
       </do_if>
       <remove_value name="$searchReason" />
@@ -2606,21 +2260,6 @@
       <label name="protectPlayerShipsCheck" />
       <include_interrupt_actions ref="PsIdleClose" />
 
-      <debug_text
-        text="'ProtectSector [%s at %s, %s]: Classes: %s, Classes possible: %s. Station attack: %s. Protect: %s. Response on: %s. Ships: %s'.
-          [
-            this.assignedcontrolled.debugname,
-            this.assignedcontrolled.sector.knownname,
-            this.assignedcontrolled.fleet.name,
-            $classesForAttack,
-            $classesAcceptableForAttack,
-            $attackStations,
-            $protectPlayerShipsInSector,
-            $targetOnResponse,
-            $ships
-          ]"
-        chance="$traceChance" />
-
       <do_if value="$classesForAttack.count">
         <set_command command="command.patrol" />
         <set_command_action commandaction="commandaction.scanningto" param="$homeSector" />
@@ -2648,17 +2287,6 @@
           <set_value name="$coordDistSkipped" exact="0" />
           <set_value name="$coordSpeedSkipped" exact="0" />
           <set_value name="$classSkipped" exact="0" />
-          <debug_text
-            text="'ProtectSector [%s at %s, %s]: Response on attack by: %s. List of ships: %s. Target: %s'.
-              [
-                this.assignedcontrolled.debugname,
-                this.assignedcontrolled.sector.knownname,
-                this.assignedcontrolled.fleet.name,
-                @$targetOnResponse.debugname,
-                $ships,
-                @$target,
-              ]"
-            chance="$traceChance" />
           <!-- <set_value name="$targetOnResponse" exact="null" /> -->
           <wait min="10ms" max="50ms" /> <!-- to give a chance to mark the target as own -->
         </do_else>
@@ -2670,64 +2298,30 @@
         <do_while value="$indexShips le $ships.count and $target == null">
 
           <set_value name="$ship" exact="$ships.{$indexShips}" />
+          <set_value name="$psCandWhy" exact="'dead'" />
+          <set_value name="$psCandTop" exact="null" />
+          <set_value name="$psCandNear" exact="null" />
 
           <do_if value="(not $ship.iswreck) and ($ship.isoperational) and ($ship.pilot.exists)">
             <set_value name="$relation" exact="$ship.relationto.{this.owner}" />
-            <debug_text
-              text="'ProtectSector [%s at %s, %s]: %s - Target to check: %s {%s}, distance - %s, relation - %s, threshold: %s, share targets: %s, player age: %s'
-                .[
-                  this.assignedcontrolled.debugname,
-                  this.assignedcontrolled.sector.knownname,
-                  this.assignedcontrolled.fleet.name,
-                  $indexShips,
-                  $ship.debugname,
-                  $ship.class,
-                  this.assignedcontrolled.distanceto.{$ship},
-                  $relation,
-                  $relationsThresholdInternal,
-                  $shareTargetsBetweenFleets,
-                  player.age
-                ]"
-              chance="$traceChance" />
+            <set_value name="$psCandWhy" exact="'rel'" />
             <!-- the list can be older than this check: a pick loop waits per candidate, an answer waits before it -->
             <do_if value="$ship.sector != $homeSector">
               <set_value name="$homeSkipped" operation="add" />
+              <set_value name="$psCandWhy" exact="'home'" />
             </do_if>
             <do_elseif value="$relation le $relationsThresholdInternal">
               <set_value name="$target" exact="$ship" />
+              <set_value name="$psCandWhy" exact="'pick'" />
               <set_value name="$targetClassIsAllowed" exact="true" />
               <do_while
                 value="$targetClassIsAllowed and $target.commander? and $target.commander.canbeattacked and ($target.commander.sector == $target.sector) and $target.commander.isclass.ship">
+                <set_value name="$psCandTop" exact="$target.commander" />
                 <do_if value="$target.commander.isclass.{$classesAcceptableForAttack}">
-                  <debug_text
-                    text="'ProtectSector [%s at %s, %s]: %s - New target is: %s {%s}. Selected target was: %s {%s}'
-                      .[
-                        this.assignedcontrolled.debugname,
-                        this.assignedcontrolled.sector.knownname,
-                        this.assignedcontrolled.fleet.name,
-                        $indexShips,
-                        $target.commander.debugname,
-                        $target.commander.class,
-                        $target.debugname,
-                        $target.class
-                      ]"
-                    chance="$traceChance" />
                   <set_value name="$target" exact="$target.commander" />
                 </do_if>
                 <do_else>
-                  <debug_text
-                    text="'ProtectSector [%s at %s, %s]: %s - Out of allowed : %s {%s}. Selected target was: %s {%s}'
-                      .[
-                        this.assignedcontrolled.debugname,
-                        this.assignedcontrolled.sector.knownname,
-                        this.assignedcontrolled.fleet.name,
-                        $indexShips,
-                        $target.commander.debugname,
-                        $target.commander.class,
-                        $target.debugname,
-                        $target.class
-                      ]"
-                    chance="$traceChance" />
+                  <set_value name="$psCandWhy" exact="'class'" />
                   <set_value name="$targetClassIsAllowed" exact="false" />
                   <set_value name="$target" exact="null" />
                 </do_else>
@@ -2770,33 +2364,9 @@
                           $attackShipsOutOfStationsDistance
                         ]" /> -->
                   <do_if value="$target.distanceto.{$station} le $attackShipsOutOfStationsDistance">
-                    <debug_text
-                      text="'ProtectSector [%s at %s, %s]: Target: %s {%s} is too close to station: %s {%s}, distance - %s, minimal distance - %s'
-                      .[
-                        this.assignedcontrolled.debugname,
-                        this.assignedcontrolled.sector.knownname,
-                        this.assignedcontrolled.fleet.name,
-                        $target.debugname,
-                        $target.class,
-                        $station.debugname,
-                        $station.class,
-                        $target.distanceto.{$station},
-                        $attackShipsOutOfStationsDistance
-                      ]"
-                      chance="$traceChance" />
                     <do_if value="$station.relationto.{this.assignedcontrolled} le $relationsThresholdInternal">
-                      <debug_text
-                        text="'ProtectSector [%s at %s, %s]: Station: %s {%s} has relation lower than threshold to ship: %s {%s}.'
-                        .[
-                          this.assignedcontrolled.debugname,
-                          this.assignedcontrolled.sector.knownname,
-                          this.assignedcontrolled.fleet.name,
-                          $station.debugname,
-                          $station.class,
-                          this.assignedcontrolled.debugname,
-                          this.assignedcontrolled.class
-                        ]"
-                        chance="$traceChance" />
+                      <set_value name="$psCandWhy" exact="'station'" />
+                      <set_value name="$psCandNear" exact="$station" />
                       <set_value name="$target" exact="null" />
                       <break />
                     </do_if>
@@ -2809,6 +2379,7 @@
                 <include_interrupt_actions ref="PsFireAuthCheck" />
                 <do_if value="$psFaNo">
                   <set_value name="$faSkipped" operation="add" />
+                  <set_value name="$psCandWhy" exact="'fireauth'" />
                   <set_value name="$target" exact="null" />
                 </do_if>
                 <remove_value name="$psFaT" />
@@ -2820,15 +2391,21 @@
                   <append_to_list name="$psCands" exact="$target" />
                 </do_if>
                 <set_value name="$target" exact="null" />
+                <set_value name="$psCandWhy" exact="'ask'" />
+                <include_interrupt_actions ref="PsCandTrace" />
                 <do_if value="$psCands.count ge 5">
                   <break />
                 </do_if>
               </do_if>
             </do_elseif>
           </do_if>
+          <include_interrupt_actions ref="PsCandTrace" />
           <set_value name="$indexShips" exact="$indexShips + 1" />
           <wait min="5ms" max="15ms" profile="flat" />
         </do_while>
+        <remove_value name="$psCandWhy" />
+        <remove_value name="$psCandTop" />
+        <remove_value name="$psCandNear" />
         <include_interrupt_actions ref="PsStats" />
         <set_value name="this.$protectSectorStats.$scans" operation="add" />
         <do_if value="$target == null and $psCands.count == 0">
@@ -2903,18 +2480,6 @@
           <include_interrupt_actions ref="Telemetry" />
           <remove_value name="$respWhy" />
 
-          <debug_text
-            text="'ProtectSector [%s at %s, %s]: Final target is: %s {%s}, distance: %s, targetInfo: %s'
-              .[
-                this.assignedcontrolled.debugname,
-                this.assignedcontrolled.sector.knownname,
-                this.assignedcontrolled.fleet.name,
-                $target.debugname,
-                $target.class,
-                $targetDistanceTo,
-                $targetInfo
-              ]"
-            chance="$traceChance" />
           <do_if value="$recordActionsToLogBook">
             <set_value name="$textUnit" exact="{1972092401, 1011}.[this.assignedcontrolled.name, this.assignedcontrolled.idcode]" />
             <do_if
@@ -2938,19 +2503,6 @@
         <do_if value="this.assignedcontrolled.speed">
           <stop_moving object="this.assignedcontrolled" />
         </do_if>
-
-        <debug_text
-          text="'ProtectSector [%s at %s, %s]: Warning! No ship classes (%s or %s) or stations (%s) are selected for attack. Protect is : %s'.
-                  [
-                    this.assignedcontrolled.debugname,
-                    this.assignedcontrolled.sector.knownname,
-                    this.assignedcontrolled.fleet.name,
-                    $classesForAttack,
-                    $classesAcceptableForAttack,
-                    $attackStations,
-                    $protectPlayerShipsInSector
-                  ]"
-          chance="$traceChance" />
 
         <do_if value="$protectPlayerShipsInSector" negate="true">
           <!-- Player notification -->
@@ -2986,14 +2538,6 @@
 
         <!-- SEARCHING  STATION ************************************************************************ -->
 
-        <debug_text text="'ProtectSector [%s at %s, %s]: Start stations search'
-            .[
-              this.assignedcontrolled.debugname,
-              this.assignedcontrolled.sector.knownname,
-              this.assignedcontrolled.fleet.name
-            ]"
-          chance="$traceChance" />
-
         <do_if value="@$stations.count == 0">
           <include_interrupt_actions ref="ScanForEnemyStations" />
         </do_if>
@@ -3003,6 +2547,9 @@
         <do_for_each name="$station" in="$stations" counter="$stationIndex">
           <!-- the list is a scan snapshot and the loop waits between entries: an entry can be gone or unmeasurable by now -->
           <do_if value="@$targetSkip.{$station} gt player.age">
+            <set_value name="$stationDistanceTo" exact="null" />
+            <set_value name="$psStWhy" exact="'faskip'" />
+            <include_interrupt_actions ref="PsStCandTrace" />
             <continue />
           </do_if>
           <set_value name="$stationDistanceTo" exact="if @$station.exists then @this.assignedcontrolled.distanceto.{$station} else null" />
@@ -3012,22 +2559,11 @@
             <continue />
           </do_if>
           <set_value name="$stationRelation" exact="$station.relationto.{this.owner}" />
+          <set_value name="$psStWhy" exact="'rel'" />
           <do_if value="$stationRelation le $relationsThresholdInternal">
+            <set_value name="$psStWhy" exact="'class'" />
             <do_if value="$station.isclass.[class.station]">
-              <debug_text
-                text="'ProtectSector [%s at %s, %s]: %s - Station to check: %s {%s}, distance - %s, relation - %s, threshold: %s'
-                .[
-                  this.assignedcontrolled.debugname,
-                  this.assignedcontrolled.sector.knownname,
-                  this.assignedcontrolled.fleet.name,
-                  $stationIndex,
-                  $station.debugname,
-                  $station.class,
-                  $stationDistanceTo,
-                  $stationRelation,
-                  $relationsThresholdInternal
-                ]"
-                chance="$traceChance" />
+              <set_value name="$psStWhy" exact="'pick'" />
               <set_value name="$target" exact="$station" />
             </do_if>
             <do_elseif
@@ -3043,38 +2579,17 @@
               <set_value name="$station" exact="$stationBase" />
               <remove_value name="$stationBase" />
               <set_value name="$stationRelation" exact="$station.relationto.{faction.player}" />
-              <debug_text
-                text="'ProtectSector [%s at %s, %s]: %s - Station under construction to check: %s {%s}, distance - %s, relation - %s, threshold: %s'
-                .[
-                  this.assignedcontrolled.debugname,
-                  this.assignedcontrolled.sector.knownname,
-                  this.assignedcontrolled.fleet.name,
-                  $stationIndex,
-                  $station.debugname,
-                  $station.class,
-                  $stationDistanceTo,
-                  $stationRelation,
-                  $relationsThresholdInternal
-                ]"
-                chance="$traceChance" />
+              <set_value name="$psStWhy" exact="'build'" />
               <set_value name="$target" exact="$station" />
             </do_elseif>
             <do_if value="$target != null and $macrosToSkip.indexof.{@$target.macro} gt 0">
-              <debug_text
-                text="'ProtectSector [%s at %s, %s]: Station: %s - is an a list of macros to skip: %s. Skipping'
-                .[
-                  this.assignedcontrolled.debugname,
-                  this.assignedcontrolled.sector.knownname,
-                  this.assignedcontrolled.fleet.name,
-                  $target.debugname,
-                  $macrosToSkip
-                ]"
-                chance="$traceChance" />
+              <set_value name="$psStWhy" exact="'macro'" />
               <set_value name="$target" exact="null" />
             </do_if>
             <do_if value="$target != null and @this.$protectSectorStationSkip.{$target} gt player.age">
               <set_value name="$tel" exact="'stationmem|id=%s|op=skip|left=%s'.[$target.debugname, this.$protectSectorStationSkip.{$target} - player.age]" />
               <include_interrupt_actions ref="Telemetry" />
+              <set_value name="$psStWhy" exact="'mem'" />
               <set_value name="$target" exact="null" />
             </do_if>
             <!-- the handoff Attack has checkrelation true: a station this ship may not fire on would end it at once -->
@@ -3090,16 +2605,21 @@
                   <set_value name="$targetSkip" exact="table[]" />
                 </do_if>
                 <set_value name="$targetSkip.{$target}" exact="player.age + 120s" />
+                <set_value name="$psStWhy" exact="'fireauth'" />
                 <set_value name="$target" exact="null" />
               </do_if>
             </do_if>
           </do_if>
+          <include_interrupt_actions ref="PsStCandTrace" />
           <do_if value="$target != null">
             <break />
           </do_if>
           <wait min="5ms" max="15ms" profile="flat" comment="Wait is just to ensure we don't have infinite loops" />
         </do_for_each>
+        <remove_value name="$psStWhy" />
 
+        <set_value name="$tel" exact="'stscan|n=%s|picked=%s'.[@$stations.count, @$target.debugname]" />
+        <include_interrupt_actions ref="Telemetry" />
         <clear_list list="$stations" />
 
         <do_if value="$target != null">
@@ -3126,30 +2646,6 @@
             $psDebug = @$debugChance,
             $psAt = player.age
           ]" />
-
-          <debug_text
-            text="'ProtectSector [%s at %s, %s]: Station target: %s {%s}, distance: %s, relation: %s, targets: %s, targetInfo: %s, iswreck: %s, isoperational: %s, exists: %s, isconstruction: %s, state: %s, macro: %s, isknown: %s, isactive: %s, isfunctional: %s'
-              .[
-                this.assignedcontrolled.debugname,
-                this.assignedcontrolled.sector.knownname,
-                this.assignedcontrolled.fleet.name,
-                $target.debugname,
-                $target.class,
-                $stationDistanceTo,
-                $stationRelation,
-                $targets,
-                $targetInfo,
-                $target.iswreck,
-                $target.isoperational,
-                @$target.exists,
-                @$target.isconstruction,
-                @$target.state,
-                @$target.macro,
-                @$target.isknown,
-                @$target.isactive,
-                @$target.isfunctional,
-              ]"
-            chance="$traceChance" />
 
           <do_if value="this.assignedcontrolled.order" comment="Safety check in case the script is called from non-order script">
             <!-- Required for all infinite orders, no effect in case of finite timeout -->
@@ -3182,7 +2678,7 @@
             <remove_value name="$psSub" />
           </do_if>
           <set_value name="$stationTactical" exact="@$attackStationsTactical and $psTacMembers gt 0" />
-          <set_value name="$tel" exact="'station|id=%s|order=%s|dist=%s|members=%s'.[$target.debugname, if @$attackStationsInternal then 'Internal' else (if not $stationTactical then 'Attack' else 'Tactical'), @$stationDistanceTo, $psTacMembers]" />
+          <set_value name="$tel" exact="'station|id=%s|order=%s|dist=%s|members=%s|class=%s|rel=%s|state=%s|owner=%s|kuda=%s'.[$target.debugname, if @$attackStationsInternal then 'Internal' else (if not $stationTactical then 'Attack' else 'Tactical'), @$stationDistanceTo, $psTacMembers, $target.class, @$stationRelation, @$target.state, @$target.trueowner.id, @global.$kAAIT_Data != null]" />
           <include_interrupt_actions ref="Telemetry" />
           <include_interrupt_actions ref="SubordinatesResetOrders" />
           <do_if value="@$attackStationsInternal">
@@ -3192,16 +2688,6 @@
             </create_order>
           </do_if>
           <do_elseif value="@global.$kAAIT_Data != null">
-            <debug_text
-              text="'ProtectSector [%s at %s, %s]: KUDA AI tweaks detected, applying avoiding code to attack the target: %s {%s} '
-                .[
-                  this.assignedcontrolled.debugname,
-                  this.assignedcontrolled.sector.knownname,
-                  this.assignedcontrolled.fleet.name,
-                  $target.debugname,
-                  $target.class
-                ]"
-              chance="$traceChance" />
             <do_if value="not $stationTactical">
               <create_order id="'Attack'" object="this.assignedcontrolled" immediate="true">
                 <param name="primarytarget" value="$target" />
@@ -3315,16 +2801,6 @@
           <set_value name="$parkingTimestamp" exact="player.age" />
 
           <set_value name="$idleTill" exact="player.age + $idleDelay" />
-          <debug_text
-            text="'ProtectSector [%s at %s, %s]: Going idle till: %s, idle delay: %s, re-scan delay: %s'.
-            [
-              this.assignedcontrolled.debugname,
-              this.assignedcontrolled.sector.knownname,
-              this.assignedcontrolled.fleet.name,
-              $idleTill,
-              $idleDelay,
-              $delayBetweenScansInSeconds
-            ]" chance="$traceChance" />
           <!-- probe only, the move below still uses $parkingPosition -->
           <get_safe_pos result="$parkingSafePosition" sector="this.assignedcontrolled.sector" value="$parkingPosition" radius="this.assignedcontrolled.safesize / 2" ignored="this.assignedcontrolled" />
           <create_position name="$parkingShipPosition" space="this.assignedcontrolled.sector" object="this.assignedcontrolled" />
@@ -3464,24 +2940,6 @@
         <set_value name="$targetOptimalDistanceForAttack"
           exact="this.assignedcontrolled.size / 2 + [this.assignedcontrolled.currentradarrange, 2km].max * $attackDistanceAsPercentageOfRadarRange * 0.01 + $target.size / 2" />
 
-        <debug_text
-          text="'ProtectSector [%s at %s, %s]: move iteration : %s {%s} status: iswreck: %s, isoperational: %s,  pilot: %s (%s), distance - %s, radar percentage: %s, acceptable distance - %s'
-            .[
-              this.assignedcontrolled.debugname,
-              this.assignedcontrolled.sector.knownname,
-              this.assignedcontrolled.fleet.name,
-              $target.debugname,
-              $target.class,
-              $target.iswreck,
-              $target.isoperational,
-              $target.pilot,
-              $target.pilot?,
-              $targetDistanceTo,
-              $attackDistanceAsPercentageOfRadarRange,
-              $targetOptimalDistanceForAttack
-            ]"
-          chance="$traceChance" />
-
         <set_value name="$approachingIterationsCount" operation="add" />
         <set_value name="$tel" exact="'approach|iter=%s|id=%s|dist=%s|optimal=%s|notdec=%s|cut=%s|rng=%s|cansee=%s'.[$approachingIterationsCount, $target.debugname, $targetDistanceTo, $targetOptimalDistanceForAttack, @$targetDistanceToIsNotDecreasing, @$approachCut, (this.assignedcontrolled.currentradarrange)i, this.assignedcontrolled.cansee.{$target}]" />
         <do_if value="$approachingIterationsCount == 1">
@@ -3536,22 +2994,6 @@
           </do_if>
 
           <do_if value="@$targetDistanceToIsNotDecreasing ge 3 or $approachingIterationsCount ge 10">
-            <debug_text
-              text="'ProtectSector [%s at %s, %s]: Too fast for us : %s {%s} status: iswreck: %s, isoperational: %s,  pilot: %s (%s), distance: not decreasing count: %s, iterations count: %s'
-                  .[
-                    this.assignedcontrolled.debugname,
-                    this.assignedcontrolled.sector.knownname,
-                    this.assignedcontrolled.fleet.name,
-                    $target.debugname,
-                    $target.class,
-                    $target.iswreck,
-                    $target.isoperational,
-                  @$target.pilot,
-                  $target.pilot?,
-                  @$targetDistanceToIsNotDecreasing,
-                  @$approachingIterationsCount
-                  ]"
-              chance="$traceChance" />
             <set_value name="$tel" exact="'bailout|id=%s|iter=%s|notdec=%s|dist=%s|optimal=%s|moves=%s|apdur=%s'.[$target.debugname, $approachingIterationsCount, @$targetDistanceToIsNotDecreasing, $targetDistanceTo, $targetOptimalDistanceForAttack, @$approachMoves, if $approachStartedAt? then player.age - $approachStartedAt else null]" />
             <include_interrupt_actions ref="Telemetry" />
             <set_value name="$psField" exact="'$bailouts'" />
@@ -3599,25 +3041,8 @@
           </do_else>
           <set_value name="$targetPreviousDistanceTo" exact="$targetDistanceTo" />
           <set_value name="$passStartedAt" exact="player.age" />
-          <debug_text
-            text="'ProtectSector [%s at %s, %s]: moving to target: %s {%s} at position: %s (%s), distance - %s, acceptable distance - %s, position to target - %s, target size: %s, radius: %s, pos: %s, delta: %s'
-              .[
-                this.assignedcontrolled.debugname,
-                this.assignedcontrolled.sector.knownname,
-                this.assignedcontrolled.fleet.name,
-                $target.debugname,
-                $target.class,
-                $destination,
-                @$target.relativeposition.{$homeSector},
-                $targetDistanceTo,
-                $targetOptimalDistanceForAttack,
-                $target.distanceto.[$homeSector, $destination],
-                $target.size,
-                $radius,
-                $targetPos,
-                $target.size / 2 + $radius
-              ]"
-            chance="$traceChance" />
+          <set_value name="$tel" exact="'amove|iter=%s|id=%s|dest=%s|tpos=%s|todest=%s|tsize=%s|radius=%s|chase=%s|cap=%s'.[$approachingIterationsCount, $target.debugname, $destination, $targetPos, $target.distanceto.[$homeSector, $destination], $target.size, $radius, $approachChase, $approachCap]" />
+          <include_interrupt_actions ref="TelemetryTrace" />
           <set_value name="$approachTrv0" exact="if @this.assignedcontrolled.travel.active or @this.assignedcontrolled.travel.charging then 1 else 0" />
           <move_to object="this.assignedcontrolled" destination="if $approachChase then $target else $homeSector" boost="true" travel="true"
             forceposition="false" finishonapproach="true" radius="$targetOptimalDistanceForAttack / 3">
@@ -3635,23 +3060,8 @@
               </conditions>
               <actions>
                 <set_value name="$approachCut" exact="event.name" />
-                <debug_text
-                  text="'ProtectSector [%s at %s, %s]: moving is interrupted by %s : %s {%s} status: iswreck: %s, isoperational: %s,  pilot: %s (%s), distance - %s, acceptable distance - %s'
-                    .[
-                      this.assignedcontrolled.debugname,
-                      this.assignedcontrolled.sector.knownname,
-                      this.assignedcontrolled.fleet.name,
-                      event.name,
-                      $target.debugname,
-                      $target.class,
-                      $target.iswreck,
-                      $target.isoperational,
-                      $target.pilot,
-                      $target.pilot?,
-                      $targetDistanceTo,
-                      $targetOptimalDistanceForAttack
-                    ]"
-                  chance="$traceChance" />
+                <set_value name="$tel" exact="'acut|ev=%s|id=%s|wreck=%s|op=%s|param=%s|dist=%s'.[event.name, @$target.debugname, @$target.iswreck, @$target.isoperational, @event.param.debugname, @this.assignedcontrolled.distanceto.{$target}]" />
+                <include_interrupt_actions ref="TelemetryTrace" />
                 <do_if value="$recordActionsToLogBook">
                   <do_if value="event.name == 'event_object_destroyed'">
                     <set_value name="$textUnit" exact="{1972092401, 1011}.[this.assignedcontrolled.name, this.assignedcontrolled.idcode]" />
@@ -3736,22 +3146,6 @@
             <include_interrupt_actions ref="PsFireAuthSkip" />
             <resume label="targetSearching" />
           </do_if>
-          <debug_text
-            text="'ProtectSector [%s at %s, %s]: Run order.fight.attack.object : %s {%s} status: iswreck: %s, isoperational: %s,  pilot: %s (%s), distance - %s, acceptable distance - %s'
-              .[
-                this.assignedcontrolled.debugname,
-                this.assignedcontrolled.sector.knownname,
-                this.assignedcontrolled.fleet.name,
-                $target.debugname,
-                $target.class,
-                $target.iswreck,
-                $target.isoperational,
-                $target.pilot,
-                $target.pilot?,
-                $targetDistanceTo,
-                $targetOptimalDistanceForAttack
-              ]"
-            chance="$traceChance" />
           <do_if value="$recordActionsToLogBook">
             <set_value name="$textUnit" exact="{1972092401, 1011}.[this.assignedcontrolled.name, this.assignedcontrolled.idcode]" />
             <do_if
@@ -3821,16 +3215,6 @@
           <remove_value name="$fuShip" />
           <include_interrupt_actions ref="AttackHeartbeatArm" />
           <do_if value="@global.$kAAIT_Data != null">
-            <debug_text
-              text="'ProtectSector [%s at %s, %s]: KUDA AI tweaks detected, applying avoiding code to attack the target: %s {%s} '
-                .[
-                  this.assignedcontrolled.debugname,
-                  this.assignedcontrolled.sector.knownname,
-                  this.assignedcontrolled.fleet.name,
-                  $target.debugname,
-                  $target.class
-                ]"
-              chance="$traceChance" />
             <run_script name="'order.fight.attack.object'">
               <param name="primarytarget" value="$target" />
               <param name="pursuetargets" value="false" />
@@ -3931,23 +3315,6 @@
             <resume label="targetSearching" />
           </do_if>
 
-          <debug_text
-            text="'ProtectSector [%s at %s, %s]: After run order.fight.attack.object : %s {%s} status: iswreck: %s, isoperational: %s,  pilot: %s (%s), distance - %s, acceptable distance - %s'
-              .[
-                this.assignedcontrolled.debugname,
-                this.assignedcontrolled.sector.knownname,
-                this.assignedcontrolled.fleet.name,
-                $target.debugname,
-                $target.class,
-                $target.iswreck,
-                $target.isoperational,
-                $target.pilot,
-                $target.pilot?,
-                $targetDistanceTo,
-                $targetOptimalDistanceForAttack
-              ]"
-            chance="$traceChance" />
-
           <do_if value="$target.exists and not $target.iswreck and $pursueFleeingTarget and $target.sector == $homeSector">
             <resume label="targetApproaching" />
           </do_if>
@@ -3989,13 +3356,6 @@
       <do_if value="not $ignoreBlackListsForAttack and
         ($homeSector.isblacklisted.{blacklisttype.sectortravel}.{$blacklistGroup}.{this.assignedcontrolled} or
         $homeSector.isblacklisted.{blacklisttype.sectoractivity}.{$blacklistGroup}.{this.assignedcontrolled})">
-        <debug_text text="'ProtectSector [%s at %s, %s]: we are not at the target sector %s, but it is blacklisted for travel or activity. Black list ignore: %s. Stopping to work.'.[
-            this.assignedcontrolled.debugname,
-            this.assignedcontrolled.sector.knownname,
-            this.assignedcontrolled.fleet.name,
-            $homeSector.knownname,
-            $ignoreBlackListsForAttack
-          ]" chance="$traceChance" />
         <set_value name="$tel" exact="'home|state=blacklisted|turns=%s|to=%s'.[$flyingToHomeSectorTurnsCount, @$homeSector.debugname]" />
         <include_interrupt_actions ref="Telemetry" />
         <set_value name="$stoppingToWorkMessage" exact="{1972092401, 1102}.[$textUnit, $textHomeSector]" />
@@ -4004,13 +3364,6 @@
 
       <do_if value="$ignoreBlackListsForAttack and (this.assignedcontrolled.gatedistance.{$homeSector} lt 0) or
         not $ignoreBlackListsForAttack and (this.assignedcontrolled.gatedistance.{$homeSector}.{$blacklistGroup}.{this.assignedcontrolled} lt 0)">
-        <debug_text text="'ProtectSector [%s at %s, %s]: we are not at the target sector %s, but gate distance is negative. Black list ignore: %s. Stopping to work.'.[
-            this.assignedcontrolled.debugname,
-            this.assignedcontrolled.sector.knownname,
-            this.assignedcontrolled.fleet.name,
-            $homeSector.knownname,
-            $ignoreBlackListsForAttack
-          ]" chance="$traceChance" />
         <set_value name="$tel" exact="'home|state=nopath|via=gatedistance|turns=%s|to=%s|ignbl=%s'.[$flyingToHomeSectorTurnsCount, @$homeSector.debugname, $ignoreBlackListsForAttack]" />
         <include_interrupt_actions ref="Telemetry" />
         <set_value name="$stoppingToWorkMessage" exact="{1972092401, 1102}.[$textUnit, $textHomeSector]" />
@@ -4024,13 +3377,6 @@
           <start object="this.assignedcontrolled" />
           <end object="$homeSector" />
         </get_jump_path>
-        <debug_text text="'ProtectSector [%s at %s, %s]: Jump path with ignored blacklists: %s, count: %s'.[
-            this.assignedcontrolled.debugname,
-            this.assignedcontrolled.sector.knownname,
-            this.assignedcontrolled.fleet.name,
-            @$jumpPath,
-            @$jumpPath.count
-          ]" chance="$traceChance" />
       </do_if>
       <do_else>
         <get_jump_path component="$jumpPath" multiple="true" uselocalhighways="true" refobject="this.assignedcontrolled" useblacklist="$blacklistGroup"
@@ -4038,33 +3384,18 @@
           <start object="this.assignedcontrolled" />
           <end object="$homeSector" />
         </get_jump_path>
-        <debug_text text="'ProtectSector [%s at %s, %s]: Jump path with blacklists: %s, count: %s'.[
-            this.assignedcontrolled.debugname,
-            this.assignedcontrolled.sector.knownname,
-            this.assignedcontrolled.fleet.name,
-            @$jumpPath,
-            @$jumpPath.count
-          ]" chance="$traceChance" />
       </do_else>
+      <do_if value="$traceChance gt 0">
+        <set_value name="$psPath" exact="''" />
+        <do_all exact="@$jumpPath.count" counter="$pathIndex">
+          <set_value name="$psPath" exact="if $psPath == '' then '%s'.[@$jumpPath.{$pathIndex}.debugname] else '%s,%s'.[$psPath, @$jumpPath.{$pathIndex}.debugname]" />
+        </do_all>
+        <set_value name="$tel" exact="'homepath|ignbl=%s|n=%s|path=%s'.[$ignoreBlackListsForAttack, @$jumpPath.count, $psPath]" />
+        <include_interrupt_actions ref="TelemetryTrace" />
+        <remove_value name="$psPath" />
+      </do_if>
 
       <do_if value="@$jumpPath.count lt 2">
-        <debug_text
-          text="'ProtectSector [%s at %s, %s]:  but no jump path found from %s %s to %s %s. Black list ignore: %s. Stopping to work.'.
-          [
-            this.assignedcontrolled.debugname,
-            this.assignedcontrolled.sector.knownname,
-            this.assignedcontrolled.fleet.name,
-            this.sector.knownname,
-            this.sector,
-            @$homeSector.knownname,
-            $homeSector,
-            $ignoreBlackListsForAttack
-          ]"
-          chance="$traceChance" />
-        <do_all exact="@$jumpPath.count" counter="$pathIndex">
-          <debug_text text="'jumpPath entry %s: %s %s %s'.[$pathIndex, $jumpPath.{$pathIndex}.class, $jumpPath.{$pathIndex}.knownname, $jumpPath.{$pathIndex}]"
-            chance="$traceChance" />
-        </do_all>
         <set_value name="$tel" exact="'home|state=nopath|via=jumppath|turns=%s|to=%s|ignbl=%s|path=%s'.[$flyingToHomeSectorTurnsCount, @$homeSector.debugname, $ignoreBlackListsForAttack, @$jumpPath.count]" />
         <include_interrupt_actions ref="Telemetry" />
         <set_value name="$stoppingToWorkMessage" exact="{1972092401, 1102}.[$textUnit, $textHomeSector]" />
@@ -4128,19 +3459,7 @@
 
       <wait min="5ms" max="15ms" profile="flat" />
       <do_if value="this.assignedcontrolled.sector != $homeSector">
-        <debug_text text="'ProtectSector [%s at %s, %s]: We should be at home sector %s, but we are at %s. Resuming flying home.'.[
-            this.assignedcontrolled.debugname,
-            this.assignedcontrolled.sector.knownname,
-            this.assignedcontrolled.fleet.name,
-            $homeSector.knownname,
-            this.assignedcontrolled.sector.knownname
-          ]" chance="$traceChance" />
         <do_if value="$flyingToHomeSectorTurnsCount ge 10">
-          <debug_text text="'ProtectSector [%s at %s, %s]: Been flying to home sector for a while, but still not there. Raising fault.'.[
-                this.assignedcontrolled.debugname,
-                this.assignedcontrolled.sector.knownname,
-                this.assignedcontrolled.fleet.name
-              ]" chance="$traceChance" />
           <set_value name="$tel" exact="'home|state=stuck|turns=%s|to=%s'.[$flyingToHomeSectorTurnsCount, @$homeSector.debugname]" />
           <include_interrupt_actions ref="Telemetry" />
           <set_value name="$stoppingToWorkMessage" exact="{1972092401, 1102}.[$textUnit, $textHomeSector]" />
@@ -4164,15 +3483,7 @@
           timeout="20s" />
         <write_to_logbook category="general" title="$textTitle" text="$stoppingToWorkMessage"
           interaction="showonmap" object="this.assignedcontrolled" />
-        <debug_text text="'ProtectSector [%s at %s, %s]: Stopping to work. Going to set order %s (%s) failed with message: %s'.[
-            this.assignedcontrolled.debugname,
-            this.assignedcontrolled.sector.knownname,
-            this.assignedcontrolled.fleet.name,
-            @this.assignedcontrolled.order.id,
-            @this.assignedcontrolled.defaultorder.id,
-            $stoppingToWorkMessage
-          ]" chance="$traceChance" />
-        <set_value name="$tel" exact="'fail|text=%s'.[$stoppingToWorkMessage]" />
+        <set_value name="$tel" exact="'fail|text=%s|order=%s|dorder=%s'.[$stoppingToWorkMessage, @this.assignedcontrolled.order.id, @this.assignedcontrolled.defaultorder.id]" />
         <include_interrupt_actions ref="Telemetry" />
         <set_order_failed order="this.assignedcontrolled.order" text="$stoppingToWorkMessage" />
         <wait min="2s * $updateTime" max="3s * $updateTime" profile="flat" />
@@ -4184,30 +3495,7 @@
     </actions>
   </attention>
   <on_abort>
-    <debug_text text="'ProtectSector [%s at %s, %s]: Aborting order due to %s, object: %s, param: %s, exists: %s, isoperational: %s, iswreck: %s, hull: %s'.[
-        @this.assignedcontrolled.debugname,
-        @this.assignedcontrolled.sector.knownname,
-        @this.assignedcontrolled.fleet.name,
-        @event.name,
-        @event.object,
-        @event.param,
-        @this.assignedcontrolled.exists,
-        @this.assignedcontrolled.isoperational,
-        @this.assignedcontrolled.iswreck,
-        @this.assignedcontrolled.hullpercentage
-      ]" chance="$traceChance" />
-    <debug_text text="'ProtectSector [%s at %s, %s]: Aborting order. Order: %s, Default order: %s. Orders: %s, count: %s. Next order: %s.'.
-      [
-        @this.assignedcontrolled.debugname,
-        @this.assignedcontrolled.sector.knownname,
-        @this.assignedcontrolled.fleet.name,
-        @this.assignedcontrolled.order.id,
-        @this.assignedcontrolled.defaultorder.id,
-        @this.assignedcontrolled.orders,
-        @this.assignedcontrolled.orders.count,
-        @this.assignedcontrolled.nextorder
-      ]" chance="$traceChance" />
-    <set_value name="$tel" exact="'end|event=%s|by=%s|next=%s|hull=%s|cur=%s|orders=%s|ptarget=%s|internal=%s|sig=%s'.[@event.name, @event.param.debugname, @this.assignedcontrolled.nextorder.id, @this.assignedcontrolled.hullpercentage, @this.assignedcontrolled.order.id, @this.assignedcontrolled.orders.count, @this.assignedcontrolled.order.$primarytarget.debugname, @this.assignedcontrolled.order.$internalorder, @this.assignedcontrolled.order.$releasesignal.{1}]" />
+    <set_value name="$tel" exact="'end|event=%s|by=%s|next=%s|hull=%s|cur=%s|orders=%s|ptarget=%s|internal=%s|sig=%s|dorder=%s|op=%s|wreck=%s|obj=%s'.[@event.name, @event.param.debugname, @this.assignedcontrolled.nextorder.id, @this.assignedcontrolled.hullpercentage, @this.assignedcontrolled.order.id, @this.assignedcontrolled.orders.count, @this.assignedcontrolled.order.$primarytarget.debugname, @this.assignedcontrolled.order.$internalorder, @this.assignedcontrolled.order.$releasesignal.{1}, @this.assignedcontrolled.defaultorder.id, @this.assignedcontrolled.isoperational, @this.assignedcontrolled.iswreck, @event.object.debugname]" />
     <include_interrupt_actions ref="Telemetry" />
     <do_if value="@this.assignedcontrolled.exists and not @this.assignedcontrolled.iswreck">
       <include_interrupt_actions ref="PsIdleClose" />
