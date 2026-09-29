@@ -1962,7 +1962,7 @@ end
 
 -- Legend with a toggle per series, then one line per series over the whole
 -- history depth, x in hours before now; the selected point marks the window end.
-local function createGraphPanel(x, width, y, height, points, to)
+local function createGraphPanel(x, width, y, height, points, to, windowWidth)
   local cols = 2 * #SERIES
   local graphTable = menu.infoFrame:addTable(cols, {
     tabOrder = 4, width = width, x = x, y = y, reserveScrollBar = false, highlightMode = "off",
@@ -2016,7 +2016,7 @@ local function createGraphPanel(x, width, y, height, points, to)
   graph:setXAxis({ startvalue = -depth, endvalue = 0, granularity = axisStep(depth, X_STEPS, 8), offset = 0, gridcolor = Color["graph_grid"], unittext = ReadText(1001, 102) })
   graph:setXAxisLabel(ReadText(1001, 6519), { fontsize = 9 })
   graph:setYAxis({ startvalue = 0, endvalue = (math.ceil(yTop / yStep) + 0.5) * yStep, granularity = yStep, offset = 0, gridcolor = Color["graph_grid"] })
-  graph:setYAxisLabel(ReadText(PAGE, 1352), { fontsize = 9 })
+  graph:setYAxisLabel(pageText(1352, widthLabel(windowWidth)), { fontsize = 9 })
 
   if records > 0 then
     local dataIdx = 1
@@ -2194,7 +2194,7 @@ function menu.createRightPanel(x, width)
     y = y + ftable:getVisibleHeight() + Helper.borderSize
   end
   if graphHeight > 0 then
-    createGraphPanel(x, width, y, usableBottom - y, points, to)
+    createGraphPanel(x, width, y, usableBottom - y, points, to, windowWidth)
   end
 
   menu.createControls(x, width, bottom, fleet)

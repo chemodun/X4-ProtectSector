@@ -1172,7 +1172,7 @@
         </cue>
 
         <!-- the protect response: one evaluation per hit, the responders chosen by their own settings -->
-        <cue name="Attacked" instantiate="true" version="6">
+        <cue name="Attacked" instantiate="true" version="7">
           <conditions>
             <event_player_owned_attacked />
             <check_value value="@player.entity.$ProtectSectorBoard.$fleets.keys.count gt 0" />
@@ -1278,8 +1278,8 @@
             <set_value name="$psWhy" exact="'none'" />
             <set_value name="$psRule" exact="''" />
             <do_if value="$psResp.count == 0">
-              <!-- nobody free now: the first fleet that goes idle takes it -->
-              <do_if value="$psPolicy and $psTE.$help == null">
+              <!-- nobody free now: the first fleet in the sector that goes idle takes it -->
+              <do_if value="$psPolicy and $psHere gt 0 and $psTE.$help == null">
                 <set_value name="$psTE.$help" exact="player.age" />
               </do_if>
               <debug_text text="'PS1|%s|coordinator|-|%s|coord|id=%s|tclass=%s|why=none|rule=noresp|victim=%s|src=resp|fleets=%s|rej=%s'.[player.age, @$psT.sector.debugname, $psT.debugname, $psT.class, $psVictim.debugname, $psHere, $psRej]" chance="$debugChance" />
