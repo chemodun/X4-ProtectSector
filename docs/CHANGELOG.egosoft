@@ -1,5 +1,14 @@
 [size=140][u]Changelog[/u][/size]
 
+[size=130][u][2.01] - 2026-09-30[/u][/size]
+[list]
+[*] Fixed
+[list]
+[*] Removed the testing leftovers shipped in `2.00`: the debug level forced to [b]Debug[/b] on every load, the extra vanilla attack debug output, and the idle times cut to a third.
+[*] A debug level of [b]Debug[/b] set by [b]2.00[/b] is reset to [b]None[/b] once; set it again on the options page if you want it.
+[*] Ships already on the order go back to the normal idle times after loading a save.
+[/list]
+[/list]
 [size=130][u][2.00] - 2026-09-30[/u][/size]
 [list]
 [*] Added
