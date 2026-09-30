@@ -490,7 +490,7 @@ local function windowRange()
 end
 
 local function emptySum()
-  local sum = { covered = 0, coveredMax = 0, hullMin = 100.0, by = {}, c = {}, fleets = 0 }
+  local sum = { covered = 0, coveredMax = 0, hullMin = 100.0, by = {}, c = {}, fleets = 0, assists = 0 }
   for _, key in ipairs(COUNTER_KEYS) do
     sum.c[key] = 0
   end
@@ -520,7 +520,11 @@ local function addFleet(sum, fleet, from, to)
     end
   end
   if hit then
-    sum.fleets = sum.fleets + 1
+    if fleet.assist then
+      sum.assists = sum.assists + 1
+    else
+      sum.fleets = sum.fleets + 1
+    end
     sum.covered = sum.covered + covered
     sum.coveredMax = math.max(sum.coveredMax, covered)
   end
@@ -1599,7 +1603,7 @@ local COLUMN_STATS = {
 }
 
 local function columnValue(sum)
-  if sum.fleets == 0 then
+  if sum.fleets + sum.assists == 0 then
     return "-"
   end
   local chosen = COLUMN_STATS[1]
@@ -2147,7 +2151,7 @@ function menu.createRightPanel(x, width)
 
   -- An empty window keeps every row with "-" values, and the sections and graph;
   -- a window of losses alone shows its counts, with "-" for what needs covered time.
-  local empty = (sum.fleets == 0)
+  local empty = (sum.fleets + sum.assists == 0)
   local function shown(value)
     return empty and "-" or value
   end
@@ -2157,7 +2161,16 @@ function menu.createRightPanel(x, width)
   local c = sum.c
   local stats = rowBlock(rightTable)
   if fleet == nil then
-    statRow(stats, ReadText(PAGE, 1313), sum.fleets .. " / " .. #fleets)
+    local assists = 0
+    for _, entry in ipairs(fleets) do
+      if entry.assist then
+        assists = assists + 1
+      end
+    end
+    statRow(stats, ReadText(PAGE, 1313), sum.fleets .. " / " .. (#fleets - assists))
+    if assists > 0 then
+      statRow(stats, ReadText(1041, 701), sum.assists .. " / " .. assists)
+    end
   end
   statRow(stats, ReadText(PAGE, 1314), sampled(formatDuration(sum.coveredMax)))
   statRow(stats, ReadText(PAGE, 1320), shown(c.ks))

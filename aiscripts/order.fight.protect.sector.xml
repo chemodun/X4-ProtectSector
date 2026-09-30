@@ -1640,6 +1640,7 @@
         <check_value value="@this.assignedcontrolled.order.id == 'ProtectSector'" />
         <check_value value="@$isAttackingTarget or @event.param3 == 'nearer' or @event.param3 == 'size'" />
         <check_value value="@$target != null and event.param2 == $target" />
+        <check_value value="@$target.exists and not @$target.iswreck" />
       </conditions>
       <actions>
         <set_value name="$psBoNearer" exact="@event.param3 == 'nearer' or @event.param3 == 'size'" />
