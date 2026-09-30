@@ -1,6 +1,6 @@
 # Changelog
 
-## [2.00] - 2026-09-??
+## [2.00] - 2026-09-30
 
 - Added
   - The `Protect Sector overview` screen, opened from the right-click menu of a ship on the order or from its own icon in the top menu row: every fleet's statistics with a history of up to 48 hours, its state on the fleet coordinator, and its order settings including `Lost Ship Replacement`.
