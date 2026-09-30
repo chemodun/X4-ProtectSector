@@ -128,6 +128,14 @@
             <remove_value name="$cfg" />
             <include_actions ref="Coord_Validate" />
 
+            <!-- one-time: 2.00 forced 'debug' on every load -->
+            <do_if value="not player.entity.$ProtectSectorConfig.$debugReset201?">
+              <do_if value="player.entity.$ProtectSectorConfig.$debugLevel == 'debug'">
+                <set_value name="player.entity.$ProtectSectorConfig.$debugLevel" exact="'none'" />
+              </do_if>
+              <set_value name="player.entity.$ProtectSectorConfig.$debugReset201" exact="true" />
+            </do_if>
+
             <!-- one-time move from the pre-2.00 storage, which is then dropped -->
             <set_value name="$oldConfig" exact="@global.$chemODun.$protectSector" />
             <do_if value="$oldConfig != null">
@@ -154,9 +162,6 @@
               <include_actions ref="ClearDebugChances" />
             </do_if>
             <remove_value name="$oldConfig" />
-            <!-- TEMP (save series): force 'debug' on every load; remove before release -->
-            <set_value name="player.entity.$ProtectSectorConfig.$debugLevel" exact="'debug'" />
-            <debug_text text="'ProtectSector: Options: TEMP forced debug level'" />
           </actions>
         </library>
 

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="iso-8859-1"?>
-<aiscript name="order.fight.protect.sector" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="aiscripts.xsd" version="200">
+<aiscript name="order.fight.protect.sector" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="aiscripts.xsd" version="201">
   <order id="ProtectSector" name="{1972092401, 1}" description="{1972092401, 2}" category="combat" infinite="true" allowinloop="false">
     <params>
       <param name="homeSector"
@@ -493,16 +493,15 @@
       <actions name="PatchToVersion108">
         <create_list name="$ships" />
         <create_list name="$stations" />
-        <!-- TEMP test run: / 3, restore before release -->
         <set_value name="$updateTime"
-          exact="(if this.assignedcontrolled.isclass.ship_xl then 15min else (if this.assignedcontrolled.isclass.ship_l then 9min else 4min)) / 3" />
+          exact="if this.assignedcontrolled.isclass.ship_xl then 15min else (if this.assignedcontrolled.isclass.ship_l then 9min else 4min)" />
         <set_value name="$idleDelay" exact="$updateTime" />
         <set_value name="$idleTill" exact="0" />
         <set_value name="$lastStationScan" exact="player.age" />
         <include_interrupt_actions ref="HazardInSector" />
       </actions>
       <actions name="SetVersion">
-        <set_value name="$scriptVersion" exact="200" />
+        <set_value name="$scriptVersion" exact="201" />
       </actions>
       <actions name="ProtectSectorGlobalApply">
         <!-- a pre-2.00 save's patch and restart run before the MD migration, so the old flag still exists and maps as it does -->
@@ -2106,6 +2105,11 @@
     <include_interrupt_actions ref="Telemetry" />
     <signal_objects object="this.assignedcontrolled" param="'ProtectSectorRestart'" />
   </patch>
+  <patch sinceversion="201">
+    <!-- 2.00 shipped the idle lengths divided by 3 -->
+    <set_value name="$updateTime" exact="if this.assignedcontrolled.isclass.ship_xl then 15min else (if this.assignedcontrolled.isclass.ship_l then 9min else 4min)" />
+    <set_value name="$scriptVersion" exact="201" />
+  </patch>
   <attention min="unknown">
     <actions>
       <!-- START ******************************************************************************* -->
@@ -3181,15 +3185,6 @@
           </do_if>
           <set_value name="this.$protectSectorStats.$attackOpenAt" exact="player.age" />
           <set_value name="$psAttackOpen" exact="true" />
-          <!-- TEMP: vanilla attack debug for a target unseen at the start or already broken off on the heartbeat, 5 attacks per ship -->
-          <set_value name="$attackDebugChance" exact="$traceChance" />
-          <do_if value="@$vanillaDebugLeft == null">
-            <set_value name="$vanillaDebugLeft" exact="5" />
-          </do_if>
-          <do_if value="$vanillaDebugLeft gt 0 and (not this.assignedcontrolled.cansee.{$target} or @this.$protectSectorTargets.{$target}.$hardBreaks gt 0)">
-            <set_value name="$attackDebugChance" exact="100" />
-            <set_value name="$vanillaDebugLeft" operation="subtract" />
-          </do_if>
           <!-- the target's fleet as it stands now: the first follow-up source once this target is gone -->
           <do_if value="not this.$protectSectorTargetGroup?">
             <create_group groupname="this.$protectSectorTargetGroup" />
@@ -3206,7 +3201,7 @@
             </do_if>
           </do_for_each>
           <include_interrupt_actions ref="PsTargetWhere" />
-          <set_value name="$tel" exact="'attack|id=%s|dist=%s|optimal=%s|subs=%s|noresp=%s|may=%s|cansee=%s|tlive=%s|vdebug=%s|grp=%s|gtop=%s|moves=%s|apdur=%s%s'.[$target.debugname, $targetDistanceTo, @$targetOptimalDistanceForAttack, @this.assignedcontrolled.subordinates.count, @this.$noattackresponse, @this.assignedcontrolled.mayattack.{$target}, this.assignedcontrolled.cansee.{$target}, @$target.isinliveview, $attackDebugChance, this.$protectSectorTargetGroup.count, @$fuTop.debugname, @$approachMoves, if $approachStartedAt? then player.age - $approachStartedAt else null, $psWhere]" />
+          <set_value name="$tel" exact="'attack|id=%s|dist=%s|optimal=%s|subs=%s|noresp=%s|may=%s|cansee=%s|tlive=%s|grp=%s|gtop=%s|moves=%s|apdur=%s%s'.[$target.debugname, $targetDistanceTo, @$targetOptimalDistanceForAttack, @this.assignedcontrolled.subordinates.count, @this.$noattackresponse, @this.assignedcontrolled.mayattack.{$target}, this.assignedcontrolled.cansee.{$target}, @$target.isinliveview, this.$protectSectorTargetGroup.count, @$fuTop.debugname, @$approachMoves, if $approachStartedAt? then player.age - $approachStartedAt else null, $psWhere]" />
           <include_interrupt_actions ref="Telemetry" />
           <!-- a watchdog relaunch reaches the attack without an approach -->
           <remove_value name="$approachStartedAt" />
@@ -3231,7 +3226,7 @@
               <param name="forceprimarytarget" value="true" />
               <param name="kAAITParam_isAvoidHighRisk" value="false" />
               <param name="kAAITParam_isStepForwardWithdraw" value="false" />
-              <param name="debugchance" value="$attackDebugChance" />
+              <param name="debugchance" value="$traceChance" />
             </run_script>
           </do_if>
           <do_else>
@@ -3248,7 +3243,7 @@
               <param name="targetclasses" value="$classesAcceptableForAttack" />
               <param name="allowboost" value="true" />
               <param name="forceprimarytarget" value="true" />
-              <param name="debugchance" value="$attackDebugChance" />
+              <param name="debugchance" value="$traceChance" />
             </run_script>
           </do_else>
 

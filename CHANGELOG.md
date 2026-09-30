@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.01] - 2026-09-30
+
+- Fixed
+  - Removed the testing leftovers shipped in `2.00`: the debug level forced to `Debug` on every load, the extra vanilla attack debug output, and the idle times cut to a third.
+  - A debug level of `Debug` set by `2.00` is reset to `None` once; set it again on the options page if you want it.
+  - Ships already on the order go back to the normal idle times after loading a save.
+
 ## [2.00] - 2026-09-30
 
 - Added
